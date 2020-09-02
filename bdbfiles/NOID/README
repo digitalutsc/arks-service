@@ -1,0 +1,33 @@
+# Creation record for the identifier generator in NOID/noid.bdb.
+#
+erc:
+who:       noid/perl
+what:      unlimited sequential identifiers of form .zd
+       A Noid minting and binding database has been created that will bind
+       any identifier and mint an unbounded number of identifiers
+       with the template ".zd".
+       Sample identifiers would be "7" and "35905".
+       Minting order is sequential.
+when:      20000101000000
+where:     hostname:/noid/.
+Version:   Noid 0.424
+Size:      unlimited
+Template:  .zd
+       A suggested parent directory for this template is "noidany".  Note:
+       separate minters need separate directories, and templates can suggest
+       short names; e.g., the template "xz.redek" suggests the parent directory
+       "noid_xz4" since identifiers are "xz" followed by 4 characters.
+Policy:    (:------E)
+       This minter's durability summary is (maximum possible being "GRANITE")
+         "------E", which breaks down, property by property, as follows.
+          ^^^^^^^
+          |||||||______ (E)lided of vowels to avoid creating words by accident
+          ||||||__ not (T)ranscription safe due to a generated check character
+          |||||__ not (I)mpression safe from ignorable typesetter-added hyphens
+          ||||__ not (N)on-reassignable in life of Name Assigning Authority
+          |||__ not (A)lphabetic-run-limited to pairs to avoid acronyms
+          ||__ not (R)andomly sequenced to avoid series semantics
+          |__ not (G)lobally unique within a registered namespace (currently
+                     tests only ARK namespaces; apply for one at ark@cdlib.org)
+Authority: no Name Assigning Authority | no sub authority
+NAAN:      no NAA Number

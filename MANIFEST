@@ -1,0 +1,21 @@
+Changes
+lib/Noid.php
+MANIFEST
+META.yml			Module meta-data (added by MakeMaker)
+noid
+noid.pdf
+Noid.pdf
+noid.php
+README
+readme.md
+tests/BindTest.php
+tests/DbCreateTest.php
+tests/Noid1Test.php
+tests/Noid2Test.php
+tests/Noid3Test.php
+tests/Noid4Test.php
+tests/Noid5Test.php
+tests/Noid6Test.php
+tests/Noid7Test.php
+tests/Noid8Test.php
+VERSION
