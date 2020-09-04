@@ -8,15 +8,17 @@ class NoidUI
     public $noid_dir;
     public $noid;
 
+
     public function __construct()
     {
         $this->dir = getcwd();
         $this->rm_cmd = "/bin/rm -rf {$this->dir}/NOID > /dev/null 2>&1 ";
         $noid_bin = 'blib/script/noid';
         $cmd = is_executable($noid_bin) ? $noid_bin : $this->dir . DIRECTORY_SEPARATOR . 'noid';
+        $this->noid = $cmd;
         $this->noid_cmd = $cmd . ' -f ' . $this->dir . ' ';
         $this->noid_dir = $this->dir . DIRECTORY_SEPARATOR . 'NOID' . DIRECTORY_SEPARATOR;
-        $this->noid = dirname($cmd) . DIRECTORY_SEPARATOR . 'lib' . DIRECTORY_SEPARATOR . 'Noid.php';
+        //$this->noid = dirname($cmd) . DIRECTORY_SEPARATOR . 'lib' . DIRECTORY_SEPARATOR . 'Noid.php';
     }
 
     public function dbcreate(String $name, String $template, $return = 'erc') {
@@ -55,8 +57,23 @@ class NoidUI
         else {
             print("Database already existed");
         }
+    }
 
+    public function exec_command(String $command, String $db_path) {
+        $cmd = "$this->noid -f $db_path $command";
+        $result = $this->_executeCommand($cmd, $status, $output, $errors);
+        return $result;
+    }
 
+    public function mint(String $dbname, int $number) {
+        $db_path = getcwd()."/db/" .$dbname;
+        if (!file_exists($db_path)) {
+
+        }
+        $noid = Noid::dbopen($db_path . '/NOID/'. 'noid.bdb', 0);
+        var_dump($noid);
+        $id = Noid::mint($noid, "dsu", '');
+        var_dump($id);
     }
 
     protected function _executeCommand($cmd, &$status, &$output, &$errors)
@@ -71,14 +88,46 @@ class NoidUI
         );
         if ($proc = proc_open($cmd, $descriptorSpec, $pipes, getcwd())) {
             $output = stream_get_contents($pipes[1]);
+
             $errors = stream_get_contents($pipes[2]);
             foreach ($pipes as $pipe) {
                 fclose($pipe);
             }
             $status = proc_close($proc);
+            return $output;
         } else {
             throw new Exception("Failed to execute command: $cmd.");
         }
+    }
+
+    public function toCSV(array $data, $filename) {
+
+        header("Content-Disposition: attachment; filename=\"$filename\".csv");
+        header("Content-Type: text/csv");
+
+        $out = fopen("php://memory", 'w');
+        print_r($data);
+        $flag = false;
+        foreach ($data as $row) {
+
+            array_walk($row, __NAMESPACE__ . '\cleanData');
+            fputcsv($out, $row, ',', '"');
+        }
+
+        // reset the file pointer to the start of the file
+        fseek($out, 0);
+        // tell the browser it's going to be a csv file
+        header('Content-Type: application/csv');
+        // tell the browser we want to save it instead of displaying it
+        header('Content-Disposition: attachment; filename="'.$filename.'.csv";');
+        // make php send the generated csv lines to the browser
+        fpassthru($out);
+
+        //fclose($out);
+        //exit;
+    }
+    public function path() {
+        return getcwd()."/db/";
     }
 
     public function toString() {
