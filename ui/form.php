@@ -41,7 +41,16 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                                     <label for="enterDatabaseName">Database Name:</label>
                                     <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName"
                                            required/>
+                                       <small id="emailHelp" class="form-text text-muted">It will create sub-directory under db directory for each database created. For Example: ui/db/Test_1/NOID/.....</small>
                                 </div>
+                                <div class="form-group">
+                                    <label for="enterDatabaseName">Prefix:</label>
+                                    <input type="text" class="form-control" id="enterPrefix" name="enterPrefix"
+                                           required/>
+                                   <small id="emailHelp" class="form-text text-muted">For example: utsc or f5 <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
+                                </div> 
+                               
+                                
                                 <div class="form-group">
                                     <label for="exampleFormControlSelect1">Template:</label>
                                     <select class="form-control" id="selectTemplate" name="selectTemplate" required>
@@ -62,7 +71,33 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                                         <option>.redek</option>
                                         <option>.reedeedk</option>
                                     </select>
+                                    <small id="emailHelp" class="form-text text-muted">For more infomration <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
                                 </div>
+                                
+                                 <div class="form-group">
+                                    <label for="enterDatabaseName">Redirect URL:</label>
+                                    <input type="text" class="form-control" id="enterRedirect" name="enterRedirect"
+                                           required/>
+                                   <small id="emailHelp" class="form-text text-muted">For example: digital.utsc.utoronto.ca <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="enterDatabaseName">Term identifier minter:</label>
+                                    <select class="form-control" id="identifier_minter" name="identifier_minter" required>
+                                        <option selected disabled value="">Choose...</option>
+                                        <option>short</option>
+                                        <option>medium</option>
+                                        <option>long</option>
+                                    </select>
+                                    <small id="emailHelp" class="form-text text-muted">For more infomration <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
+                                </div>
+                                
+                                 <div class="form-group">
+                                    <label for="enterDatabaseName">Insitution Name:</label>
+                                    <input type="text" class="form-control" id="enterInsitutionName" name="enterInsitutionName"
+                                           required/>
+                                   <small id="emailHelp" class="form-text text-muted">For example: dsu/utsc-library or oac/cmp <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
+                                </div>
+                                
                                 <input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>
                             </form>
                             EOS;
@@ -77,11 +112,15 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                 </div>
                 <div class="col-sm-7">
                     <?php
-                    if ($_SERVER["REQUEST_METHOD"] == "POST" && !isset($_GET['db'])) {
+                    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
                         $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
                         $noidUI = new NoidUI();
-                        $result = $noidUI->dbcreate($database, $_POST['selectTemplate']);
-                        print $result;
+                        if (!file_exists($noidUI->path() . $database)) {
+                            mkdir($noidUI->path() . $database , 0775);
+                        }
+                        //$result = $noidUI->dbcreate($database, $_POST['selectTemplate']);
+                        $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter']   . " 61220 " .  $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName']  , $noidUI->path() . $database);
+                        //print $result;
                         header("Location: form.php");
                     }
                     $dirs = scandir(getcwd() . '/db/');
@@ -307,7 +346,6 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                 </div>
             </div>
         </div>
-
 
 
         <!--
