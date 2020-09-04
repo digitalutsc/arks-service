@@ -63,7 +63,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                                         <option>.reedeedk</option>
                                     </select>
                                 </div>
-                                <input type="submit" name="dbcreate" value="Mint" class="btn btn-primary"/>
+                                <input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>
                             </form>
                             EOS;
 
