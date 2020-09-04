@@ -61,6 +61,7 @@ class NoidUI
 
     public function exec_command(String $command, String $db_path) {
         $cmd = "$this->noid -f $db_path $command";
+        print("<p>Linux Cmd:" . $cmd. "</p>");
         $result = $this->_executeCommand($cmd, $status, $output, $errors);
         return $result;
     }
