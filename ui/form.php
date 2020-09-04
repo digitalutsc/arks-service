@@ -20,7 +20,17 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
 
 
     <div class="card">
-        <h5 class="card-header">Create Database</h5>
+        <?php
+            if (isset($_GET['db'])) {
+                print '<h5 class="card-header">Database <i>' .$_GET['db'] .'</i> is selected.</h5>';
+            }
+            else {
+                print <<<EOS
+                    <h5 class="card-header">Create Database</h5>
+                EOS;
+            }
+        ?>
+
         <div class="card-body">
             <div id="row-dbcreate" class="row">
                 <div class="col-sm-5">
