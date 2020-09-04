@@ -135,7 +135,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                                 <label for="exampleInputEmail1">How many:</label>
                                 <input type="number" class="form-control" id="mint-number" name="mint-number">
                             </div>
-                            <input type="submit" name="action" value="Mint" class="btn btn-primary" />
+                            <input type="submit" name="action" value="Mint" class="btn btn-primary"/>
                         </form>
                     </div>
                     <div class="col-sm-7">
@@ -143,13 +143,47 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                         if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             $noidUI = new NoidUI();
                             //$noidUI->mint($_POST['db'], $_POST['mint-number']);
-                            $result = $noidUI->exec_command("mint " . $_POST['mint-number'], $noidUI->path().$_GET["db"]);
+                            $result = $noidUI->exec_command("mint " . $_POST['mint-number'], $noidUI->path() . $_GET["db"]);
                             $newIDs = array_filter(explode("id: ", $result));
-                            $noidUI::print_log($newIDs);
-                            $noidUI->toCSV($newIDs, "mint-".time());
+                            //$noidUI::print_log($newIDs);
+                            $noidUI->toCSV($noidUI->path() . $_GET["db"], $newIDs, time());
 
                         }
-                        ?>
+                        $dirs = scandir(getcwd() . '/db/' . $_GET['db'] . '/mint');
+                        if (count($dirs) > 2) {
+                            ?>
+                            <div class="row">
+                                <table class="table table-bordered">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Past minting</th>
+                                        <th scope="col">Date</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php
+
+
+                                    foreach ($dirs as $dir) {
+                                        if (!in_array($dir, ['.', '..'])) {
+                                            $setActive = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/ui/db/' . $_GET['db'] . '/mint/' . $dir . '">'.$dir.'</a>';
+                                            $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
+
+                                            print <<<EOS
+                                        <tr>
+                                            <td scope="row">$setActive</td>
+                                            <td scope="row">$date</td>
+                                        </tr>
+                                    EOS;
+                                        }
+                                    }
+                                    ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php } ?>
+
+
                     </div>
                 </div>
             </div>

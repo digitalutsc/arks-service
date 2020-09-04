@@ -100,31 +100,22 @@ class NoidUI
         }
     }
 
-    public function toCSV(array $data, $filename) {
+    public function toCSV(String $path, array $data, $filename) {
 
-        header("Content-Disposition: attachment; filename=\"$filename\".csv");
-        header("Content-Type: text/csv");
+        //header("Content-Disposition: attachment; filename=\"$filename\".csv");
+        //header("Content-Type: text/csv");
 
-        $out = fopen("php://memory", 'w');
-        print_r($data);
-        $flag = false;
-        foreach ($data as $row) {
-
-            array_walk($row, __NAMESPACE__ . '\cleanData');
-            fputcsv($out, $row, ',', '"');
+        //$out = fopen("php://memory", 'w');
+        if (!file_exists($path. '/mint/')) {
+            mkdir($path. '/mint', 0775);
         }
-
-        // reset the file pointer to the start of the file
-        fseek($out, 0);
-        // tell the browser it's going to be a csv file
-        header('Content-Type: application/csv');
-        // tell the browser we want to save it instead of displaying it
-        header('Content-Disposition: attachment; filename="'.$filename.'.csv";');
-        // make php send the generated csv lines to the browser
-        fpassthru($out);
-
-        //fclose($out);
-        //exit;
+        $out = fopen($path. '/mint/'. $filename. '.csv', 'w');
+        $flag = false;
+        fputcsv($out, ["Identifer"],',', '"');
+        foreach ($data as $row) {
+            fputcsv($out, [preg_replace("/\r|\n/", "",$row)],',', '"');
+        }
+        fclose($out);
     }
     public function path() {
         return getcwd()."/db/";
