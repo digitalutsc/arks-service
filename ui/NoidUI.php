@@ -38,14 +38,19 @@ class NoidUI
                 throw new Exception("Unable to create database");
             }
 
-            Noid::dbclose($this->noid_dir . 'noid.bdb');
+            Noid::dbclose($db_path . '/NOID/noid.bdb');
 
             // Return the erc.
-            $isReadable = is_readable($this->noid_dir . 'README');
-            $error = error_get_last();
-            $this->assertTrue($isReadable, "can't open README: " . $error['message']);
-
-            $erc = file_get_contents($this->noid_dir . 'README');
+            //$isReadable = is_readable($db_path . '/NOID/ . 'README');
+            $isReadable = file_exists($db_path . '/NOID/README');
+            if ($isReadable) {
+                $result = <<<EOS
+                    <div class="alert alert-success" role="alert">
+                        New database <i>$name</i> created successfully.
+                    </div>
+                EOS;
+                return $result;
+            }
         }
         else {
             print("Database already existed");

@@ -1259,7 +1259,7 @@ NAAN:      $naan
         $env = null;
         $envhome = null;
         $envhome = preg_replace('|[^/]+$|', '', $dbname); # path ending in "NOID/"
-        var_dump($dbname);
+        //var_dump($dbname);
         if (!is_dir($envhome)) {
             self::addmsg(null, sprintf('%s not a directory', $envhome));
 
@@ -1375,7 +1375,7 @@ NAAN:      $naan
         */
 
         $mode = $flags . self::$_dbaLock;
-        var_dump($dbname);
+        //var_dump($dbname);
         $db = @dba_open($dbname, $mode, 'db4');
         if ($db === false) {
             $error = error_get_last();

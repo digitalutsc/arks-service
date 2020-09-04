@@ -23,48 +23,88 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
         <h5 class="card-header">Create Database</h5>
         <div class="card-body">
             <div id="row-dbcreate" class="row">
-                <div class="col-sm">
-                    <form id="form-dbcreate" action="./form.php" method="post">
-                        <div class="form-group">
-                            <label for="enterDatabaseName">Database Name:</label>
-                            <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName"
-                                   required/>
-                        </div>
-                        <div class="form-group">
-                            <label for="exampleFormControlSelect1">Template:</label>
-                            <select class="form-control" id="selectTemplate" name="selectTemplate" required>
-                                <option selected disabled value="">Choose...</option>
-                                <option>.rddd</option>
-                                <option>.sdddddd</option>
-                                <option>.zd</option>
-                                <option>.bc.rdddd</option>
-                                <option>.8rf.sdd</option>
-                                <option>.se</option>
-                                <option>.h9.reee</option>
-                                <option>.bc.rdedeedd</option>
-                                <option>.zededede</option>
-                                <option>.dd.sdede</option>
-                                <option>.rdedk</option>
-                                <option>.sdeeedk</option>
-                                <option>.zdeek</option>
-                                <option>.63q.redek</option>
-                            </select>
-                        </div>
+                <div class="col-sm-5">
+                    <?php
+                    if (!isset($_GET['db'])) {
+                        print <<<EOS
+                            <form id="form-dbcreate" action="./form.php" method="post">
+                                <div class="form-group">
+                                    <label for="enterDatabaseName">Database Name:</label>
+                                    <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName"
+                                           required/>
+                                </div>
+                                <div class="form-group">
+                                    <label for="exampleFormControlSelect1">Template:</label>
+                                    <select class="form-control" id="selectTemplate" name="selectTemplate" required>
+                                        <option selected disabled value="">Choose...</option>
+                                        <option>.rddd</option>
+                                        <option>.sdddddd</option>
+                                        <option>.zd</option>
+                                        <option>.bc.rdddd</option>
+                                        <option>.8rf.sdd</option>
+                                        <option>.se</option>
+                                        <option>.h9.reee</option>
+                                        <option>.bc.rdedeedd</option>
+                                        <option>.zededede</option>
+                                        <option>.dd.sdede</option>
+                                        <option>.rdedk</option>
+                                        <option>.sdeeedk</option>
+                                        <option>.zdeek</option>
+                                        <option>.63q.redek</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Create</button>
+                            </form>
+                            EOS;
 
-                        <button type="submit" class="btn btn-primary">Create</button>
-                    </form>
+                    } else {
+                        print <<<EOS
+                            <a class="btn btn-secondary" href="./form.php">Reset</a>
+                        EOS;
+                    }
+                    ?>
+
                 </div>
-                <div class="col-sm">
+                <div class="col-sm-7">
                     <?php
                     if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
-                        echo "Database about to create " . $database .'.' . $_POST['selectTemplate'];
-                        error_log("-------------------------");
                         $noidUI = new NoidUI();
-                        $result  = $noidUI->dbcreate($database, $_POST['selectTemplate']);
-
+                        $result = $noidUI->dbcreate($database, $_POST['selectTemplate']);
+                        print $result;
                     }
+                    $dirs = scandir(getcwd() . '/db/');
+                    if (count($dirs) > 2) {
                     ?>
+                    <div class="row">
+                        <table class="table table-bordered">
+                            <thead>
+                            <tr>
+                                <th scope="col">Past database</th>
+                                <th scope="col">Set Active</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php
+
+
+                            foreach ($dirs as $dir) {
+                                if (!in_array($dir, ['.', '..'])) {
+                                    $setActive = (isset($_GET['db']) && $_GET['db'] == $dir) ? '' : '<a href="./form.php?db=' . $dir . '">Set Active</a>';
+                                    print <<<EOS
+                                        <tr>
+                                            <td scope="row">$dir</td>
+                                            <td scope="row">$setActive</td>
+                                        </tr>
+                                    EOS;
+                                }
+                            }
+                            ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php } ?>
+
                 </div>
 
             </div>
