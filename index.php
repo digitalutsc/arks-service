@@ -1,6 +1,6 @@
 <?php
 include "lib/Noid.php";
-require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
+require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
 
 ?>
 
@@ -36,12 +36,12 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                     <?php
                     if (!isset($_GET['db'])) {
                         print <<<EOS
-                            <form id="form-dbcreate" action="./form.php" method="post">
+                            <form id="form-dbcreate" action="./index.php" method="post">
                                 <div class="form-group">
                                     <label for="enterDatabaseName">Database Name:</label>
                                     <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName"
                                            required/>
-                                       <small id="emailHelp" class="form-text text-muted">It will create sub-directory under db directory for each database created. For Example: ui/db/Test_1/NOID/.....</small>
+                                       <small id="emailHelp" class="form-text text-muted">It will create sub-directory under db directory for each database created. For Example: db/Test_1/NOID/.....</small>
                                 </div>
                                 <div class="form-group">
                                     <label for="enterDatabaseName">Prefix:</label>
@@ -104,7 +104,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
 
                     } else {
                         print <<<EOS
-                            <a class="btn btn-secondary" href="./form.php">Reset</a>
+                            <a class="btn btn-secondary" href="./index.php">Reset</a>
                         EOS;
                     }
                     ?>
@@ -121,7 +121,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                         //$result = $noidUI->dbcreate($database, $_POST['selectTemplate']);
                         $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter']   . " 61220 " .  $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName']  , $noidUI->path() . $database);
                         //print $result;
-                        header("Location: form.php");
+                        header("Location: index.php");
                     }
                     $dirs = scandir(getcwd() . '/db/');
                     if (count($dirs) > 2) {
@@ -140,7 +140,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
 
                                 foreach ($dirs as $dir) {
                                     if (!in_array($dir, ['.', '..'])) {
-                                        $setActive = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="./form.php?db=' . $dir . '">Set Active</a>';
+                                        $setActive = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="./index.php?db=' . $dir . '">Set Active</a>';
                                         print <<<EOS
                                         <tr>
                                             <td scope="row">$dir</td>
@@ -170,7 +170,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
             <div class="card-body">
                 <div id="row-mint" class="row">
                     <div class="col-sm-5">
-                        <form id="form-mint" method="post" action="./form.php?db=<?php echo $_GET['db'] ?>">
+                        <form id="form-mint" method="post" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <input type="hidden" name="db" value="<?php echo $_GET['db'] ?>">
                                 <label for="exampleInputEmail1">How many:</label>
@@ -186,7 +186,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                             $result = $noidUI->exec_command("mint " . $_POST['mint-number'], $noidUI->path() . $_GET["db"]);
                             $newIDs = array_filter(explode("id: ", $result));
                             $noidUI->toCSV($noidUI->path() . $_GET["db"], $newIDs, time());
-                            header("Location: form.php?db=" . $_GET["db"]);
+                            header("Location: index.php?db=" . $_GET["db"]);
                         }
                         $dirs = scandir(getcwd() . '/db/' . $_GET['db'] . '/mint');
                         if (count($dirs) > 2) {
@@ -203,7 +203,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                                     <?php
                                     foreach ($dirs as $dir) {
                                         if (!in_array($dir, ['.', '..'])) {
-                                            $setActive = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/ui/db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
+                                            $setActive = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
                                             $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
                                             print <<<EOS
@@ -232,7 +232,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
             <div class="card-body">
                 <div id="row-bindset" class="row">
                     <div class="col-sm-4">
-                        <form id="form-bindset" method="post" action="./form.php?db=<?php echo $_GET['db'] ?>">
+                        <form id="form-bindset" method="post" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <label for="enterIdentifier">Identifier:</label>
                                 <input type="text" class="form-control" id="enterIdentifier" name="enterIdentifier"
@@ -255,7 +255,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                             $noidUI = new NoidUI();
                             $result = $noidUI->exec_command(" bind set " . $_POST['enterIdentifier'] . " " . $_POST['enterKey'] . " '" . $_POST['enterValue'] . "'", $noidUI->path() . $_GET["db"]);
                             print_r($result);
-                            header("Location: form.php?db=" . $_GET["db"]);
+                            header("Location: index.php?db=" . $_GET["db"]);
                         }
                         ?>
                     </div>
@@ -271,7 +271,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
 
                 <div id="row-fetch" class="row">
                     <div class="col-sm-3">
-                        <form id="form-fetch" method="post" action="./form.php?db=<?php echo $_GET['db'] ?>">
+                        <form id="form-fetch" method="post" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <label for="exampleInputEmail1">Identifer:</label>
                                 <input type="text" class="form-control" id="identifer" name="identifer">
@@ -295,7 +295,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                                 //$result = Noid::fetch($noid, 0, $_POST['identifer'], '');
                                 print "<p></p><strong>Result</strong></p>";
                                 print_r($result);
-                                header("Location: form.php?db=" . $_GET["db"]);
+                                header("Location: index.php?db=" . $_GET["db"]);
                             }
                             ?>
                         </p>
@@ -311,7 +311,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
 
                 <div id="row-fetch" class="row">
                     <div class="col-sm-3">
-                        <form id="form-get" method="post" action="./form.php?db=<?php echo $_GET['db'] ?>">
+                        <form id="form-get" method="post" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <label for="exampleInputEmail1">Identifer:</label>
                                 <input type="text" class="form-control" id="identifer" name="identifer">
@@ -338,7 +338,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ui/NoidUI.php';
                                 //$result = Noid::fetch($noid, 0, $_POST['identifer'], '');
                                 print "<p></p><strong>Result</strong></p>";
                                 print_r($result);
-                                header("Location: form.php?db=" . $_GET["db"]);
+                                header("Location: index.php?db=" . $_GET["db"]);
                             }
                             ?>
                         </p>
