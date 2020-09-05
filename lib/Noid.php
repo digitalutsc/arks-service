@@ -838,6 +838,7 @@ class Noid
         $total = self::parse_template($template, $prefix, $mask, $gen_type, $msg);
         if (!$total) {
             self::addmsg($noid, $msg);
+            print_r($msg);
             return;
         }
         $synonym = 'noid' . ($genonly ? '_' . $msg : 'any');
@@ -846,12 +847,14 @@ class Noid
         #
         if (empty($contact) || trim($contact) == '') {
             self::addmsg($noid, sprintf('error: contact (%s) must be non-empty.', $contact));
+            print_r("error: contact (%s) must be non-empty.', $contact");
             return;
         }
 
         $term = $term ?: '-';
         if (!in_array($term, array('long', 'medium', 'short', '-'))) {
             self::addmsg($noid, sprintf('error: term (%s) must be either "long", "medium", "-", or "short".', $term));
+            print_r(sprintf('error: term (%s) must be either "long", "medium", "-", or "short".', $term));
             return;
         }
 
@@ -863,6 +866,7 @@ class Noid
                 && (!strlen(trim($naan)) || !strlen(trim($naa)) || !strlen(trim($subnaa)))
             ) {
             self::addmsg($noid, sprintf('error: longterm identifiers require an NAA Number, NAA, and SubNAA.'));
+            print_r(sprintf('error: longterm identifiers require an NAA Number, NAA, and SubNAA.'));
             return;
         }
         # xxx should be able to check naa and naan live against registry
@@ -870,6 +874,7 @@ class Noid
         # yyy ARK only? why not DOI/handle?
         if ($term === 'long' && !preg_match('/\d\d\d\d\d/', $naan)) {
             self::addmsg($noid, sprintf('error: term of "long" requires a 5-digit NAAN (00000 if none), and non-empty string values for NAA and SubNAA.'));
+            print_r(sprintf('error: term of "long" requires a 5-digit NAAN (00000 if none), and non-empty string values for NAA and SubNAA.'));
             return;
         }
 
@@ -879,11 +884,13 @@ class Noid
         if (!self::_storefile("$dir/log", '') || !chmod("$dir/log", 0666)) {
             $error = error_get_last();
             self::addmsg(null, sprintf("Couldn't chmod log file: %s", $error['message']));
+            print_r(sprintf("Couldn't chmod log file: %s", $error['message']));
             return;
         }
         if (!self::_storefile("$dir/logbdb", '') || !chmod("$dir/logbdb", 0666)) {
             $error = error_get_last();
             self::addmsg(null, sprintf("Couldn't chmod logbdb file: %s", $error['message']));
+            print_r(sprintf("Couldn't chmod logbdb file: %s", $error['message']));
             return;
         }
 
@@ -891,6 +898,7 @@ class Noid
         if (! $noid) {
             $error = error_get_last();
             self::addmsg(null, sprintf("can't create database file: %s", $error['message']));
+            print_r(sprintf("can't create database file: %s", $error['message']));
             return;
         }
 
@@ -1251,8 +1259,10 @@ NAAN:      $naan
         $env = null;
         $envhome = null;
         $envhome = preg_replace('|[^/]+$|', '', $dbname); # path ending in "NOID/"
+        //var_dump($dbname);
         if (!is_dir($envhome)) {
             self::addmsg(null, sprintf('%s not a directory', $envhome));
+
             return;
         }
 
@@ -1365,7 +1375,7 @@ NAAN:      $naan
         */
 
         $mode = $flags . self::$_dbaLock;
-
+        //var_dump($dbname);
         $db = @dba_open($dbname, $mode, 'db4');
         if ($db === false) {
             $error = error_get_last();
