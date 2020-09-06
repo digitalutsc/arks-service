@@ -116,11 +116,11 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
                         $noidUI = new NoidUI();
 
-                        if (!file_exists($noidUI->path() . $database)) {
-                            mkdir($noidUI->path() . $database , 0775);
+                        if (!file_exists($noidUI->path($database))) {
+                            mkdir($noidUI->path($database) , 0775);
                         }
                         //$result = $noidUI->dbcreate($database, $_POST['selectTemplate']);
-                        $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter']   . " 61220 " .  $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName']  , $noidUI->path() . $database);
+                        $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter']   . " 61220 " .  $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName']  , $noidUI->path($database));
                         //print $result;
                         header("Location: index.php");
                     }
@@ -188,9 +188,9 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number'])) {
                             $noidUI = new NoidUI();
-                            $result = $noidUI->exec_command("mint " . $_POST['mint-number'], $noidUI->path() . $_GET["db"]);
+                            $result = $noidUI->exec_command("mint " . $_POST['mint-number'], $noidUI->path($_GET["db"]));
                             $newIDs = array_filter(explode("id: ", $result));
-                            $noidUI->toCSV($noidUI->path() . $_GET["db"], $newIDs, time());
+                            $noidUI->toCSV($noidUI->path($_GET["db"]), $newIDs, time());
                             header("Location: index.php?db=" . $_GET["db"]);
                         }
                         $dirs = scandir(getcwd() . '/db/' . $_GET['db'] . '/mint');
@@ -258,7 +258,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && !empty($_POST['enterIdentifier'])) {
                             $noidUI = new NoidUI();
-                            $result = $noidUI->exec_command(" bind set " . $_POST['enterIdentifier'] . " " . $_POST['enterKey'] . " '" . $_POST['enterValue'] . "'", $noidUI->path() . $_GET["db"]);
+                            $result = $noidUI->exec_command(" bind set " . $_POST['enterIdentifier'] . " " . $_POST['enterKey'] . " '" . $_POST['enterValue'] . "'", $noidUI->path($_GET["db"]));
                             print_r($result);
                             header("Location: index.php?db=" . $_GET["db"]);
                         }
@@ -293,10 +293,10 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
 
                                 $noidUI = new NoidUI();
                                 // run command way - not work
-                                $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path() . $_GET["db"]);
+                                $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path($_GET["db"]));
 
                                 // function call way
-                                //$noid = Noid::dbopen($noidUI->path() . $_GET["db"] . '/NOID/noid.bdb', 0);
+                                //$noid = Noid::dbopen($noidUI->path($_GET["db"]) . '/NOID/noid.bdb', 0);
                                 //$result = Noid::fetch($noid, 0, $_POST['identifer'], '');
                                 print "<p></p><strong>Result</strong></p>";
                                 print_r($result);
@@ -336,10 +336,10 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
 
                                 $noidUI = new NoidUI();
                                 // run command way - not work
-                                $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path() . $_GET["db"]);
+                                $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path($_GET["db"]));
 
                                 // function call way
-                                //$noid = Noid::dbopen($noidUI->path() . $_GET["db"] . '/NOID/noid.bdb', 0);
+                                //$noid = Noid::dbopen($noidUI->path($_GET["db"]) . '/NOID/noid.bdb', 0);
                                 //$result = Noid::fetch($noid, 0, $_POST['identifer'], '');
                                 print "<p></p><strong>Result</strong></p>";
                                 print_r($result);
@@ -358,7 +358,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
             <h5 class="card-header">Import with minted identifiers</h5>
             <div class="card-body">
                 <div id="row-search" class="row">
-                    <div class="col-sm">
+                    <div class="col-sm-4">
                         <form id="form-import" method="post" enctype="multipart/form-data" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <p><label for="importCSV">Upload an CSV: </label></p>
@@ -371,7 +371,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                             <input type="submit" name="import" value="Import" class="btn btn-primary"/>
                         </form>
                     </div>
-                    <div class="col-sm">
+                    <div class="col-sm-8">
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
 
@@ -396,7 +396,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                                             }
                                             $bindset_cmd = " bind set ". $identifier;
                                             $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
-                                            $result = $noidUI->exec_command($bindset_cmd, $noidUI->path() . $_GET["db"]);
+                                            $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
                                             print_r($result);
                                         }
 
@@ -417,7 +417,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
             <h5 class="card-header">Import <u>without</u> minted identifiers</h5>
             <div class="card-body">
                 <div id="row-search" class="row">
-                    <div class="col-sm">
+                    <div class="col-sm-4">
                         <form id="form-import" method="post" enctype="multipart/form-data" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <p><label for="importCSV_noID">Upload an CSV: </label></p>
@@ -430,7 +430,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                             <input type="submit" name="import_noID" value="Import" class="btn btn-primary"/>
                         </form>
                     </div>
-                    <div class="col-sm">
+                    <div class="col-sm-8">
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import_noID'])) {
 
@@ -444,16 +444,13 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                                         if($flag) { $flag = false; continue; }
                                         $num = count($data);
                                         $row++;
-                                        $identifier = null;
+                                        $identifier = $noidUI->mint;
                                         for ($c=0; $c < $num; $c++) {
 
-                                            // capture identifier as first column (must be)
-                                            if ( $columns[$c] === 'Identifer') {
-                                                $identifier = $data[$c];
-                                            }
+                                           
                                             $bindset_cmd = " bind set ". $identifier;
                                             $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
-                                            $result = $noidUI->exec_command($bindset_cmd, $noidUI->path() . $_GET["db"]);
+                                            $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
                                             print_r($result);
                                         }
 

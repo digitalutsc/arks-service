@@ -61,7 +61,7 @@ class NoidUI
 
     public function exec_command(String $command, String $db_path = null) {
         $cmd = "$this->noid -f $db_path $command";
-        print("<p>Linux Cmd:" . $cmd. "</p>");
+        print("<p><strong><u>Linux Cmd</u>:</strong> " . $cmd. "</p>");
         $result = $this->_executeCommand($cmd, $status, $output, $errors);
         return $result;
     }
@@ -69,12 +69,11 @@ class NoidUI
     public function mint(String $dbname, int $number) {
         $db_path = getcwd()."/db/" .$dbname;
         if (!file_exists($db_path)) {
-
+            throw new Exception("Database not found");
+            exit;
         }
         $noid = Noid::dbopen($db_path . '/NOID/'. 'noid.bdb', 0);
-        var_dump($noid);
-        $id = Noid::mint($noid, "dsu", '');
-        var_dump($id);
+        return Noid::mint($noid, "dsu", '');
     }
 
     protected function _executeCommand($cmd, &$status, &$output, &$errors)
@@ -118,8 +117,8 @@ class NoidUI
         }
         fclose($out);
     }
-    public function path() {
-        return getcwd()."/db/";
+    public function path(String $dbname = "") {
+        return getcwd()."/db/". $dbname;
     }
 
     public function toString() {
