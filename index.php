@@ -117,11 +117,29 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         $noidUI = new NoidUI();
 
                         if (!file_exists($noidUI->path($database))) {
-                            mkdir($noidUI->path($database) , 0775);
+                            mkdir($noidUI->path($database), 0775);
                         }
                         //$result = $noidUI->dbcreate($database, $_POST['selectTemplate']);
-                        $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter']   . " 61220 " .  $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName']  , $noidUI->path($database));
+                        $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter'] . " 61220 " . $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName'], $noidUI->path($database));
                         //print $result;
+
+                        $isReadable = file_exists($noidUI->path($database) . '/NOID/README');
+                        if ($isReadable) {
+                            $result = <<<EOS
+                                <div class="alert alert-success" role="alert">
+                                    New database <i>$database</i> created successfully.
+                                </div>
+                            EOS;
+                            print $result;
+                        }
+                        else {
+                            $result = <<<EOS
+                                <div class="alert alert-danger" role="alert">
+                                    Sorry, failed to create <i>$database</i>.
+                                </div>
+                            EOS;
+                            print $result;
+                        }
                         header("Location: index.php");
                     }
                     if (!file_exists(getcwd() . '/db')) {
@@ -136,7 +154,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                                 <thead>
                                 <tr>
                                     <th scope="col">Past database</th>
-                                    <th scope="col">Set Active</th>
+                                    <th scope="col">Select</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -144,12 +162,17 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
 
 
                                 foreach ($dirs as $dir) {
+                                    $highlight = "";
+                                    $setActive = '<a href="./index.php?db=' . $dir . '">Select</a>';
                                     if (!in_array($dir, ['.', '..'])) {
-                                        $setActive = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="./index.php?db=' . $dir . '">Set Active</a>';
+                                        if ((isset($_GET['db']) && $_GET['db'] == $dir)) {
+                                            $setActive = "Selected";
+                                            $highlight = 'class="table-success"';
+                                        }
                                         print <<<EOS
                                         <tr>
                                             <td scope="row">$dir</td>
-                                            <td scope="row">$setActive</td>
+                                            <td scope="row" $highlight>$setActive</td>
                                         </tr>
                                     EOS;
                                     }
@@ -359,14 +382,16 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
             <div class="card-body">
                 <div id="row-search" class="row">
                     <div class="col-sm-4">
-                        <form id="form-import" method="post" enctype="multipart/form-data" action="./index.php?db=<?php echo $_GET['db'] ?>">
+                        <form id="form-import" method="post" enctype="multipart/form-data"
+                              action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <p><label for="importCSV">Upload an CSV: </label></p>
                                 <input type="file"
                                        id="importCSV" name="importCSV"
                                        accept=".csv">
                                 <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
-                                <p><strong><u>Note:</u></strong> For this section, download minted identifiers above add fields as column, and make sure to export as pure CSV, the import it here.</p>
+                                <p><strong><u>Note:</u></strong> For this section, download minted identifiers above add
+                                    fields as column, and make sure to export as pure CSV, the import it here.</p>
                             </div>
                             <input type="submit" name="import" value="Import" class="btn btn-primary"/>
                         </form>
@@ -375,26 +400,29 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
 
-                            if (is_uploaded_file($_FILES['importCSV']['tmp_name']) ) {
+                            if (is_uploaded_file($_FILES['importCSV']['tmp_name'])) {
                                 $noidUI = new NoidUI();
                                 if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
                                     $columns = fgetcsv($handle, 0, ",");
 
                                     $flag = true;
                                     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                                        if($flag) { $flag = false; continue; }
+                                        if ($flag) {
+                                            $flag = false;
+                                            continue;
+                                        }
                                         $num = count($data);
                                         $row++;
                                         $identifier = null;
-                                        for ($c=0; $c < $num; $c++) {
+                                        for ($c = 0; $c < $num; $c++) {
                                             // each row
-                                            print_r ("Binding .." . $columns[$c] ." : ". $data[$c] . "<br />\n");
+                                            print_r("Binding .." . $columns[$c] . " : " . $data[$c] . "<br />\n");
 
                                             // capture identifier as first column (must be)
-                                            if ( $columns[$c] === 'Identifer') {
+                                            if ($columns[$c] === 'Identifer') {
                                                 $identifier = $data[$c];
                                             }
-                                            $bindset_cmd = " bind set ". $identifier;
+                                            $bindset_cmd = " bind set " . $identifier;
                                             $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
                                             $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
                                             print_r($result);
@@ -418,14 +446,16 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
             <div class="card-body">
                 <div id="row-search" class="row">
                     <div class="col-sm-4">
-                        <form id="form-import" method="post" enctype="multipart/form-data" action="./index.php?db=<?php echo $_GET['db'] ?>">
+                        <form id="form-import" method="post" enctype="multipart/form-data"
+                              action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <p><label for="importCSV_noID">Upload an CSV: </label></p>
                                 <input type="file"
                                        id="importCSV_noID" name="importCSV_noID"
                                        accept=".csv">
                                 <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
-                                <p><strong><u>Note:</u></strong> For this section, please generate columns without need of mint before, it will mint during the import the CSV.</p>
+                                <p><strong><u>Note:</u></strong> For this section, please generate columns without need
+                                    of mint before, it will mint during the import the CSV.</p>
                             </div>
                             <input type="submit" name="import_noID" value="Import" class="btn btn-primary"/>
                         </form>
@@ -434,21 +464,24 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import_noID'])) {
 
-                            if (is_uploaded_file($_FILES['importCSV_noID']['tmp_name']) ) {
+                            if (is_uploaded_file($_FILES['importCSV_noID']['tmp_name'])) {
                                 $noidUI = new NoidUI();
                                 if (($handle = fopen($_FILES['importCSV_noID']['tmp_name'], "r")) !== FALSE) {
                                     $columns = fgetcsv($handle, 0, ",");
 
                                     $flag = true;
                                     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                                        if($flag) { $flag = false; continue; }
+                                        if ($flag) {
+                                            $flag = false;
+                                            continue;
+                                        }
                                         $num = count($data);
                                         $row++;
                                         $identifier = $noidUI->mint;
-                                        for ($c=0; $c < $num; $c++) {
+                                        for ($c = 0; $c < $num; $c++) {
 
-                                           
-                                            $bindset_cmd = " bind set ". $identifier;
+
+                                            $bindset_cmd = " bind set " . $identifier;
                                             $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
                                             $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
                                             print_r($result);

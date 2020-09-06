@@ -22,23 +22,16 @@ class NoidUI
     }
 
     public function dbcreate(String $name, String $template, $return = 'erc') {
-        $db_path = getcwd()."/db/" .$name;
+        //$db_path = getcwd()."/db/" .$name;
+        $db_path = $this->path($name);
         //TODO: mkdir with $name (check exist first)
         if (!file_exists($db_path)) {
             mkdir($db_path, 0775);
             $cmd = $this->rm_cmd;
             $this->_executeCommand($cmd, $status, $output, $errors);
 
-            $report = Noid::dbcreate($db_path, "dsu", $template, 'short');
-            $errmsg = Noid::errmsg(null, 1);
-            if ($return == 'stdout' || $return == 'stderr') {
-                throw new Exception("Something went wrong");
-                return $errmsg;
-            }
-
-            if (!isset($report))  {
-                throw new Exception("Unable to create database");
-            }
+            Noid::dbcreate($db_path, "dsu", $template, 'short');
+            Noid::errmsg(null, 1);
 
             Noid::dbclose($db_path . '/NOID/noid.bdb');
 
