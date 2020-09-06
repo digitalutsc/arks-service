@@ -355,17 +355,18 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
 
         <hr>
         <div class="card">
-            <h5 class="card-header">Import</h5>
+            <h5 class="card-header">Import with minted identifiers</h5>
             <div class="card-body">
                 <div id="row-search" class="row">
                     <div class="col-sm">
                         <form id="form-import" method="post" enctype="multipart/form-data" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
-                                <label for="exampleInputEmail1">Import(With minted identifiers):</label>
+                                <p><label for="importCSV">Upload an CSV: </label></p>
                                 <input type="file"
                                        id="importCSV" name="importCSV"
                                        accept=".csv">
                                 <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
+                                <p><strong><u>Note:</u></strong> For this section, download minted identifiers above add fields as column, and make sure to export as pure CSV, the import it here.</p>
                             </div>
                             <input type="submit" name="import" value="Import" class="btn btn-primary"/>
                         </form>
@@ -410,32 +411,63 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                 </div>
             </div>
         </div>
-        <!--
+
         <hr>
         <div class="card">
-            <h5 class="card-header">Import</h5>
+            <h5 class="card-header">Import <u>without</u> minted identifiers</h5>
             <div class="card-body">
-                <div id="row-import" class="row">
+                <div id="row-search" class="row">
                     <div class="col-sm">
-                        <form id="form-mint">
+                        <form id="form-import" method="post" enctype="multipart/form-data" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
-                                <label for="exampleInputEmail1">Bind Set:</label>
-                                <input type="email" class="form-control" id="exampleInputEmail1"
-                                       aria-describedby="emailHelp">
-                                <small id="emailHelp" class="form-text text-muted">No space, if there is, it will be convert
-                                    to
-                                    "_"</small>
+                                <p><label for="importCSV_noID">Upload an CSV: </label></p>
+                                <input type="file"
+                                       id="importCSV_noID" name="importCSV_noID"
+                                       accept=".csv">
+                                <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
+                                <p><strong><u>Note:</u></strong> For this section, please generate columns without need of mint before, it will mint during the import the CSV.</p>
                             </div>
-                            <button type="submit" class="btn btn-primary">Submit</button>
+                            <input type="submit" name="import_noID" value="Import" class="btn btn-primary"/>
                         </form>
                     </div>
                     <div class="col-sm">
-                        Output
+                        <?php
+                        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import_noID'])) {
+
+                            if (is_uploaded_file($_FILES['importCSV_noID']['tmp_name']) ) {
+                                $noidUI = new NoidUI();
+                                if (($handle = fopen($_FILES['importCSV_noID']['tmp_name'], "r")) !== FALSE) {
+                                    $columns = fgetcsv($handle, 0, ",");
+
+                                    $flag = true;
+                                    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                                        if($flag) { $flag = false; continue; }
+                                        $num = count($data);
+                                        $row++;
+                                        $identifier = null;
+                                        for ($c=0; $c < $num; $c++) {
+
+                                            // capture identifier as first column (must be)
+                                            if ( $columns[$c] === 'Identifer') {
+                                                $identifier = $data[$c];
+                                            }
+                                            $bindset_cmd = " bind set ". $identifier;
+                                            $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
+                                            $result = $noidUI->exec_command($bindset_cmd, $noidUI->path() . $_GET["db"]);
+                                            print_r($result);
+                                        }
+
+                                    }
+                                    fclose($handle);
+                                }
+                            }
+                            header("Location: index.php?db=" . $_GET["db"]);
+                        }
+                        ?>
                     </div>
                 </div>
             </div>
         </div>
-    -->
     <?php }
     ?>
 </div>
