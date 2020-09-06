@@ -93,12 +93,8 @@ class NoidUI
         }
     }
 
-    public function toCSV(String $path, array $data, $filename) {
+    public function mintToCSV(String $path, array $data, String $filename) {
 
-        //header("Content-Disposition: attachment; filename=\"$filename\".csv");
-        //header("Content-Type: text/csv");
-
-        //$out = fopen("php://memory", 'w');
         if (!file_exists($path. '/mint/')) {
             mkdir($path. '/mint', 0775);
         }
@@ -110,6 +106,33 @@ class NoidUI
         }
         fclose($out);
     }
+
+    public  function importedToCSV(String $path, array $collumns ,array $data, String $filename) {
+
+        if (!file_exists($path. '/import_minted/')) {
+            mkdir($path. '/import_minted', 0775);
+        }
+
+        $out = fopen($path. '/import_minted/'. $filename. '.csv', 'w');
+        $flag = false;
+
+        //write columns
+        fputcsv($out, $collumns, ',', '"');
+
+        // write other rows
+        foreach ($data as $row) {
+            if (!$flag) {
+                // display field/column names as first row
+                fputcsv($out, $row, ',', '"');
+                $flag = true;
+            }
+            array_walk($row, __NAMESPACE__ . '\cleanData');
+            fputcsv($out, $row, ',', '"');
+        }
+
+        fclose($out);
+    }
+
     public function path(String $dbname = "") {
         return getcwd()."/db/". $dbname;
     }

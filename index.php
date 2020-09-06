@@ -223,7 +223,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                             $newIDs = array_filter(explode("id: ", $result));
 
                             // Create an CSV and write minted identifiers to that new CSV
-                            $noidUI->toCSV($noidUI->path($_GET["db"]), $newIDs, time());
+                            $noidUI->mintToCSV($noidUI->path($_GET["db"]), $newIDs, time());
 
                             // redirect to the page.
                             header("Location: index.php?db=" . $_GET["db"]);
@@ -435,8 +435,13 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
 
                                 //Read and scan through imported csv
                                 if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
+                                    // read the first row as columns
                                     $columns = fgetcsv($handle, 0, ",");
 
+                                    // add columns to import data array
+                                    $importedData = array_merge([], $columns);
+
+                                    // loop through the rest of rows
                                     $flag = true;
                                     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
                                         // avoid the 1st row since it's header
@@ -466,16 +471,54 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                                                 print($result);
                                                 print('</div>');
                                             }
-                                            //TODO: write each row to new csv
-                                        }
 
+                                        }
+                                        // add columns to import data array
+                                        NoidUI::print_log($data);
+                                        array_push($importedData, $data);
                                     }
+                                    //TODO: write each row to new csv
+
+                                    $noidUI->importedToCSV($noidUI->path($_GET["db"]), $columns,$importedData, time());
                                     fclose($handle);
                                 }
                             }
                             header("Location: index.php?db=" . $_GET["db"]);
                         }
+
+                        // List all minted identifer in csv which created each time execute mint
+                        $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_minted');
+                        if (count($dirs) > 2) {
                         ?>
+                        <div class="row">
+                            <table class="table table-bordered">
+                                <thead>
+                                <tr>
+                                    <th scope="col">Past imported</th>
+                                    <th scope="col">Date</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php
+                                foreach ($dirs as $dir) {
+                                    if (!in_array($dir, ['.', '..'])) {
+                                        $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
+                                        $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
+
+                                        print <<<EOS
+                                        <tr>
+                                            <td scope="row">$csv</td>
+                                            <td scope="row">$date</td>
+                                        </tr>
+                                    EOS;
+                                    }
+                                }
+                                ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php } ?>
+
                     </div>
                 </div>
             </div>
