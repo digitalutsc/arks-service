@@ -114,6 +114,10 @@ class NoidUI
         return getcwd()."/db/". $dbname;
     }
 
+    public static function dbpath(String $dbname = "") {
+        return getcwd()."/db/". $dbname;
+    }
+
     public function toString() {
         print "<pre>";
         print_r($this);

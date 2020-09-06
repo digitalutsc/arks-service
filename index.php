@@ -113,16 +113,21 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                 <div class="col-sm-7">
                     <?php
                     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
+                        // Repace white space (if there is) with underscore
                         $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
+
+                        // generate an ark service processing object
                         $noidUI = new NoidUI();
 
+                        // check parent database folder created yet, if not, create it.
                         if (!file_exists($noidUI->path($database))) {
                             mkdir($noidUI->path($database), 0775);
                         }
-                        //$result = $noidUI->dbcreate($database, $_POST['selectTemplate']);
-                        $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter'] . " 61220 " . $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName'], $noidUI->path($database));
-                        //print $result;
 
+                        // Execute dbcomment with entered parameters.
+                        $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter'] . " 61220 " . $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName'], $noidUI->path($database));
+
+                        // check new database directory created yet. if yes, display success message, if not display error message.
                         $isReadable = file_exists($noidUI->path($database) . '/NOID/README');
                         if ($isReadable) {
                             $result = <<<EOS
@@ -142,11 +147,9 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         }
                         header("Location: index.php");
                     }
-                    if (!file_exists(getcwd() . '/db')) {
-                        var_dump(getcwd() . '/db');
-                        mkdir(getcwd() . '/db');
-                    }
-                    $dirs = scandir(getcwd() . '/db/');
+
+                    // List all created databases in the table
+                    $dirs = scandir(NoidUI::dbpath());
                     if (is_array($dirs) && count($dirs) > 2) {
                         ?>
                         <div class="row">
@@ -166,13 +169,13 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                                     $setActive = '<a href="./index.php?db=' . $dir . '">Select</a>';
                                     if (!in_array($dir, ['.', '..'])) {
                                         if ((isset($_GET['db']) && $_GET['db'] == $dir)) {
-                                            $setActive = "Selected";
+                                            $setActive = "<strong>Selected</srong>";
                                             $highlight = 'class="table-success"';
                                         }
                                         print <<<EOS
-                                        <tr>
+                                        <tr $highlight>
                                             <td scope="row">$dir</td>
-                                            <td scope="row" $highlight>$setActive</td>
+                                            <td scope="row">$setActive</td>
                                         </tr>
                                     EOS;
                                     }
@@ -190,7 +193,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
     </div>
 
     <?php
-    if (isset($_GET['db'])) {
+    if (isset($_GET['db'])) { // if a database is selected (db name appears in the URL
         ?>
         <hr>
         <div class="card">
@@ -210,13 +213,24 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                     <div class="col-sm-7">
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number'])) {
+                            // create Ark service procession object
                             $noidUI = new NoidUI();
+
+                            // execute command with entered params
                             $result = $noidUI->exec_command("mint " . $_POST['mint-number'], $noidUI->path($_GET["db"]));
+
+                            // remove any empty identifer happen to be in the result array
                             $newIDs = array_filter(explode("id: ", $result));
+
+                            // Create an CSV and write minted identifiers to that new CSV
                             $noidUI->toCSV($noidUI->path($_GET["db"]), $newIDs, time());
+
+                            // redirect to the page.
                             header("Location: index.php?db=" . $_GET["db"]);
                         }
-                        $dirs = scandir(getcwd() . '/db/' . $_GET['db'] . '/mint');
+
+                        // List all minted identifer in csv which created each time execute mint
+                        $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/mint');
                         if (count($dirs) > 2) {
                             ?>
                             <div class="row">
@@ -231,12 +245,12 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                                     <?php
                                     foreach ($dirs as $dir) {
                                         if (!in_array($dir, ['.', '..'])) {
-                                            $setActive = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
+                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
                                             $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
                                             print <<<EOS
                                         <tr>
-                                            <td scope="row">$setActive</td>
+                                            <td scope="row">$csv</td>
                                             <td scope="row">$date</td>
                                         </tr>
                                     EOS;
@@ -280,9 +294,18 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                     <div class="col-sm-8">
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && !empty($_POST['enterIdentifier'])) {
+                            // create Ark service procession object
                             $noidUI = new NoidUI();
+
+                            // Execute command with entered params
                             $result = $noidUI->exec_command(" bind set " . $_POST['enterIdentifier'] . " " . $_POST['enterKey'] . " '" . $_POST['enterValue'] . "'", $noidUI->path($_GET["db"]));
+
+                            // display the rsults
+                            print_r('<div class="alert alert-info">');
+                            print_r("<p><strong>Result:</strong></p>");
                             print_r($result);
+                            print_r("</div>");
+                            // refresh the page to clear Post method.
                             header("Location: index.php?db=" . $_GET["db"]);
                         }
                         ?>
@@ -313,16 +336,19 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                             <?php
 
                             if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['fetch'])) {
-
+                                // creat an ark service processor
                                 $noidUI = new NoidUI();
-                                // run command way - not work
+
+                                // execute the command with entered params
                                 $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path($_GET["db"]));
 
-                                // function call way
-                                //$noid = Noid::dbopen($noidUI->path($_GET["db"]) . '/NOID/noid.bdb', 0);
-                                //$result = Noid::fetch($noid, 0, $_POST['identifer'], '');
-                                print "<p></p><strong>Result</strong></p>";
+                                // display the result
+                                print_r('<div class="alert alert-info">');
+                                print "<p><strong>Result:</strong></p>";
                                 print_r($result);
+                                print_r('</div>');
+
+                                // refresh the page to destroy post section
                                 header("Location: index.php?db=" . $_GET["db"]);
                             }
                             ?>
@@ -356,16 +382,19 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         <p>
                             <?php
                             if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['get'])) {
-
+                                // genreate Ark service procession object
                                 $noidUI = new NoidUI();
-                                // run command way - not work
+
+                                // execute with entered params
                                 $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path($_GET["db"]));
 
-                                // function call way
-                                //$noid = Noid::dbopen($noidUI->path($_GET["db"]) . '/NOID/noid.bdb', 0);
-                                //$result = Noid::fetch($noid, 0, $_POST['identifer'], '');
+                                // display the results
+                                print_r('<div class="alert alert-info">');
                                 print "<p></p><strong>Result</strong></p>";
                                 print_r($result);
+                                print_r('</div>');
+
+                                // refresh the page to destroy post session
                                 header("Location: index.php?db=" . $_GET["db"]);
                             }
                             ?>
