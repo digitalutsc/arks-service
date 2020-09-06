@@ -115,6 +115,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
                         $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
                         $noidUI = new NoidUI();
+
                         if (!file_exists($noidUI->path() . $database)) {
                             mkdir($noidUI->path() . $database , 0775);
                         }
@@ -123,8 +124,12 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         //print $result;
                         header("Location: index.php");
                     }
+                    if (!file_exists(getcwd() . '/db')) {
+                        var_dump(getcwd() . '/db');
+                        mkdir(getcwd() . '/db');
+                    }
                     $dirs = scandir(getcwd() . '/db/');
-                    if (count($dirs) > 2) {
+                    if (is_array($dirs) && count($dirs) > 2) {
                         ?>
                         <div class="row">
                             <table class="table table-bordered">
@@ -348,32 +353,64 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
         </div>
 
 
-        <!--
         <hr>
         <div class="card">
-            <h5 class="card-header">Search</h5>
+            <h5 class="card-header">Import</h5>
             <div class="card-body">
                 <div id="row-search" class="row">
                     <div class="col-sm">
-                        <form id="form-mint">
+                        <form id="form-import" method="post" enctype="multipart/form-data" action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
-                                <label for="exampleInputEmail1">Bind Set:</label>
-                                <input type="email" class="form-control" id="exampleInputEmail1"
-                                       aria-describedby="emailHelp">
-                                <small id="emailHelp" class="form-text text-muted">No space, if there is, it will be convert
-                                    to
-                                    "_"</small>
+                                <label for="exampleInputEmail1">Import(With minted identifiers):</label>
+                                <input type="file"
+                                       id="importCSV" name="importCSV"
+                                       accept=".csv">
+                                <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
                             </div>
-                            <button type="submit" class="btn btn-primary">Submit</button>
+                            <input type="submit" name="import" value="Import" class="btn btn-primary"/>
                         </form>
                     </div>
                     <div class="col-sm">
-                        Output
+                        <?php
+                        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
+
+                            if (is_uploaded_file($_FILES['importCSV']['tmp_name']) ) {
+                                $noidUI = new NoidUI();
+                                if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
+                                    $columns = fgetcsv($handle, 0, ",");
+
+                                    $flag = true;
+                                    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                                        if($flag) { $flag = false; continue; }
+                                        $num = count($data);
+                                        $row++;
+                                        $identifier = null;
+                                        for ($c=0; $c < $num; $c++) {
+                                            // each row
+                                            print_r ("Binding .." . $columns[$c] ." : ". $data[$c] . "<br />\n");
+
+                                            // capture identifier as first column (must be)
+                                            if ( $columns[$c] === 'Identifer') {
+                                                $identifier = $data[$c];
+                                            }
+                                            $bindset_cmd = " bind set ". $identifier;
+                                            $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
+                                            $result = $noidUI->exec_command($bindset_cmd, $noidUI->path() . $_GET["db"]);
+                                            print_r($result);
+                                        }
+
+                                    }
+                                    fclose($handle);
+                                }
+                            }
+                            header("Location: index.php?db=" . $_GET["db"]);
+                        }
+                        ?>
                     </div>
                 </div>
             </div>
         </div>
-
+        <!--
         <hr>
         <div class="card">
             <h5 class="card-header">Import</h5>
