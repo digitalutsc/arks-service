@@ -410,22 +410,29 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
             <h5 class="card-header">Import with minted identifiers</h5>
             <div class="card-body">
                 <div id="row-search" class="row">
-                    <div class="col-sm-4">
+                    <div class="col-sm-6">
                         <form id="form-import" method="post" enctype="multipart/form-data"
                               action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
-                                <p><label for="importCSV">Upload an CSV: </label></p>
+                                <p><strong><u>Note:</u></strong> For this section, please follow:</p>
+                                <ul>
+                                    <li>Mint first</li>
+                                    <li>Download minted identifiers above and add fields as column to the CSV</li>
+                                    <li>Export as pure CSV (mandatory file type)</li>
+                                    <li>Import it here</li>
+                                </ul>
+
+                                <strong><label for="importCSV">Import an CSV: </label></strong>
                                 <input type="file"
                                        id="importCSV" name="importCSV"
                                        accept=".csv">
                                 <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
-                                <p><strong><u>Note:</u></strong> For this section, download minted identifiers above add
-                                    fields as column, and make sure to export as pure CSV, the import it here.</p>
+
                             </div>
                             <input type="submit" name="import" value="Import" class="btn btn-primary"/>
                         </form>
                     </div>
-                    <div class="col-sm-8">
+                    <div class="col-sm-6">
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
 
@@ -532,13 +539,20 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         <form id="form-importnoid" method="post" enctype="multipart/form-data"
                               action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
-                                <p><label for="importCSV_noID">Upload an CSV: </label></p>
+                                <p><strong><u>Note:</u></strong> For this section, please follow:</p>
+                                <ul>
+                                    <li>Download this initial CSV template by <a href="template.csv" download>this link.</a></li>
+                                    <li>Mandatory: Leave the first column with the header as "Identifier".</li>
+                                    <li>Add other needed fields as columns to the CSV.</li>
+                                    <li>Export as pure CSV (mandatory file type)</li>
+                                    <li>Import it here</li>
+                                </ul>
+                                <label for="importCSV_noID">Import an CSV: </label>
                                 <input type="file"
                                        id="importCSV_noID" name="importCSV_noID"
                                        accept=".csv">
                                 <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
-                                <p><strong><u>Note:</u></strong> For this section, please generate columns without need
-                                    of mint before, it will mint during the import the CSV.</p>
+
                             </div>
                             <input type="submit" name="import_noID" value="Import" class="btn btn-primary"/>
                         </form>
