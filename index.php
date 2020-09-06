@@ -301,10 +301,10 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                             $result = $noidUI->exec_command(" bind set " . $_POST['enterIdentifier'] . " " . $_POST['enterKey'] . " '" . $_POST['enterValue'] . "'", $noidUI->path($_GET["db"]));
 
                             // display the rsults
-                            print_r('<div class="alert alert-info">');
-                            print_r("<p><strong>Result:</strong></p>");
-                            print_r($result);
-                            print_r("</div>");
+                            print('<div class="alert alert-info">');
+                            print("<p><strong>Result:</strong></p>");
+                            print($result);
+                            print("</div>");
                             // refresh the page to clear Post method.
                             header("Location: index.php?db=" . $_GET["db"]);
                         }
@@ -343,10 +343,10 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                                 $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path($_GET["db"]));
 
                                 // display the result
-                                print_r('<div class="alert alert-info">');
+                                print('<div class="alert alert-info">');
                                 print "<p><strong>Result:</strong></p>";
-                                print_r($result);
-                                print_r('</div>');
+                                print($result);
+                                print('</div>');
 
                                 // refresh the page to destroy post section
                                 header("Location: index.php?db=" . $_GET["db"]);
@@ -382,17 +382,17 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         <p>
                             <?php
                             if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['get'])) {
-                                // genreate Ark service procession object
+                                // generate Ark service procession object
                                 $noidUI = new NoidUI();
 
                                 // execute with entered params
                                 $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path($_GET["db"]));
 
                                 // display the results
-                                print_r('<div class="alert alert-info">');
+                                print('<div class="alert alert-info">');
                                 print "<p></p><strong>Result</strong></p>";
-                                print_r($result);
-                                print_r('</div>');
+                                print($result);
+                                print('</div>');
 
                                 // refresh the page to destroy post session
                                 header("Location: index.php?db=" . $_GET["db"]);
@@ -430,31 +430,43 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
 
                             if (is_uploaded_file($_FILES['importCSV']['tmp_name'])) {
+                                // generate Ark service procession object
                                 $noidUI = new NoidUI();
+
+                                //Read and scan through imported csv
                                 if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
                                     $columns = fgetcsv($handle, 0, ",");
 
                                     $flag = true;
                                     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                                        // avoid the 1st row since it's header
                                         if ($flag) {
                                             $flag = false;
                                             continue;
                                         }
                                         $num = count($data);
                                         $row++;
+
                                         $identifier = null;
                                         for ($c = 0; $c < $num; $c++) {
-                                            // each row
-                                            print_r("Binding .." . $columns[$c] . " : " . $data[$c] . "<br />\n");
 
-                                            // capture identifier as first column (must be)
+                                            // capture identifier (strictly recommend first column)
                                             if ($columns[$c] === 'Identifer') {
                                                 $identifier = $data[$c];
                                             }
-                                            $bindset_cmd = " bind set " . $identifier;
-                                            $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
-                                            $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
-                                            print_r($result);
+                                            if ($c >0) { // avoid bindset identifier column
+                                                // mapping each column as params
+                                                $bindset_cmd = " bind set " . $identifier;
+                                                $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
+                                                $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
+
+                                                // display result of each bindset
+                                                print('<div class="alert alert-info">');
+                                                print "<p></p><strong>Result</strong></p>";
+                                                print($result);
+                                                print('</div>');
+                                            }
+                                            //TODO: write each row to new csv
                                         }
 
                                     }
@@ -513,7 +525,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                                             $bindset_cmd = " bind set " . $identifier;
                                             $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
                                             $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
-                                            print_r($result);
+                                            print($result);
                                         }
 
                                     }
