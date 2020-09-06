@@ -21,7 +21,8 @@ class NoidUI
         //$this->noid = dirname($cmd) . DIRECTORY_SEPARATOR . 'lib' . DIRECTORY_SEPARATOR . 'Noid.php';
     }
 
-    public function dbcreate(String $name, String $template, $return = 'erc') {
+    public function dbcreate(string $name, string $template, $return = 'erc')
+    {
         //$db_path = getcwd()."/db/" .$name;
         $db_path = $this->path($name);
         //TODO: mkdir with $name (check exist first)
@@ -46,26 +47,28 @@ class NoidUI
                 EOS;
                 return $result;
             }
-        }
-        else {
+        } else {
             print("Database already existed");
         }
     }
 
-    public function exec_command(String $command, String $db_path = null) {
+    public function exec_command(string $command, string $db_path = null)
+    {
         $cmd = "$this->noid -f $db_path $command";
-        print("<p><strong><u>Linux Cmd</u>:</strong> " . $cmd. "</p>");
+        print("<p><strong><u>Linux Cmd</u>:</strong> " . $cmd . "</p>");
         $result = $this->_executeCommand($cmd, $status, $output, $errors);
         return $result;
     }
 
-    public function mint(String $dbname, int $number) {
-        $db_path = getcwd()."/db/" .$dbname;
+    public function mint(string $dbname, int $number)
+    {
+        //$db_path = getcwd()."/db/" .$dbname;
+        $db_path = $this->path($dbname);
         if (!file_exists($db_path)) {
             throw new Exception("Database not found");
             exit;
         }
-        $noid = Noid::dbopen($db_path . '/NOID/'. 'noid.bdb', 0);
+        $noid = Noid::dbopen($db_path . '/NOID/' . 'noid.bdb', 0);
         return Noid::mint($noid, "dsu", '');
     }
 
@@ -93,27 +96,28 @@ class NoidUI
         }
     }
 
-    public function mintToCSV(String $path, array $data, String $filename) {
+    public function mintToCSV(string $path, array $data, string $filename)
+    {
 
-        if (!file_exists($path. '/mint/')) {
-            mkdir($path. '/mint', 0775);
+        if (!file_exists($path . '/mint/')) {
+            mkdir($path . '/mint', 0775);
         }
-        $out = fopen($path. '/mint/'. $filename. '.csv', 'w');
+        $out = fopen($path . '/mint/' . $filename . '.csv', 'w');
         $flag = false;
-        fputcsv($out, ["Identifer"],',', '"');
+        fputcsv($out, ["Identifer"], ',', '"');
         foreach ($data as $row) {
-            fputcsv($out, [preg_replace("/\r|\n/", "",$row)],',', '"');
+            fputcsv($out, [preg_replace("/\r|\n/", "", $row)], ',', '"');
         }
         fclose($out);
     }
 
-    public  function importedToCSV(String $path, array $collumns ,array $data, String $filename) {
-
-        if (!file_exists($path. '/import_minted/')) {
-            mkdir($path. '/import_minted', 0775);
+    public function importedToCSV(String $folder, string $path, array $collumns, array $data, string $filename)
+    {
+        if (!file_exists($path . '/'.$folder.'/')) {
+            mkdir($path . '/'.$folder.'', 0775);
         }
 
-        $out = fopen($path. '/import_minted/'. $filename. '.csv', 'w');
+        $out = fopen($path . '/'.$folder.'/' . $filename . '.csv', 'w');
         $flag = false;
 
         //write columns
@@ -133,21 +137,25 @@ class NoidUI
         fclose($out);
     }
 
-    public function path(String $dbname = "") {
-        return getcwd()."/db/". $dbname;
+    public function path(string $dbname = "")
+    {
+        return getcwd() . "/db/" . $dbname;
     }
 
-    public static function dbpath(String $dbname = "") {
-        return getcwd()."/db/". $dbname;
+    public static function dbpath(string $dbname = "")
+    {
+        return getcwd() . "/db/" . $dbname;
     }
 
-    public function toString() {
+    public function toString()
+    {
         print "<pre>";
         print_r($this);
         print "</pre>";
     }
 
-    public static function print_log($thing) {
+    public static function print_log($thing)
+    {
         print "<pre>";
         print_r($thing);
         print "</pre>";

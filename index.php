@@ -474,12 +474,11 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
 
                                         }
                                         // add columns to import data array
-                                        NoidUI::print_log($data);
                                         array_push($importedData, $data);
                                     }
                                     //TODO: write each row to new csv
 
-                                    $noidUI->importedToCSV($noidUI->path($_GET["db"]), $columns,$importedData, time());
+                                    $noidUI->importedToCSV("import_minted", $noidUI->path($_GET["db"]), $columns,$importedData, time());
                                     fclose($handle);
                                 }
                             }
@@ -530,7 +529,7 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
             <div class="card-body">
                 <div id="row-search" class="row">
                     <div class="col-sm-4">
-                        <form id="form-import" method="post" enctype="multipart/form-data"
+                        <form id="form-importnoid" method="post" enctype="multipart/form-data"
                               action="./index.php?db=<?php echo $_GET['db'] ?>">
                             <div class="form-group">
                                 <p><label for="importCSV_noID">Upload an CSV: </label></p>
@@ -549,35 +548,102 @@ require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import_noID'])) {
 
                             if (is_uploaded_file($_FILES['importCSV_noID']['tmp_name'])) {
+                                // generate Ark service procession object
                                 $noidUI = new NoidUI();
+
+                                //Read and scan through imported csv
                                 if (($handle = fopen($_FILES['importCSV_noID']['tmp_name'], "r")) !== FALSE) {
+                                    // read the first row as columns
                                     $columns = fgetcsv($handle, 0, ",");
 
+                                    // add columns to import data array
+                                    $importedData = array_merge([], $columns);
+
+                                    // loop through the rest of rows
                                     $flag = true;
                                     while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                                        // avoid the 1st row since it's header
                                         if ($flag) {
                                             $flag = false;
                                             continue;
                                         }
                                         $num = count($data);
                                         $row++;
-                                        $identifier = $noidUI->mint;
+
+                                        $identifier = null;
                                         for ($c = 0; $c < $num; $c++) {
+                                            error_log('dfasdfasd'. $num);
+                                            // capture identifier (strictly recommend first column)
+                                            if ($columns[$c] === 'Identifer') {
+                                                $identifier = $data[$c];
+                                                if (!isset($identifier) || empty($identifier)) {
+                                                    // execute command with entered params
+                                                    $identifier = $noidUI->exec_command("mint 1", $noidUI->path($_GET["db"]));
+                                                    $identifier = trim($identifier);
+                                                    $identifier = str_replace("id: ", "", $identifier);
+                                                    error_log($identifier);
+                                                    $data[0] = $identifier;
+                                                }
+                                            }
+                                            if ($c >0) { // avoid bindset identifier column
+                                                // mapping each column as params
+                                                $bindset_cmd = " bind set " . $identifier;
+                                                $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
+                                                $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
 
+                                                // display result of each bindset
+                                                print('<div class="alert alert-info">');
+                                                print "<p></p><strong>Result</strong></p>";
+                                                print($result);
+                                                print('</div>');
+                                            }
 
-                                            $bindset_cmd = " bind set " . $identifier;
-                                            $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
-                                            $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
-                                            print($result);
                                         }
-
+                                        // add columns to import data array
+                                        array_push($importedData, $data);
                                     }
+                                    //TODO: write each row to new csv
+
+                                    $noidUI->importedToCSV("import_new", $noidUI->path($_GET["db"]), $columns,$importedData, time());
                                     fclose($handle);
                                 }
                             }
                             header("Location: index.php?db=" . $_GET["db"]);
                         }
-                        ?>
+
+                        // List all minted identifer in csv which created each time execute mint
+                        $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_new');
+                        if (count($dirs) > 2) {
+                            ?>
+                            <div class="row">
+                                <table class="table table-bordered">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Past imported</th>
+                                        <th scope="col">Date</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php
+                                    foreach ($dirs as $dir) {
+                                        if (!in_array($dir, ['.', '..'])) {
+                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/db/' . $_GET['db'] . '/import_new/' . $dir . '">' . $dir . '</a>';
+                                            $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
+
+                                            print <<<EOS
+                                        <tr>
+                                            <td scope="row">$csv</td>
+                                            <td scope="row">$date</td>
+                                        </tr>
+                                    EOS;
+                                        }
+                                    }
+                                    ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php } ?>
+
                     </div>
                 </div>
             </div>
