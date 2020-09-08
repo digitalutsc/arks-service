@@ -1,4 +1,4 @@
-#!/usr/bin/php
+#!/usr/bin/php 
 <?php
 /**
  * noid - a php script that mints and binds nice opaque identifiers

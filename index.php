@@ -1,6 +1,6 @@
 <?php
 include "lib/Noid.php";
-require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . '/noid/NoidUI.php';
+require_once "NoidUI.php";
 
 ?>
 

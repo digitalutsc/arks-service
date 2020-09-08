@@ -1,4 +1,4 @@
-<?php
+<?php  
 /**
  * Noid - Nice opaque identifiers (Php library).
  *

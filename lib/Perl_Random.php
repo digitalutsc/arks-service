@@ -1,4 +1,4 @@
-<?php
+<?php 
 /**
  * @author Daniel Berthereau <daniel.github@berthereau.net>
  * @copyright Copyright (c) 2016 Daniel Berthereau
