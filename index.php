@@ -245,7 +245,7 @@ require_once "NoidUI.php";
                                     <?php
                                     foreach ($dirs as $dir) {
                                         if (!in_array($dir, ['.', '..'])) {
-                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
+                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
                                             $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
                                             print <<<EOS
@@ -508,7 +508,7 @@ require_once "NoidUI.php";
                                 <?php
                                 foreach ($dirs as $dir) {
                                     if (!in_array($dir, ['.', '..'])) {
-                                        $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
+                                        $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
                                         $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
                                         print <<<EOS
@@ -641,7 +641,7 @@ require_once "NoidUI.php";
                                     <?php
                                     foreach ($dirs as $dir) {
                                         if (!in_array($dir, ['.', '..'])) {
-                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . '/noid/db/' . $_GET['db'] . '/import_new/' . $dir . '">' . $dir . '</a>';
+                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_new/' . $dir . '">' . $dir . '</a>';
                                             $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
                                             print <<<EOS
