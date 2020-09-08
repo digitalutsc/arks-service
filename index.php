@@ -429,7 +429,7 @@ require_once "NoidUI.php";
                                 <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
 
                             </div>
-                            <input type="submit" name="import" value="Import" class="btn btn-primary"/>
+                            <input type="submit" name="import" value="Bulk Bind" class="btn btn-primary"/>
                         </form>
                     </div>
                     <div class="col-sm-6">
@@ -554,7 +554,7 @@ require_once "NoidUI.php";
                                 <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
 
                             </div>
-                            <input type="submit" name="import_noID" value="Import" class="btn btn-primary"/>
+                            <input type="submit" name="import_noID" value="Bulk Bind" class="btn btn-primary"/>
                         </form>
                     </div>
                     <div class="col-sm-6">
