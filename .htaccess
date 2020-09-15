@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteCond %{REQUEST_URI}  ^/dsu_noid4php/ark:/.*$
+#RewriteRule ^(.*)$ /dsu_noid4php/$1 [L]
+RewriteRule ^(.*)$ http://192.168.1.16/dsu_noid4php/index.php?q=$1 [L]

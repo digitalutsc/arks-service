@@ -52,7 +52,7 @@
  * without the "--" separator. Perl script allows any order.
  */
 
-require_once 'lib/Noid.php';
+require_once 'lib/noid/Noid.php';
 
 global $web;
 $web = 0;
