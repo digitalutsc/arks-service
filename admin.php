@@ -140,6 +140,16 @@ require_once "NoidUI.php";
                                 </div>
                             EOS;
                             print $result;
+
+                            //TODO: create a database's metadata file
+                            $metadata = array(
+                                    "enterPrefix" => $_POST['enterPrefix'],
+                                    "selectTemplate" => $_POST['selectTemplate'],
+                                    "identifier_minter" => $_POST['identifier_minter'],
+                                    "enterRedirect" => $_POST['enterRedirect'],
+                                    "enterInsitutionName" => $_POST['enterInsitutionName'],
+                            );
+                            $noidUI->saveMetadataToCSV($noidUI->path($database), $database, $metadata);
                         }
                         else {
                             $result = <<<EOS
@@ -162,6 +172,7 @@ require_once "NoidUI.php";
                                 <tr>
                                     <th scope="col">Past database</th>
                                     <th scope="col">Select</th>
+                                    <th scope="col">Basic Info</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -176,10 +187,17 @@ require_once "NoidUI.php";
                                             $setActive = "<strong>Selected</srong>";
                                             $highlight = 'class="table-success"';
                                         }
+                                        $metadata = NoidUI::getDatabaseInfo(NoidUI::dbpath($dir), $dir);
+                                        $detail = "<p>";
+                                        foreach ((array)$metadata as $key => $value) {
+                                            $detail .= "<strong>$key</strong>: $value <br />";
+                                        }
+                                        $detail .= "</p>";
                                         print <<<EOS
                                         <tr $highlight>
                                             <td scope="row">$dir</td>
                                             <td scope="row">$setActive</td>
+                                            <td scope="row">$detail</td>
                                         </tr>
                                     EOS;
                                     }

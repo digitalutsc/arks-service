@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 class NoidUI
 {
@@ -111,13 +111,13 @@ class NoidUI
         fclose($out);
     }
 
-    public function importedToCSV(String $folder, string $path, array $collumns, array $data, string $filename)
+    public function importedToCSV(string $folder, string $path, array $collumns, array $data, string $filename)
     {
-        if (!file_exists($path . '/'.$folder.'/')) {
-            mkdir($path . '/'.$folder.'', 0775);
+        if (!file_exists($path . '/' . $folder . '/')) {
+            mkdir($path . '/' . $folder . '', 0775);
         }
 
-        $out = fopen($path . '/'.$folder.'/' . $filename . '.csv', 'w');
+        $out = fopen($path . '/' . $folder . '/' . $filename . '.csv', 'w');
         $flag = false;
 
         //write columns
@@ -135,6 +135,21 @@ class NoidUI
         }
 
         fclose($out);
+    }
+
+    public function saveMetadataToCSV(string $path, string $dbname, array $json)
+    {
+        $file = fopen($path . '/' . $dbname . '.json', 'w');
+        fwrite($file, json_encode($json));
+        fclose($file);
+    }
+    public static function getDatabaseInfo(string $path, string $dbname) {
+        $metadata = file_get_contents($path. "/". $dbname. ".json");
+        if ($metadata === false) {
+            throw new Exception("Unable to get Database infomation from metadata file");
+        }
+        $databaseInfo = json_decode($metadata);
+        return $databaseInfo;
     }
 
     public function path(string $dbname = "")
