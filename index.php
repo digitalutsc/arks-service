@@ -4,8 +4,6 @@ require_once "NoidUI.php";
 
 if (isset($_GET['q'])) {
     $uid = str_replace("ark:/", "", $_GET['q']);
-    print $uid;
-
     $dirs = scandir(NoidUI::dbpath());
     if (is_array($dirs) && count($dirs) > 2) {
         $noidUI = new NoidUI();
@@ -13,18 +11,17 @@ if (isset($_GET['q'])) {
             if (!in_array($dir, ['.', '..'])) {
 
                 // execute the command with entered params
-                $result = $noidUI->exec_command("get " . $uid . ' ' . "Website", $noidUI->path($dir));
+                $result = $noidUI->exec_command("get " . $uid . ' ' . "PID", $noidUI->path($dir));
+                $pid = trim(preg_replace('/\s\s+/', ' ', $result));
 
-                $url = trim(preg_replace('/\s\s+/', ' ', $result));
+                // get current databaase
+                $metadata = NoidUI::getDatabaseInfo(NoidUI::dbpath($dir), $dir);
 
                 // refresh the page to destroy post section
-                header("Location: " . $url);
+                header("Location: http://$metadata->enterRedirect/islandora/object/$pid");
             }
-
         }
     }
-
-
 }
 else {
     print "invalid argument";

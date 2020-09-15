@@ -14,7 +14,6 @@ require_once "NoidUI.php";
 <body>
 <div class="container">
 
-    
 
     <div class="row">
         <div class="col-sm">
@@ -143,15 +142,14 @@ require_once "NoidUI.php";
 
                             //TODO: create a database's metadata file
                             $metadata = array(
-                                    "enterPrefix" => $_POST['enterPrefix'],
-                                    "selectTemplate" => $_POST['selectTemplate'],
-                                    "identifier_minter" => $_POST['identifier_minter'],
-                                    "enterRedirect" => $_POST['enterRedirect'],
-                                    "enterInsitutionName" => $_POST['enterInsitutionName'],
+                                "enterPrefix" => $_POST['enterPrefix'],
+                                "selectTemplate" => $_POST['selectTemplate'],
+                                "identifier_minter" => $_POST['identifier_minter'],
+                                "enterRedirect" => $_POST['enterRedirect'],
+                                "enterInsitutionName" => $_POST['enterInsitutionName'],
                             );
                             $noidUI->saveMetadataToCSV($noidUI->path($database), $database, $metadata);
-                        }
-                        else {
+                        } else {
                             $result = <<<EOS
                                 <div class="alert alert-danger" role="alert">
                                     Sorry, failed to create <i>$database</i>.
@@ -439,7 +437,9 @@ require_once "NoidUI.php";
                                 <p><strong><u>Note:</u></strong> For this section, please follow:</p>
                                 <ul>
                                     <li>Mint first</li>
-                                    <li>Download the CSV with minted identifiers above and add fields as columns to the CSV</li>
+                                    <li>Download the CSV with minted identifiers above and add fields as columns to the
+                                        CSV
+                                    </li>
                                     <li>Export as a CSV file (only accept CSV) .</li>
                                     <li>Import it below</li>
                                 </ul>
@@ -488,7 +488,7 @@ require_once "NoidUI.php";
                                             if ($columns[$c] === 'Identifer') {
                                                 $identifier = $data[$c];
                                             }
-                                            if ($c >0) { // avoid bindset identifier column
+                                            if ($c > 0) { // avoid bindset identifier column
                                                 // mapping each column as params
                                                 $bindset_cmd = " bind set " . $identifier;
                                                 $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
@@ -507,7 +507,7 @@ require_once "NoidUI.php";
                                     }
                                     //TODO: write each row to new csv
 
-                                    $noidUI->importedToCSV("import_minted", $noidUI->path($_GET["db"]), $columns,$importedData, time());
+                                    $noidUI->importedToCSV("import_minted", $noidUI->path($_GET["db"]), $columns, $importedData, time());
                                     fclose($handle);
                                 }
                             }
@@ -517,34 +517,34 @@ require_once "NoidUI.php";
                         // List all minted identifer in csv which created each time execute mint
                         $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_minted');
                         if (count($dirs) > 2) {
-                        ?>
-                        <div class="row">
-                            <table class="table table-bordered">
-                                <thead>
-                                <tr>
-                                    <th scope="col">Past imported</th>
-                                    <th scope="col">Date</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <?php
-                                foreach ($dirs as $dir) {
-                                    if (!in_array($dir, ['.', '..'])) {
-                                        $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
-                                        $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
+                            ?>
+                            <div class="row">
+                                <table class="table table-bordered">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Past imported</th>
+                                        <th scope="col">Date</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php
+                                    foreach ($dirs as $dir) {
+                                        if (!in_array($dir, ['.', '..'])) {
+                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
+                                            $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
-                                        print <<<EOS
+                                            print <<<EOS
                                         <tr>
                                             <td scope="row">$csv</td>
                                             <td scope="row">$date</td>
                                         </tr>
                                     EOS;
+                                        }
                                     }
-                                }
-                                ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                    ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         <?php } ?>
 
                     </div>
@@ -563,7 +563,8 @@ require_once "NoidUI.php";
                             <div class="form-group">
                                 <p><strong><u>Note:</u></strong> For this section, please follow:</p>
                                 <ul>
-                                    <li>Download this initial CSV template by <a href="template.csv" download>this link.</a></li>
+                                    <li>Download this initial CSV template by <a href="template.csv" download>this
+                                            link.</a></li>
                                     <li>Mandatory: Leave the first column with the header as "Identifier".</li>
                                     <li>Add other needed fields as columns to the CSV.</li>
                                     <li>Export as a CSV file (only accept CSV) .</li>
@@ -591,6 +592,7 @@ require_once "NoidUI.php";
                                 if (($handle = fopen($_FILES['importCSV_noID']['tmp_name'], "r")) !== FALSE) {
                                     // read the first row as columns
                                     $columns = fgetcsv($handle, 0, ",");
+                                    array_push($columns, "Ark Link");
 
                                     // add columns to import data array
                                     $importedData = array_merge([], $columns);
@@ -619,7 +621,7 @@ require_once "NoidUI.php";
                                                     $data[0] = $identifier;
                                                 }
                                             }
-                                            if ($c >0) { // avoid bindset identifier column
+                                            if ($c > 0) { // avoid bindset identifier column
                                                 // mapping each column as params
                                                 $bindset_cmd = " bind set " . $identifier;
                                                 $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
@@ -631,14 +633,17 @@ require_once "NoidUI.php";
                                                 print($result);
                                                 print('</div>');
                                             }
-
+                                            if ($c == $num - 1) {
+                                                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"],0,strpos( $_SERVER["SERVER_PROTOCOL"],'/'))).'://';
+                                                $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
+                                            }
                                         }
                                         // add columns to import data array
                                         array_push($importedData, $data);
                                     }
                                     //TODO: write each row to new csv
 
-                                    $noidUI->importedToCSV("import_new", $noidUI->path($_GET["db"]), $columns,$importedData, time());
+                                    $noidUI->importedToCSV("import_new", $noidUI->path($_GET["db"]), $columns, $importedData, time());
                                     fclose($handle);
                                 }
                             }
