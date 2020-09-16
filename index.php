@@ -13,7 +13,6 @@ if (isset($_GET['q'])) {
 
                 // execute the command with entered params
                 $result = $noidUI->exec_command("get " . $uid . ' ' . "PID", $noidUI->path($dir));
-                var_dump($result);
                 if (strlen($result) > 4) {
                     $pid = trim(preg_replace('/\s\s+/', ' ', $result));
 

@@ -466,8 +466,14 @@ require_once "NoidUI.php";
                                 if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
                                     // read the first row as columns
                                     $columns = fgetcsv($handle, 0, ",");
+                                    if (in_array("pid", $columns)) {
+                                        $pidi = array_search("pid", $columns);
+                                        if ($pidi !== FALSE) {
+                                            $columns[$pidi] = "PID";
+                                        }
+                                    }
                                     array_push($columns, "Ark Link");
-                                    
+
                                     // add columns to import data array
                                     $importedData = array_merge([], $columns);
 
@@ -598,6 +604,12 @@ require_once "NoidUI.php";
                                     $columns = fgetcsv($handle, 0, ",");
                                     array_push($columns, "Ark Link");
 
+                                    if (in_array("pid", $columns)) {
+                                        $pidi = array_search("pid", $columns);
+                                        if ($pidi !== FALSE) {
+                                            $columns[$pidi] = "PID";
+                                        }
+                                    }
                                     // add columns to import data array
                                     $importedData = array_merge([], $columns);
 
