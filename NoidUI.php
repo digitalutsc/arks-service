@@ -104,7 +104,7 @@ class NoidUI
         }
         $out = fopen($path . '/mint/' . $filename . '.csv', 'w');
         $flag = false;
-        fputcsv($out, ["Identifer"], ',', '"');
+        fputcsv($out, ["Identifer", "pid"], ',', '"');
         foreach ($data as $row) {
             fputcsv($out, [preg_replace("/\r|\n/", "", $row)], ',', '"');
         }
@@ -144,12 +144,16 @@ class NoidUI
         fclose($file);
     }
     public static function getDatabaseInfo(string $path, string $dbname) {
-        $metadata = file_get_contents($path. "/". $dbname. ".json");
-        if ($metadata === false) {
-            throw new Exception("Unable to get Database infomation from metadata file");
+        if (file_exists($path. "/". $dbname. ".json")) {
+            $metadata = file_get_contents($path. "/". $dbname. ".json");
+            if ($metadata === false) {
+                throw new Exception("Unable to get Database information from metadata file");
+            }
+            $databaseInfo = json_decode($metadata);
+            return $databaseInfo;
         }
-        $databaseInfo = json_decode($metadata);
-        return $databaseInfo;
+        return null;
+
     }
 
     public function path(string $dbname = "")

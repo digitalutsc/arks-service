@@ -466,7 +466,8 @@ require_once "NoidUI.php";
                                 if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
                                     // read the first row as columns
                                     $columns = fgetcsv($handle, 0, ",");
-
+                                    array_push($columns, "Ark Link");
+                                    
                                     // add columns to import data array
                                     $importedData = array_merge([], $columns);
 
@@ -500,7 +501,10 @@ require_once "NoidUI.php";
                                                 print($result);
                                                 print('</div>');
                                             }
-
+                                            if ($c == $num - 1) {
+                                                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"],0,strpos( $_SERVER["SERVER_PROTOCOL"],'/'))).'://';
+                                                $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
+                                            }
                                         }
                                         // add columns to import data array
                                         array_push($importedData, $data);
