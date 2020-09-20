@@ -1,5 +1,5 @@
 <?php
-
+// Source: https://www.php.net/manual/en/features.http-auth.php
 $realm = 'Restricted area';
 
 //user => password

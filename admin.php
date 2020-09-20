@@ -167,52 +167,54 @@ require_once "index.php";
                         }
                         //header("Location: admin.php");
                     }
+                    if (file_exists(NoidUI::dbpath())) {
+                        // List all created databases in the table
+                        $dirs = scandir(NoidUI::dbpath());
+                        if (is_array($dirs) && count($dirs) > 3) {
+                            ?>
+                            <div class="row">
+                                <table class="table table-bordered">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Past database</th>
+                                        <th scope="col">Select</th>
+                                        <th scope="col">Basic Info</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php
 
-                    // List all created databases in the table
-                    $dirs = scandir(NoidUI::dbpath());
-                    if (is_array($dirs) && count($dirs) > 3) {
-                        ?>
-                        <div class="row">
-                            <table class="table table-bordered">
-                                <thead>
-                                <tr>
-                                    <th scope="col">Past database</th>
-                                    <th scope="col">Select</th>
-                                    <th scope="col">Basic Info</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <?php
 
-
-                                foreach ($dirs as $dir) {
-                                    $highlight = "";
-                                    $setActive = '<a href="./admin.php?db=' . $dir . '">Select</a>';
-                                    if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                                        if ((isset($_GET['db']) && $_GET['db'] == $dir)) {
-                                            $setActive = "<strong>Selected</srong>";
-                                            $highlight = 'class="table-success"';
-                                        }
-                                        $metadata = NoidUI::getDatabaseInfo(NoidUI::dbpath($dir), $dir);
-                                        $detail = "<p>";
-                                        foreach ((array)$metadata as $key => $value) {
-                                            $detail .= "<strong>$key</strong>: $value <br />";
-                                        }
-                                        $detail .= "</p>";
-                                        print <<<EOS
+                                    foreach ($dirs as $dir) {
+                                        $highlight = "";
+                                        $setActive = '<a href="./admin.php?db=' . $dir . '">Select</a>';
+                                        if (!in_array($dir, ['.', '..', '.gitkeep'])) {
+                                            if ((isset($_GET['db']) && $_GET['db'] == $dir)) {
+                                                $setActive = "<strong>Selected</srong>";
+                                                $highlight = 'class="table-success"';
+                                            }
+                                            $metadata = NoidUI::getDatabaseInfo(NoidUI::dbpath($dir), $dir);
+                                            $detail = "<p>";
+                                            foreach ((array)$metadata as $key => $value) {
+                                                $detail .= "<strong>$key</strong>: $value <br />";
+                                            }
+                                            $detail .= "</p>";
+                                            print <<<EOS
                                         <tr $highlight>
                                             <td scope="row">$dir</td>
                                             <td scope="row">$setActive</td>
                                             <td scope="row">$detail</td>
                                         </tr>
                                     EOS;
+                                        }
                                     }
-                                }
-                                ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php } ?>
+                                    ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php }
+                    }
+                    ?>
 
                 </div>
 
@@ -258,37 +260,40 @@ require_once "index.php";
                         }
 
                         // List all minted identifer in csv which created each time execute mint
-                        $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/mint');
-                        if (count($dirs) > 2) {
-                            ?>
-                            <div class="row">
-                                <table class="table table-bordered">
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">Past minting</th>
-                                        <th scope="col">Date</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <?php
-                                    foreach ($dirs as $dir) {
-                                        if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
-                                            $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
+                        if (file_exists(NoidUI::dbpath())) {
+                            $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/mint');
+                            if (count($dirs) > 2) {
+                                ?>
+                                <div class="row">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                        <tr>
+                                            <th scope="col">Past minting</th>
+                                            <th scope="col">Date</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php
+                                        foreach ($dirs as $dir) {
+                                            if (!in_array($dir, ['.', '..', '.gitkeep'])) {
+                                                $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
+                                                $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
-                                            print <<<EOS
+                                                print <<<EOS
                                         <tr>
                                             <td scope="row">$csv</td>
                                             <td scope="row">$date</td>
                                         </tr>
                                     EOS;
+                                            }
                                         }
-                                    }
-                                    ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php } ?>
+                                        ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php }
+                        }
+                        ?>
 
 
                     </div>
@@ -516,7 +521,7 @@ require_once "index.php";
                                                 print('</div>');
                                             }
                                             if ($c == $num - 1) {
-                                                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"],0,strpos( $_SERVER["SERVER_PROTOCOL"],'/'))).'://';
+                                                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
                                                 $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
                                             }
                                         }
@@ -531,39 +536,41 @@ require_once "index.php";
                             }
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
+                        if (file_exists(NoidUI::dbpath())) {
+                            // List all minted identifer in csv which created each time execute mint
+                            $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_minted');
+                            if (count($dirs) > 2) {
+                                ?>
+                                <div class="row">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                        <tr>
+                                            <th scope="col">Past imported</th>
+                                            <th scope="col">Date</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php
+                                        foreach ($dirs as $dir) {
+                                            if (!in_array($dir, ['.', '..', '.gitkeep'])) {
+                                                $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
+                                                $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
-                        // List all minted identifer in csv which created each time execute mint
-                        $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_minted');
-                        if (count($dirs) > 2) {
-                            ?>
-                            <div class="row">
-                                <table class="table table-bordered">
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">Past imported</th>
-                                        <th scope="col">Date</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <?php
-                                    foreach ($dirs as $dir) {
-                                        if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
-                                            $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
-
-                                            print <<<EOS
+                                                print <<<EOS
                                         <tr>
                                             <td scope="row">$csv</td>
                                             <td scope="row">$date</td>
                                         </tr>
                                     EOS;
+                                            }
                                         }
-                                    }
-                                    ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php } ?>
+                                        ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php }
+                        }
+                        ?>
 
                     </div>
                 </div>
@@ -658,7 +665,7 @@ require_once "index.php";
                                                 print('</div>');
                                             }
                                             if ($c == $num - 1) {
-                                                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"],0,strpos( $_SERVER["SERVER_PROTOCOL"],'/'))).'://';
+                                                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
                                                 $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
                                             }
                                         }
@@ -673,39 +680,42 @@ require_once "index.php";
                             }
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
+                        if (file_exists(NoidUI::dbpath())) {
+                            // List all minted identifer in csv which created each time execute mint
+                            $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_new');
+                            if (count($dirs) > 2) {
+                                ?>
+                                <div class="row">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                        <tr>
+                                            <th scope="col">Past imported</th>
+                                            <th scope="col">Date</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <?php
+                                        foreach ($dirs as $dir) {
+                                            if (!in_array($dir, ['.', '..', '.gitkeep'])) {
+                                                $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_new/' . $dir . '">' . $dir . '</a>';
+                                                $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
-                        // List all minted identifer in csv which created each time execute mint
-                        $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_new');
-                        if (count($dirs) > 2) {
-                            ?>
-                            <div class="row">
-                                <table class="table table-bordered">
-                                    <thead>
-                                    <tr>
-                                        <th scope="col">Past imported</th>
-                                        <th scope="col">Date</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <?php
-                                    foreach ($dirs as $dir) {
-                                        if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                                            $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_new/' . $dir . '">' . $dir . '</a>';
-                                            $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
-
-                                            print <<<EOS
+                                                print <<<EOS
                                         <tr>
                                             <td scope="row">$csv</td>
                                             <td scope="row">$date</td>
                                         </tr>
                                     EOS;
+                                            }
                                         }
-                                    }
-                                    ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        <?php } ?>
+                                        ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php }
+                        }
+                        ?>
+
 
                     </div>
                 </div>
