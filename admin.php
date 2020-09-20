@@ -123,6 +123,13 @@ require_once "index.php";
                         // generate an ark service processing object
                         $noidUI = new NoidUI();
 
+                        // create db directory if not exsit
+
+                        if (!file_exists(getcwd() . "/db")) {
+                            var_dump(getcwd() . "/db");
+                            mkdir(getcwd() . "/db", 0775);
+                        }
+
                         // check parent database folder created yet, if not, create it.
                         if (!file_exists($noidUI->path($database))) {
                             mkdir($noidUI->path($database), 0775);
@@ -158,12 +165,12 @@ require_once "index.php";
                             EOS;
                             print $result;
                         }
-                        header("Location: admin.php");
+                        //header("Location: admin.php");
                     }
 
                     // List all created databases in the table
                     $dirs = scandir(NoidUI::dbpath());
-                    if (is_array($dirs) && count($dirs) > 2) {
+                    if (is_array($dirs) && count($dirs) > 3) {
                         ?>
                         <div class="row">
                             <table class="table table-bordered">
@@ -181,7 +188,7 @@ require_once "index.php";
                                 foreach ($dirs as $dir) {
                                     $highlight = "";
                                     $setActive = '<a href="./admin.php?db=' . $dir . '">Select</a>';
-                                    if (!in_array($dir, ['.', '..'])) {
+                                    if (!in_array($dir, ['.', '..', '.gitkeep'])) {
                                         if ((isset($_GET['db']) && $_GET['db'] == $dir)) {
                                             $setActive = "<strong>Selected</srong>";
                                             $highlight = 'class="table-success"';
@@ -265,7 +272,7 @@ require_once "index.php";
                                     <tbody>
                                     <?php
                                     foreach ($dirs as $dir) {
-                                        if (!in_array($dir, ['.', '..'])) {
+                                        if (!in_array($dir, ['.', '..', '.gitkeep'])) {
                                             $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
                                             $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
@@ -540,7 +547,7 @@ require_once "index.php";
                                     <tbody>
                                     <?php
                                     foreach ($dirs as $dir) {
-                                        if (!in_array($dir, ['.', '..'])) {
+                                        if (!in_array($dir, ['.', '..', '.gitkeep'])) {
                                             $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
                                             $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
@@ -682,7 +689,7 @@ require_once "index.php";
                                     <tbody>
                                     <?php
                                     foreach ($dirs as $dir) {
-                                        if (!in_array($dir, ['.', '..'])) {
+                                        if (!in_array($dir, ['.', '..', '.gitkeep'])) {
                                             $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_new/' . $dir . '">' . $dir . '</a>';
                                             $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 

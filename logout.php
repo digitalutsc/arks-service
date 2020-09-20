@@ -4,7 +4,20 @@ $realm = "Restricted area";
 header('HTTP/1.1 401 Unauthorized');
 header('WWW-Authenticate: Digest realm="' . $realm . '",qop="auth",nonce="' . $_SESSION['http_digest_nonce'] . '",opaque="' . md5($realm) . '"');
 
+if (class_exists('SQLite3')) {
+    $ver = SQLite3::version();
 
+    print <<<EOS
+        <div class="alert alert-success" role="alert"><p>SQLite3 plugin installed and enabled</p>
+    EOS;
+    print "<pre>";
+    print_r($ver);
+    print "</pre></div>";
+} else {
+    print <<<EOS
+        <div class="alert alert-secondary" role="alert">Warning, this server doesn't have SQLite3 supported</div>
+    EOS;
+}
 ?>
 
 
@@ -24,7 +37,7 @@ header('WWW-Authenticate: Digest realm="' . $realm . '",qop="auth",nonce="' . $_
     <div class="row">
         <div class="col-md-12">
             <div class="alert alert-secondary" role="alert">
-                You have successfully logged out! <a href = '/' class='icon-button star'>Login again</button></center></a>
+                You have successfully logged out! <a href='/' class='icon-button star'>Login again</button></center></a>
             </div>
 
         </div>

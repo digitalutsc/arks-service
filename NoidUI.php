@@ -179,4 +179,22 @@ class NoidUI
         print_r($thing);
         print "</pre>";
     }
+
+    public static function checkSQLite() {
+
+        if (class_exists('SQLite3')) {
+            $ver = SQLite3::version();
+
+            print <<<EOS
+                <div class="alert alert-success" role="alert"><p>SQLite3 plugin installed and enabled</p>
+            EOS;
+            print "<pre>";
+            print_r($ver);
+            print "</pre></div>";
+        } else {
+            print <<<EOS
+                <div class="alert alert-secondary" role="alert">Warning, this server doesn't have SQLite3 supported</div>
+            EOS;
+        }
+    }
 }
