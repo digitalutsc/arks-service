@@ -2,12 +2,12 @@
 include "lib/noid/Noid.php";
 require_once('lib/resolver/URLResolver.php');
 require_once "NoidUI.php";
-
+require_once "index.php";
 ?>
 
 <html>
 <head>
-    <title>Test Noid</title>
+    <title>Ark Services</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
           integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 </head>
@@ -16,8 +16,9 @@ require_once "NoidUI.php";
 
 
     <div class="row">
-        <div class="col-sm">
+        <div class="col-sm text-center">
             <h1 class="text-center">Ark Service</h1>
+            <a href="/logout.php">Logout</a>
         </div>
     </div>
 
