@@ -485,6 +485,9 @@ require_once "index.php";
                                             $columns[$pidi] = "PID";
                                         }
                                     }
+                                    else {
+                                        die ("The imported CSV must have column name 'pid' or 'PID'");
+                                    }
                                     array_push($columns, "Ark Link");
 
                                     // add columns to import data array
@@ -625,6 +628,9 @@ require_once "index.php";
                                             $columns[$pidi] = "PID";
                                         }
                                     }
+                                    else {
+                                        die ("The imported CSV must have column name 'pid' or 'PID'");
+                                    }
                                     // add columns to import data array
                                     $importedData = array_merge([], $columns);
 
@@ -645,6 +651,11 @@ require_once "index.php";
                                             if ($columns[$c] === 'Identifer') {
                                                 $identifier = $data[$c];
                                                 if (!isset($identifier) || empty($identifier)) {
+                                                    // TODO : look up PID to make sure no duplicates
+                                                    // if exist, update, put status as 'update'
+
+                                                    // if not exist, insert, put status as 'created'
+
                                                     // execute command with entered params
                                                     $identifier = $noidUI->exec_command("mint 1", $noidUI->path($_GET["db"]));
                                                     $identifier = trim($identifier);

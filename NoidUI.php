@@ -155,7 +155,7 @@ class NoidUI
         return null;
 
     }
-
+        
     public function path(string $dbname = "")
     {
         return getcwd() . "/db/" . $dbname;
