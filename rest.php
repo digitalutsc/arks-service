@@ -1,9 +1,9 @@
 <?php
 
-include "NoidLib/lib/Storage/MysqlDB.php";
-require_once 'NoidLib/lib/Globals.php';
-include 'NoidLib/lib/Db.php';
-include 'NoidLib/custom/Database.php';
+require_once "NoidLib/lib/Storage/MysqlDB.php";
+require_once 'NoidLib/custom/GlobalsArk.php';
+require_once 'NoidLib/lib/Db.php';
+require_once 'NoidLib/custom/Database.php';
 
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
@@ -14,12 +14,13 @@ use Noid\Lib\Db;
 use Noid\Lib\Log;
 
 use Noid\Lib\Custom\Database;
+use Noid\Lib\Custom\GlobalsArk;
 
 
 epxeriment();
 
 function epxeriment() {
-    Globals::$db_type = 'mysql';
+    GlobalsArk::$db_type = 'ark_mysql';
     $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
     $report = Database::dbcreate($dbpath, 'jak', ".zd", 'short');
 

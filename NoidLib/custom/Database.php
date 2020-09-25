@@ -1,12 +1,13 @@
 <?php
 
 namespace Noid\Lib\Custom;
+require_once "NoidLib/custom/NoidArk.php";
 
 use Noid\Lib\Db;
 use Noid\Lib\Globals;
 use Noid\Lib\Helper;
 use Noid\Lib\Log;
-use Noid\Lib\Noid;
+use Noid\Lib\Custom\NoidArk;
 use Noid\Lib\Storage\DatabaseInterface;
 
 class Database extends Db{
@@ -22,7 +23,7 @@ class Database extends Db{
      * @return string|null
      */
     static public function dbcreate($dbdir, $contact, $template = NULL, $term = '-', $naan = '', $naa = '', $subnaa = '') {
-        Noid::init();
+        NoidArk::init();
 
         $total = NULL;
         $noid = NULL;
@@ -105,35 +106,35 @@ class Database extends Db{
         # Database info
         # yyy should be using db-> ops directly (for efficiency and?)
         #     so we can use DB_DUP flag
-        self::$engine->set(Globals::_RR . "/naa", $naa);
-        self::$engine->set(Globals::_RR . "/naan", $naan);
-        self::$engine->set(Globals::_RR . "/subnaa", $subnaa ? : '');
+        self::$engine->set(GlobalsArk::_RR . "/naa", $naa);
+        self::$engine->set(GlobalsArk::_RR . "/naan", $naan);
+        self::$engine->set(GlobalsArk::_RR . "/subnaa", $subnaa ? : '');
 
-        self::$engine->set(Globals::_RR . "/longterm", $term === 'long');
-        self::$engine->set(Globals::_RR . "/wrap", $term === 'short');     # yyy follow through
+        self::$engine->set(GlobalsArk::_RR . "/longterm", $term === 'long');
+        self::$engine->set(GlobalsArk::_RR . "/wrap", $term === 'short');     # yyy follow through
 
-        self::$engine->set(Globals::_RR . "/template", $template);
-        self::$engine->set(Globals::_RR . "/prefix", $prefix);
-        self::$engine->set(Globals::_RR . "/mask", $mask);
-        self::$engine->set(Globals::_RR . "/firstpart", ($naan ? $naan . '/' : '') . $prefix);
+        self::$engine->set(GlobalsArk::_RR . "/template", $template);
+        self::$engine->set(GlobalsArk::_RR . "/prefix", $prefix);
+        self::$engine->set(GlobalsArk::_RR . "/mask", $mask);
+        self::$engine->set(GlobalsArk::_RR . "/firstpart", ($naan ? $naan . '/' : '') . $prefix);
 
         $add_cc = (bool)preg_match('/k$/', $mask);    # boolean answer
-        self::$engine->set(Globals::_RR . "/addcheckchar", $add_cc);
+        self::$engine->set(GlobalsArk::_RR . "/addcheckchar", $add_cc);
         if($add_cc){
             // The template is already checked, so no error is possible.
             $repertoire = Helper::getAlphabet($template);
-            self::$engine->set(Globals::_RR . "/checkrepertoire", $repertoire);
-            self::$engine->set(Globals::_RR . "/checkalphabet", Globals::$alphabets[$repertoire]);
+            self::$engine->set(GlobalsArk::_RR . "/checkrepertoire", $repertoire);
+            self::$engine->set(GlobalsArk::_RR . "/checkalphabet", GlobalsArk::$alphabets[$repertoire]);
         }
 
-        self::$engine->set(Globals::_RR . "/generator_type", $gen_type);
-        self::$engine->set(Globals::_RR . "/genonly", $genonly);
+        self::$engine->set(GlobalsArk::_RR . "/generator_type", $gen_type);
+        self::$engine->set(GlobalsArk::_RR . "/genonly", $genonly);
         if($gen_type == 'random'){
-            self::$engine->set(Globals::_RR . "/generator_random", Noid::$random_generator);
+            self::$engine->set(GlobalsArk::_RR . "/generator_random", Noid::$random_generator);
         }
 
-        self::$engine->set(Globals::_RR . "/total", $total);
-        self::$engine->set(Globals::_RR . "/padwidth", ($total == Globals::NOLIMIT ? 16 : 2) + strlen($mask));
+        self::$engine->set(GlobalsArk::_RR . "/total", $total);
+        self::$engine->set(GlobalsArk::_RR . "/padwidth", ($total == GlobalsArk::NOLIMIT ? 16 : 2) + strlen($mask));
         # yyy kludge -- padwidth of 16 enough for most lvf sorting
 
         # Some variables:
@@ -141,16 +142,16 @@ class Database extends Db{
         #   oatop   overall counter's greatest possible value of counter
         #   held    total with "hold" placed
         #   queued  total currently in the queue
-        self::$engine->set(Globals::_RR . "/oacounter", 0);
-        self::$engine->set(Globals::_RR . "/oatop", $total);
-        self::$engine->set(Globals::_RR . "/held", 0);
-        self::$engine->set(Globals::_RR . "/queued", 0);
+        self::$engine->set(GlobalsArk::_RR . "/oacounter", 0);
+        self::$engine->set(GlobalsArk::_RR . "/oatop", $total);
+        self::$engine->set(GlobalsArk::_RR . "/held", 0);
+        self::$engine->set(GlobalsArk::_RR . "/queued", 0);
 
-        self::$engine->set(Globals::_RR . "/fseqnum", Globals::SEQNUM_MIN);  # see queue() and mint()
-        self::$engine->set(Globals::_RR . "/gseqnum", Globals::SEQNUM_MIN);  # see queue()
-        self::$engine->set(Globals::_RR . "/gseqnum_date", 0);      # see queue()
+        self::$engine->set(GlobalsArk::_RR . "/fseqnum", GlobalsArk::SEQNUM_MIN);  # see queue() and mint()
+        self::$engine->set(GlobalsArk::_RR . "/gseqnum", GlobalsArk::SEQNUM_MIN);  # see queue()
+        self::$engine->set(GlobalsArk::_RR . "/gseqnum_date", 0);      # see queue()
 
-        self::$engine->set(Globals::_RR . "/version", Globals::VERSION);
+        self::$engine->set(GlobalsArk::_RR . "/version", GlobalsArk::VERSION);
 
         # yyy should verify that a given NAAN and NAA are registered,
         #     and should offer to register them if not… ?
@@ -196,12 +197,12 @@ class Database extends Db{
             . ($genonly && !preg_match('/eee/', $pre . substr($msk, 1)) ? 'A' : '-')
             . ($term === 'long' ? 'N' : '-')
             . ($genonly && !preg_match('/-/', $prefix) ? 'I' : '-')
-            . (self::$engine->get(Globals::_RR . "/addcheckchar") ? 'T' : '-')
+            . (self::$engine->get(GlobalsArk::_RR . "/addcheckchar") ? 'T' : '-')
             // Currently, only alphabets "d", "e" and "i" are without vowels.
             . ($genonly && (preg_match('/[aeiouy]/i', $prefix) || preg_match('/[^rszdeik]/', $mask))
                 ? '-' : 'E')        # Elided vowels or not
         ;
-        self::$engine->set(Globals::_RR . "/properties", $properties);
+        self::$engine->set(GlobalsArk::_RR . "/properties", $properties);
 
         # Now figure out "where" element.
         #
@@ -227,20 +228,20 @@ class Database extends Db{
             },
             $p);
         $random_sample = NULL;          # null on purpose
-        if($total == Globals::NOLIMIT){
+        if($total == GlobalsArk::NOLIMIT){
             $random_sample = rand(0, 9); # first sample less than 10
         }
         $sample1 = self::sample($noid, $random_sample);
-        if($total == Globals::NOLIMIT){
+        if($total == GlobalsArk::NOLIMIT){
             $random_sample = rand(0, 100000); # second sample bigger
         }
         $sample2 = self::sample($noid, $random_sample);
 
-        $htotal = $total == Globals::NOLIMIT ? 'unlimited' : Helper::formatNumber($total);
-        $what = ($total == Globals::NOLIMIT ? 'unlimited' : $total)
+        $htotal = $total == GlobalsArk::NOLIMIT ? 'unlimited' : Helper::formatNumber($total);
+        $what = ($total == GlobalsArk::NOLIMIT ? 'unlimited' : $total)
             . ' ' . sprintf('%s identifiers of form %s', $gen_type, $template) . PHP_EOL
             . '       ' . 'A Noid minting and binding database has been created that will bind ' . PHP_EOL
-            . '       ' . ($genonly ? '' : 'any identifier ') . 'and mint ' . ($total == Globals::NOLIMIT
+            . '       ' . ($genonly ? '' : 'any identifier ') . 'and mint ' . ($total == GlobalsArk::NOLIMIT
                 ? sprintf('an unbounded number of identifiers') . PHP_EOL
                 . '       '
                 : sprintf('%s identifiers', $htotal) . ' ')
@@ -256,8 +257,8 @@ class Database extends Db{
             what:      $what
             when:      " . Helper::getTemper() . "
             where:     $host:$cwd
-            Version:   Noid " . Globals::VERSION . "
-            Size:      " . ($total == Globals::NOLIMIT ? "unlimited" : $total) . "
+            Version:   Noid " . GlobalsArk::VERSION . "
+            Size:      " . ($total == GlobalsArk::NOLIMIT ? "unlimited" : $total) . "
             Template:  " . (!$template
                             ? '(:none)'
                             : $template . "
@@ -280,9 +281,9 @@ class Database extends Db{
             Authority: $naa | $subnaa
             NAAN:      $naan
             ";
-        self::$engine->set(Globals::_RR . "/erc", $erc);
+        self::$engine->set(GlobalsArk::_RR . "/erc", $erc);
 
-        if(!file_put_contents("$db_path/README", self::$engine->get(Globals::_RR . "/erc"))){
+        if(!file_put_contents("$db_path/README", self::$engine->get(GlobalsArk::_RR . "/erc"))){
             return NULL;
         }
         # yyy useful for quick info on a minter from just doing 'ls NOID'??
