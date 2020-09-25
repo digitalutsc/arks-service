@@ -1,6 +1,5 @@
 <?php
 include "lib/noid/Noid.php";
-require_once('lib/resolver/URLResolver.php');
 require_once "NoidUI.php";
 require_once "index.php";
 ?>

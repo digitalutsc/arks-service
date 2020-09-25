@@ -1,0 +1,33 @@
+
+Here are some files of several types.
+
+1. abstract database interface file - "DatabaseInterface.php"
+	It is an interface (like abstract class) that include the general methods (open, close, get/read, set/write, delete, and more) of database engine. They are all the empty functions.
+	The classes derive from this interface must implement their abstract methods.
+
+2. ../GlobalValues.php
+	What you see is...
+	/**
+     * @var array $db_types database type array - global as constant
+     */
+    $db_types = array(
+    	'bdb' => 'BerkeleyDB',
+    	'mysql' => 'MysqlDB',
+    	'xml' => 'XmlDB',
+    	'json' => 'JsonDB',
+    	'txt' => 'TextDB',
+    );
+    If new database engine needs to be added, must add its info here 1st.
+
+3. XyzDB.php
+	Database engine "xyz" wrapper class derived from DatabaseInterface.
+	e.g. MysqlDB.php
+	TO add new database engine, it is needed to place a corresponding file "XyzDB.php" here.
+	* mysql_noid.conf.php: contains MysqlDB class's configuration information in PHP style.
+
+4. README document.
+	It's me. :)
+
+Thank you for reading.
+
+- edited by xQ, 2018-12-26 04:12 -
