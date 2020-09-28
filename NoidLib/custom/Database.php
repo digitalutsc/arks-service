@@ -12,17 +12,26 @@ use Noid\Lib\Storage\DatabaseInterface;
 
 class Database extends Db{
 
+    
     /**
      * @param $dbdir
      * @param $contact
      * @param null $template
      * @param string $term
      * @param string $naan Name Assigning Authority Number
-     * @param string $naa
-     * @param string $subnaa
+     * @param string $naa The NAA argument is the character string equivalent for the NAAN
+     * @param string $subnaa  SubNAA argument is also a character string, but is a locally determined and possibly structured subauthority string (e.g., "oac", "ucb/dpg", "practice_area") that is not globally registered
      * @return string|null
      */
-    static public function dbcreate($dbdir, $contact, $template = NULL, $term = '-', $naan = '', $naa = '', $subnaa = '') {
+    static public function dbcreate(
+        $dbdir, 
+        $contact, 
+        $template = NULL,
+        $term = '-',
+        $naan = '',
+        $naa = '',
+        $subnaa = '') {
+        
         NoidArk::init();
 
         $total = NULL;

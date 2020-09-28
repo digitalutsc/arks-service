@@ -2,6 +2,67 @@
 include "lib/noid/Noid.php";
 require_once "NoidUI.php";
 require_once "index.php";
+
+
+require_once "NoidLib/lib/Storage/MysqlDB.php";
+require_once 'NoidLib/custom/GlobalsArk.php';
+require_once 'NoidLib/lib/Db.php';
+require_once 'NoidLib/custom/Database.php';
+
+use Noid\Lib\Helper;
+use Noid\Lib\Noid;
+use Noid\Lib\Storage\DatabaseInterface;
+use Noid\Lib\Storage\MysqlDB;
+use Noid\Lib\Globals;
+use Noid\Lib\Db;
+use Noid\Lib\Log;
+
+use Noid\Lib\Custom\Database;
+use Noid\Lib\Custom\GlobalsArk;
+
+// set db type as mysql instead
+GlobalsArk::$db_type = 'ark_mysql';
+define("NAAN_UTSC", 61220);
+
+function olddbcreate()
+{
+
+    // check parent database folder created yet, if not, create it.
+    if (!file_exists($noidUI->path($database))) {
+        mkdir($noidUI->path($database), 0775);
+    }
+    // Execute dbcomment with entered parameters.
+    $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter'] . " 61220 " . $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName'], $noidUI->path($database));
+
+    // check new database directory created yet. if yes, display success message, if not display error message.
+    $isReadable = file_exists($noidUI->path($database) . '/NOID/README');
+    if ($isReadable) {
+        $result = <<<EOS
+                                <div class="alert alert-success" role="alert">
+                                    New database <i>$database</i> created successfully.
+                                </div>
+                            EOS;
+        print $result;
+
+        //TODO: create a database's metadata file
+        $metadata = array(
+            "enterPrefix" => $_POST['enterPrefix'],
+            "selectTemplate" => $_POST['selectTemplate'],
+            "identifier_minter" => $_POST['identifier_minter'],
+            "enterRedirect" => $_POST['enterRedirect'],
+            "enterInsitutionName" => $_POST['enterInsitutionName'],
+        );
+        $noidUI->saveMetadataToCSV($noidUI->path($database), $database, $metadata);
+    } else {
+        $result = <<<EOS
+                                <div class="alert alert-danger" role="alert">
+                                    Sorry, failed to create <i>$database</i>.
+                                </div>
+                            EOS;
+        print $result;
+    }
+}
+
 ?>
 
 <html>
@@ -9,6 +70,32 @@ require_once "index.php";
     <title>Ark Services</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
           integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <style>
+        .form-group.required .control-label:after {
+            content: "*";
+            color: #ff0000;
+        }
+    </style>
+    <script>
+        var noidTemplates = {
+            ".rddd": "to mint random 3-digit numbers, stopping after 1000th",
+            ".sdddddd": "to mint sequential 6-digit numbers, stopping after millionth",
+            ".zd": "sequential numbers without limit, adding new digits as needed",
+            ".rdddd": "random 4-digit numbers with constant prefix bc",
+            ".sdd": "sequential 2-digit numbers with constant prefix 8rf",
+            ".se": "sequential extended-digits (from 0123456789bcdfghjkmnpqrstvwxz)",
+            ".reee": "random 3-extended-digit numbers with constant prefix h9",
+            ".zeee": "unlimited sequential numbers with at least 3 extended-digits",
+            ".rdedeedd": "random 7-char numbers, extended-digits at chars 2, 4, and 5",
+            ".zededede": "unlimited mixed digits, adding new extended-digits as needed",
+            ".sdede": "sequential 4-mixed-digit numbers with constant prefix sdd",
+            ".rdedk": "random 3 mixed digits plus final (4th) computed check character",
+            ".sdeeedk": "5 sequential mixed digits plus final extended-digit check char",
+            ".zdeek": "sequential digits plus check char, new digits added as needed",
+            ".redek": "prefix plus random 4 mixed digits, one of them a check char",
+            ".reedeedk": 'Minting order is random with limit 70,728,100 entry, prefix is "f5",'
+        };
+    </script>
 </head>
 <body>
 <div class="container">
@@ -35,7 +122,7 @@ require_once "index.php";
 
         <div class="card-body">
             <div id="row-dbcreate" class="row">
-                <div class="col-sm-5">
+                <div class="col-sm-6">
                     <?php
                     if (!isset($_GET['db'])) {
                         print <<<EOS
@@ -44,19 +131,67 @@ require_once "index.php";
                                     <label for="enterDatabaseName">Database Name:</label>
                                     <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName"
                                            required/>
-                                       <small id="emailHelp" class="form-text text-muted">It will create sub-directory under db directory for each database created. For Example: db/Test_1/NOID/.....</small>
                                 </div>
+                                <p><small id="noidHelp" class="form-text text-muted">For configuration detail, please visit <a target="_blank" href="https://metacpan.org/pod/distribution/Noid/noid">https://metacpan.org/pod/distribution/Noid/noid</a> </small></p>
                                 <div class="form-group">
                                     <label for="enterDatabaseName">Prefix:</label>
                                     <input type="text" class="form-control" id="enterPrefix" name="enterPrefix"
                                            required/>
-                                   <small id="emailHelp" class="form-text text-muted">For example: utsc or f5 <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
                                 </div> 
                                
-                                
+                                  <script type="text/javascript">
+                                    function onChangeTemplate(value)
+                                    {
+                                        // reset prefix
+                                        document.getElementById("enterPrefix").value = "";
+                                        document.getElementById('enterPrefix').readOnly = false;
+                                        
+                                        // swich detail explanation 
+                                        document.getElementById("templateHelp").innerHTML = "<strong>Template definition: </strong> " + noidTemplates[value] + "</span>" ;
+                                        switch (value) { 
+                                            case ".rdddd": {
+                                                // set prefix to bc
+                                                document.getElementById("enterPrefix").value = "bc";
+                                                document.getElementById("enterPrefix").readOnly = true;
+                                                break; 
+                                            }
+                                            case ".sdd": { 
+                                                // set prefix to 8rf
+                                                document.getElementById("enterPrefix").value = "8rf";
+                                                document.getElementById("enterPrefix").readOnly = true;
+                                                break; 
+                                            }
+                                             case ".reee": { 
+                                                // set prefix to h9
+                                                document.getElementById("enterPrefix").value = "h9";
+                                                document.getElementById("enterPrefix").readOnly = true;
+                                                break; 
+                                            }case ".sdede": { 
+                                                // set prefix to ssd
+                                                document.getElementById("enterPrefix").value = "ssd";
+                                                document.getElementById("enterPrefix").readOnly = true;
+                                                break; 
+                                            }case ".redek": { 
+                                                // set prefix to 63q
+                                                document.getElementById("enterPrefix").value = "63q";
+                                                document.getElementById("enterPrefix").readOnly = true;
+                                                break; 
+                                            }case ".reedeedk": { 
+                                                // set prefix to 63q
+                                                document.getElementById("enterPrefix").value = "f5";
+                                                document.getElementById("enterPrefix").readOnly = true;
+                                                break; 
+                                            }
+                                            default: 
+                                                break;
+                                        }
+                                        
+                                    }
+                                </script>
                                 <div class="form-group">
-                                    <label for="exampleFormControlSelect1">Template:</label>
-                                    <select class="form-control" id="selectTemplate" name="selectTemplate" required>
+                                    <label for="templateHelp">Template:</label>
+                                    
+                                    <select class="form-control" id="selectTemplate" name="selectTemplate" onchange="onChangeTemplate(this.value);" required>
                                         <option selected disabled value="">Choose...</option>
                                         <option>.rddd</option>
                                         <option>.sdddddd</option>
@@ -74,31 +209,62 @@ require_once "index.php";
                                         <option>.redek</option>
                                         <option>.reedeedk</option>
                                     </select>
-                                    <small id="emailHelp" class="form-text text-muted">For more infomration <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
+                                    <p id="templateHelp"></p>
+                                    
                                 </div>
                                 
-                                 <div class="form-group">
-                                    <label for="enterDatabaseName">Redirect URL:</label>
-                                    <input type="text" class="form-control" id="enterRedirect" name="enterRedirect"
-                                           required/>
-                                   <small id="emailHelp" class="form-text text-muted">For example: digital.utsc.utoronto.ca <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
-                                </div>
+                                <script type="text/javascript">
+                                    function onChangeTerms(value)
+                                    {
+                                        //alert(value);
+                                        switch (value) { 
+                                            case 'short': {
+                                                break; 
+                                            }
+                                            case 'medium': {
+                                                break; 
+                                            }
+                                            case 'long': {
+                                                document.getElementById("enterNAAN").required = true;
+                                                document.getElementById("enterInsitutionName").required = true;
+                                                document.getElementById("enterRedirect").required = true;
+                                                break; 
+                                            }
+                                            default: { 
+                                                break;
+                                            }
+                                        }
+                                    }
+                                </script>
                                 <div class="form-group">
-                                    <label for="enterDatabaseName">Term identifier minter:</label>
-                                    <select class="form-control" id="identifier_minter" name="identifier_minter" required>
+                                    <label for="enterDatabaseName">Term:</label>
+                                    <select class="form-control" id="identifier_minter" name="identifier_minter" onchange="onChangeTerms(this.value);" required>
                                         <option selected disabled value="">Choose...</option>
                                         <option>short</option>
                                         <option>medium</option>
                                         <option>long</option>
                                     </select>
-                                    <small id="emailHelp" class="form-text text-muted">For more infomration <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
+                                    <small id="termHelp" class="form-text text-muted">For more infomration  </small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="enterDatabaseName">Name Assigning Authority Number(NAAN):</label>
+                                    <input type="text" class="form-control" id="enterNAAN" name="enterNAAN"
+                                           required/>
+                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: dsu/utsc-library</small>
+                                </div>
+                                 <div class="form-group">
+                                    <label for="enterDatabaseName">Redirect URL(NAA):</label>
+                                    <input type="text" class="form-control" id="enterRedirect" name="enterRedirect"
+                                           required/>
+                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: digital.utsc.utoronto.ca</small>
                                 </div>
                                 
                                  <div class="form-group">
-                                    <label for="enterDatabaseName">Insitution Name:</label>
+                                    <label for="enterDatabaseName">Insitution Name(SubNAA):</label>
                                     <input type="text" class="form-control" id="enterInsitutionName" name="enterInsitutionName"
                                            required/>
-                                   <small id="emailHelp" class="form-text text-muted">For example: dsu/utsc-library or oac/cmp <a target="_blank" href="https://redmine.digitalscholarship.utsc.utoronto.ca/issues/9125#note-24">(in Irfan's Note)</a> </small>
+                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: dsu/utsc-library</small>
                                 </div>
                                 
                                 <input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>
@@ -113,7 +279,7 @@ require_once "index.php";
                     ?>
 
                 </div>
-                <div class="col-sm-7">
+                <div class="col-sm-6">
                     <?php
                     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
                         // Repace white space (if there is) with underscore
@@ -129,42 +295,26 @@ require_once "index.php";
                             mkdir(getcwd() . "/db", 0775);
                         }
 
-                        // check parent database folder created yet, if not, create it.
-                        if (!file_exists($noidUI->path($database))) {
-                            mkdir($noidUI->path($database), 0775);
-                        }
+                        $result = $noidUI->exec_command("dbcreate "
+                            . $_POST['enterPrefix']
+                            . $_POST['selectTemplate']
+                            . " " . $_POST['identifier_minter'] . " 61220 "
+                            . $_POST['enterRedirect'] . " "
+                            . $_POST['enterInsitutionName'], $noidUI->path($database));
 
-                        // Execute dbcomment with entered parameters.
-                        $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter'] . " 61220 " . $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName'], $noidUI->path($database));
+                        $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db/' . $database;
+                        $report = Database::dbcreate(
+                            $dbpath,
+                            'utsc',
+                            $_POST['selectTemplate'],
+                            $_POST['identifier_minter'],
+                            NAAN_UTSC,
+                            '',
 
-                        // check new database directory created yet. if yes, display success message, if not display error message.
-                        $isReadable = file_exists($noidUI->path($database) . '/NOID/README');
-                        if ($isReadable) {
-                            $result = <<<EOS
-                                <div class="alert alert-success" role="alert">
-                                    New database <i>$database</i> created successfully.
-                                </div>
-                            EOS;
-                            print $result;
+                        );
 
-                            //TODO: create a database's metadata file
-                            $metadata = array(
-                                "enterPrefix" => $_POST['enterPrefix'],
-                                "selectTemplate" => $_POST['selectTemplate'],
-                                "identifier_minter" => $_POST['identifier_minter'],
-                                "enterRedirect" => $_POST['enterRedirect'],
-                                "enterInsitutionName" => $_POST['enterInsitutionName'],
-                            );
-                            $noidUI->saveMetadataToCSV($noidUI->path($database), $database, $metadata);
-                        } else {
-                            $result = <<<EOS
-                                <div class="alert alert-danger" role="alert">
-                                    Sorry, failed to create <i>$database</i>.
-                                </div>
-                            EOS;
-                            print $result;
-                        }
-                        //header("Location: admin.php");
+
+                        header("Location: admin.php");
                     }
                     if (file_exists(NoidUI::dbpath())) {
                         // List all created databases in the table
@@ -483,8 +633,7 @@ require_once "index.php";
                                         if ($pidi !== FALSE) {
                                             $columns[$pidi] = "PID";
                                         }
-                                    }
-                                    else {
+                                    } else {
                                         die ("The imported CSV must have column name 'pid' or 'PID'");
                                     }
                                     array_push($columns, "Ark Link");
@@ -626,8 +775,7 @@ require_once "index.php";
                                         if ($pidi !== FALSE) {
                                             $columns[$pidi] = "PID";
                                         }
-                                    }
-                                    else {
+                                    } else {
                                         die ("The imported CSV must have column name 'pid' or 'PID'");
                                     }
                                     // add columns to import data array
