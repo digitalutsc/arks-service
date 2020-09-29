@@ -299,12 +299,12 @@ function olddbcreate()
                         $report = Database::custom_dbcreate( $database,
                             $dbpath,
                             'utsc',
-                            $_POST['enterPrefix'],
+                            trim($_POST['enterPrefix']),
                             $_POST['selectTemplate'],
                             $_POST['identifier_minter'],
-                            $_POST['enterNAAN'],
-                            $_POST['enterRedirect'],
-                            $_POST['enterInsitutionName'],
+                            trim($_POST['enterNAAN']),
+                            trim($_POST['enterRedirect']),
+                            trim($_POST['enterInsitutionName']),
                         );
 
 
