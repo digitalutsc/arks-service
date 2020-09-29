@@ -216,6 +216,8 @@ class Helper{
 			$msg = "parse_template: no template mask - can't generate identifiers.";
 			return 0;
 		}
+		error_log("----------- parse template -----------");
+        error_log(print_r($matches, true), 0);
 		$prefix = isset($matches[1]) ? $matches[1] : '';
 		$mask = isset($matches[2]) ? $matches[2] : '';
 

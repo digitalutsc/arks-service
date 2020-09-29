@@ -81,19 +81,19 @@ function olddbcreate()
             ".rddd": "to mint random 3-digit numbers, stopping after 1000th",
             ".sdddddd": "to mint sequential 6-digit numbers, stopping after millionth",
             ".zd": "sequential numbers without limit, adding new digits as needed",
-            ".rdddd": "random 4-digit numbers with constant prefix bc",
-            ".sdd": "sequential 2-digit numbers with constant prefix 8rf",
+            ".rdddd": "random 4-digit numbers with constant, prefix must be must be bc",
+            ".sdd": "sequential 2-digit numbers with constant, prefix must be must be 8rf",
             ".se": "sequential extended-digits (from 0123456789bcdfghjkmnpqrstvwxz)",
-            ".reee": "random 3-extended-digit numbers with constant prefix h9",
+            ".reee": "random 3-extended-digit numbers with constant, prefix must be must be h9",
             ".zeee": "unlimited sequential numbers with at least 3 extended-digits",
             ".rdedeedd": "random 7-char numbers, extended-digits at chars 2, 4, and 5",
             ".zededede": "unlimited mixed digits, adding new extended-digits as needed",
-            ".sdede": "sequential 4-mixed-digit numbers with constant prefix sdd",
+            ".sdede": "sequential 4-mixed-digit numbers with constant, prefix must be must be sdd",
             ".rdedk": "random 3 mixed digits plus final (4th) computed check character",
             ".sdeeedk": "5 sequential mixed digits plus final extended-digit check char",
             ".zdeek": "sequential digits plus check char, new digits added as needed",
             ".redek": "prefix plus random 4 mixed digits, one of them a check char",
-            ".reedeedk": 'Minting order is random with limit 70,728,100 entry, prefix is "f5",'
+            ".reedeedk": 'Minting order is random with limit 70,728,100 entry,, prefix must be must be must be "f5",'
         };
     </script>
 </head>
@@ -133,11 +133,7 @@ function olddbcreate()
                                            required/>
                                 </div>
                                 <p><small id="noidHelp" class="form-text text-muted">For configuration detail, please visit <a target="_blank" href="https://metacpan.org/pod/distribution/Noid/noid">https://metacpan.org/pod/distribution/Noid/noid</a> </small></p>
-                                <div class="form-group">
-                                    <label for="enterDatabaseName">Prefix:</label>
-                                    <input type="text" class="form-control" id="enterPrefix" name="enterPrefix"
-                                           required/>
-                                </div> 
+                                
                                
                                   <script type="text/javascript">
                                     function onChangeTemplate(value)
@@ -150,34 +146,34 @@ function olddbcreate()
                                         document.getElementById("templateHelp").innerHTML = "<strong>Template definition: </strong> " + noidTemplates[value] + "</span>" ;
                                         switch (value) { 
                                             case ".rdddd": {
-                                                // set prefix to bc
+                                                // set, prefix must be must be to bc
                                                 document.getElementById("enterPrefix").value = "bc";
                                                 document.getElementById("enterPrefix").readOnly = true;
                                                 break; 
                                             }
                                             case ".sdd": { 
-                                                // set prefix to 8rf
+                                                // set, prefix must be must be to 8rf
                                                 document.getElementById("enterPrefix").value = "8rf";
                                                 document.getElementById("enterPrefix").readOnly = true;
                                                 break; 
                                             }
                                              case ".reee": { 
-                                                // set prefix to h9
+                                                // set, prefix must be must be to h9
                                                 document.getElementById("enterPrefix").value = "h9";
                                                 document.getElementById("enterPrefix").readOnly = true;
                                                 break; 
                                             }case ".sdede": { 
-                                                // set prefix to ssd
+                                                // set, prefix must be must be to ssd
                                                 document.getElementById("enterPrefix").value = "ssd";
                                                 document.getElementById("enterPrefix").readOnly = true;
                                                 break; 
                                             }case ".redek": { 
-                                                // set prefix to 63q
+                                                // set, prefix must be must be to 63q
                                                 document.getElementById("enterPrefix").value = "63q";
                                                 document.getElementById("enterPrefix").readOnly = true;
                                                 break; 
                                             }case ".reedeedk": { 
-                                                // set prefix to 63q
+                                                // set, prefix must be must be to 63q
                                                 document.getElementById("enterPrefix").value = "f5";
                                                 document.getElementById("enterPrefix").readOnly = true;
                                                 break; 
@@ -212,6 +208,11 @@ function olddbcreate()
                                     <p id="templateHelp"></p>
                                     
                                 </div>
+                                
+                                <div class="form-group">
+                                    <label for="enterDatabaseName">Prefix:</label>
+                                    <input type="text" class="form-control" id="enterPrefix" name="enterPrefix" required/>
+                                </div> 
                                 
                                 <script type="text/javascript">
                                     function onChangeTerms(value)
@@ -248,22 +249,21 @@ function olddbcreate()
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label for="enterDatabaseName">Name Assigning Authority Number(NAAN):</label>
-                                    <input type="text" class="form-control" id="enterNAAN" name="enterNAAN"
-                                           required/>
-                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: dsu/utsc-library</small>
+                                    <label class="control-label" for="enterDatabaseName">Name Assigning Authority Number(NAAN):</label>
+                                    <input type="text" class="form-control" id="enterNAAN" name="enterNAAN"/>
+                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: 61220</small>
                                 </div>
                                  <div class="form-group">
-                                    <label for="enterDatabaseName">Redirect URL(NAA):</label>
+                                    <label class="control-label" for="enterDatabaseName">Redirect URL(NAA):</label>
                                     <input type="text" class="form-control" id="enterRedirect" name="enterRedirect"
-                                           required/>
+                                           />
                                    <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: digital.utsc.utoronto.ca</small>
                                 </div>
                                 
                                  <div class="form-group">
-                                    <label for="enterDatabaseName">Insitution Name(SubNAA):</label>
+                                    <label class="control-label" for="enterDatabaseName">Insitution Name(SubNAA):</label>
                                     <input type="text" class="form-control" id="enterInsitutionName" name="enterInsitutionName"
-                                           required/>
+                                           />
                                    <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: dsu/utsc-library</small>
                                 </div>
                                 
@@ -295,22 +295,16 @@ function olddbcreate()
                             mkdir(getcwd() . "/db", 0775);
                         }
 
-                        $result = $noidUI->exec_command("dbcreate "
-                            . $_POST['enterPrefix']
-                            . $_POST['selectTemplate']
-                            . " " . $_POST['identifier_minter'] . " 61220 "
-                            . $_POST['enterRedirect'] . " "
-                            . $_POST['enterInsitutionName'], $noidUI->path($database));
-
                         $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db/' . $database;
-                        $report = Database::dbcreate(
+                        $report = Database::custom_dbcreate( $database,
                             $dbpath,
                             'utsc',
+                            $_POST['enterPrefix'],
                             $_POST['selectTemplate'],
                             $_POST['identifier_minter'],
-                            NAAN_UTSC,
-                            '',
-
+                            $_POST['enterNAAN'],
+                            $_POST['enterRedirect'],
+                            $_POST['enterInsitutionName'],
                         );
 
 

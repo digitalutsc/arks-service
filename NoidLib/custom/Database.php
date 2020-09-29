@@ -10,9 +10,10 @@ use Noid\Lib\Log;
 use Noid\Lib\Custom\NoidArk;
 use Noid\Lib\Storage\DatabaseInterface;
 
-class Database extends Db{
+class Database extends Db
+{
 
-    
+
     /**
      * @param $dbdir
      * @param $contact
@@ -20,38 +21,39 @@ class Database extends Db{
      * @param string $term
      * @param string $naan Name Assigning Authority Number
      * @param string $naa The NAA argument is the character string equivalent for the NAAN
-     * @param string $subnaa  SubNAA argument is also a character string, but is a locally determined and possibly structured subauthority string (e.g., "oac", "ucb/dpg", "practice_area") that is not globally registered
+     * @param string $subnaa SubNAA argument is also a character string, but is a locally determined and possibly structured subauthority string (e.g., "oac", "ucb/dpg", "practice_area") that is not globally registered
      * @return string|null
      */
-    static public function dbcreate(
-        $dbdir, 
-        $contact, 
+    static public function custom_dbcreate( $dbname,
+        $dbdir,
+        $contact,
+        $prefix,
         $template = NULL,
         $term = '-',
         $naan = '',
         $naa = '',
-        $subnaa = '') {
-        
-        NoidArk::init();
+        $subnaa = '')
+    {
+
+        NoidArk::custom_init($dbname);
 
         $total = NULL;
         $noid = NULL;
 
-        $prefix = NULL;
         $mask = NULL;
         $gen_type = NULL;
         $msg = NULL;
         $genonly = NULL;
-        if(is_null($template)){
+        if (is_null($template)) {
             $genonly = 0;
             $template = '.zd';
-        }
-        else{
+        } else {
             $genonly = 1;           # not generated ids only
         }
 
-        $total = Helper::parseTemplate($template, $prefix, $mask, $gen_type, $msg);
-        if(!$total){
+        //$total = Helper::parseTemplate($template, $prefix, $mask, $gen_type, $msg);
+        $total = Helper::parseTemplate($prefix.$template, $prefix, $mask, $gen_type, $msg);
+        if (!$total) {
             Log::addmsg($noid, $msg);
             return NULL;
         }
@@ -59,13 +61,13 @@ class Database extends Db{
 
         # Type check various parameters.
         #
-        if(empty($contact) || trim($contact) == ''){
+        if (empty($contact) || trim($contact) == '') {
             Log::addmsg($noid, sprintf('error: contact (%s) must be non-empty.', $contact));
             return NULL;
         }
 
-        $term = $term ? : '-';
-        if(!in_array($term, array('long', 'medium', 'short', '-'))){
+        $term = $term ?: '-';
+        if (!in_array($term, array('long', 'medium', 'short', '-'))) {
             Log::addmsg($noid, sprintf('error: term (%s) must be either "long", "medium", "-", or "short".', $term));
             return NULL;
         }
@@ -74,22 +76,22 @@ class Database extends Db{
         $naan = (string)$naan;
         $subnaa = (string)$subnaa;
 
-        if($term === 'long'
+        if ($term === 'long'
             && (!strlen(trim($naan)) || !strlen(trim($naa)) || !strlen(trim($subnaa)))
-        ){
+        ) {
             Log::addmsg($noid, sprintf('error: longterm identifiers require an NAA Number, NAA, and SubNAA.'));
             return NULL;
         }
         # xxx should be able to check naa and naan live against registry
         # yyy code should invite to apply for NAAN by email to ark@cdlib.org
         # yyy ARK only? why not DOI/handle?
-        if($term === 'long' && !preg_match('/\d\d\d\d\d/', $naan)){
+        if ($term === 'long' && !preg_match('/\d\d\d\d\d/', $naan)) {
             Log::addmsg($noid, sprintf('error: term of "long" requires a 5-digit NAAN (00000 if none), and non-empty string values for NAA and SubNAA.'));
             return NULL;
         }
 
         $noid = self::dbopen($dbdir, DatabaseInterface::DB_CREATE);
-        if(!$noid){
+        if (!$noid) {
             Log::addmsg(NULL, "error: a NOID database can not be created in: " . $dbdir . "." . PHP_EOL
                 . "\t" . 'To permit creation of a new minter, rename' . PHP_EOL
                 . "\t" . 'or remove the entire ' . DatabaseInterface::DATABASE_NAME . ' subdirectory.');
@@ -98,13 +100,13 @@ class Database extends Db{
 
         # Create a log file from scratch and make them writable
         $db_path = ($dbdir == '.' ? getcwd() : $dbdir) . DIRECTORY_SEPARATOR . DatabaseInterface::DATABASE_NAME;
-        if(!file_put_contents("$db_path/log", ' ') || !chmod("$db_path/log", 0666)){
+        if (!file_put_contents("$db_path/log", ' ') || !chmod("$db_path/log", 0666)) {
             Log::addmsg(NULL, "Couldn't chmod log file: {$db_path}/log");
             return NULL;
         }
 
         $db = self::getDb($noid);
-        if(is_null($db)){
+        if (is_null($db)) {
             return NULL;
         }
 
@@ -117,19 +119,21 @@ class Database extends Db{
         #     so we can use DB_DUP flag
         self::$engine->set(GlobalsArk::_RR . "/naa", $naa);
         self::$engine->set(GlobalsArk::_RR . "/naan", $naan);
-        self::$engine->set(GlobalsArk::_RR . "/subnaa", $subnaa ? : '');
+        self::$engine->set(GlobalsArk::_RR . "/subnaa", $subnaa ?: '');
 
         self::$engine->set(GlobalsArk::_RR . "/longterm", $term === 'long');
         self::$engine->set(GlobalsArk::_RR . "/wrap", $term === 'short');     # yyy follow through
 
         self::$engine->set(GlobalsArk::_RR . "/template", $template);
+        error_log("====== prefix =======");
+        error_log($prefix);
         self::$engine->set(GlobalsArk::_RR . "/prefix", $prefix);
         self::$engine->set(GlobalsArk::_RR . "/mask", $mask);
         self::$engine->set(GlobalsArk::_RR . "/firstpart", ($naan ? $naan . '/' : '') . $prefix);
 
         $add_cc = (bool)preg_match('/k$/', $mask);    # boolean answer
         self::$engine->set(GlobalsArk::_RR . "/addcheckchar", $add_cc);
-        if($add_cc){
+        if ($add_cc) {
             // The template is already checked, so no error is possible.
             $repertoire = Helper::getAlphabet($template);
             self::$engine->set(GlobalsArk::_RR . "/checkrepertoire", $repertoire);
@@ -138,8 +142,8 @@ class Database extends Db{
 
         self::$engine->set(GlobalsArk::_RR . "/generator_type", $gen_type);
         self::$engine->set(GlobalsArk::_RR . "/genonly", $genonly);
-        if($gen_type == 'random'){
-            self::$engine->set(GlobalsArk::_RR . "/generator_random", Noid::$random_generator);
+        if ($gen_type == 'random') {
+            self::$engine->set(GlobalsArk::_RR . "/generator_random", NoidArk::$random_generator);
         }
 
         self::$engine->set(GlobalsArk::_RR . "/total", $total);
@@ -218,30 +222,30 @@ class Database extends Db{
         $host = gethostname();
 
         $cwd = $dbdir;   # by default, assuming $dbdir is absolute path
-        if(substr($dbdir, 0, 1) !== '/'){
+        if (substr($dbdir, 0, 1) !== '/') {
             $cwd = getcwd() . '/' . $dbdir;
         }
 
         # Adjust some empty values for short-term display purposes.
         #
-        $naa = $naa ? : 'no Name Assigning Authority';
-        $subnaa = $subnaa ? : 'no sub authority';
-        $naan = $naan ? : 'no NAA Number';
+        $naa = $naa ?: 'no Name Assigning Authority';
+        $subnaa = $subnaa ?: 'no sub authority';
+        $naan = $naan ?: 'no NAA Number';
 
         # Create a human- and machine-readable report.
         #
         $p = str_split($properties);         # split into letters
         $p = array_map(
-            function($v){
+            function ($v) {
                 return $v == '-' ? '_ not' : '_____';
             },
             $p);
         $random_sample = NULL;          # null on purpose
-        if($total == GlobalsArk::NOLIMIT){
+        if ($total == GlobalsArk::NOLIMIT) {
             $random_sample = rand(0, 9); # first sample less than 10
         }
         $sample1 = self::sample($noid, $random_sample);
-        if($total == GlobalsArk::NOLIMIT){
+        if ($total == GlobalsArk::NOLIMIT) {
             $random_sample = rand(0, 100000); # second sample bigger
         }
         $sample2 = self::sample($noid, $random_sample);
@@ -269,8 +273,8 @@ class Database extends Db{
             Version:   Noid " . GlobalsArk::VERSION . "
             Size:      " . ($total == GlobalsArk::NOLIMIT ? "unlimited" : $total) . "
             Template:  " . (!$template
-                            ? '(:none)'
-                            : $template . "
+                ? '(:none)'
+                : $template . "
                    A suggested parent directory for this template is \"$synonym\".  Note:
                    separate minters need separate directories, and templates can suggest
                    short names; e.g., the template \"xz.redek\" suggests the parent directory
@@ -292,7 +296,7 @@ class Database extends Db{
             ";
         self::$engine->set(GlobalsArk::_RR . "/erc", $erc);
 
-        if(!file_put_contents("$db_path/README", self::$engine->get(GlobalsArk::_RR . "/erc"))){
+        if (!file_put_contents("$db_path/README", self::$engine->get(GlobalsArk::_RR . "/erc"))) {
             return NULL;
         }
         # yyy useful for quick info on a minter from just doing 'ls NOID'??
@@ -300,7 +304,7 @@ class Database extends Db{
         $report = sprintf('Created:   minter for %s', $what)
             . '  ' . sprintf('See %s/README for details.', $db_path) . PHP_EOL;
 
-        if(empty($template)){
+        if (empty($template)) {
             self::dbclose($noid);
             return $report;
         }

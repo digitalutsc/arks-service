@@ -16,7 +16,7 @@ class NoidArk extends Noid {
      *
      * @throws Exception
      */
-    static public function init()
+    static public function custom_init(String  $dbname)
     {
         // Make sure that this function is called only one time.
         static $init = FALSE;
@@ -30,7 +30,7 @@ class NoidArk extends Noid {
             $db_class = GlobalsArk::DB_TYPES[GlobalsArk::$db_type];
             $db_class_file = preg_replace('/(^.*\\\\)/', '', $db_class);
             require_once 'NoidLib/custom' . DIRECTORY_SEPARATOR . $db_class_file . '.php';
-            Database::$engine = new $db_class("testNOID");
+            Database::$engine = new $db_class($dbname);
         }
         // function _dba_fetch_range() went as named "get_range()" to DatabaseInterface(BerkeleyDB and MysqlDB)
     }
