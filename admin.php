@@ -1,13 +1,11 @@
 <?php
-include "lib/noid/Noid.php";
 require_once "NoidUI.php";
 require_once "index.php";
-
-
 require_once "NoidLib/lib/Storage/MysqlDB.php";
 require_once 'NoidLib/custom/GlobalsArk.php';
 require_once 'NoidLib/lib/Db.php';
 require_once 'NoidLib/custom/Database.php';
+require_once 'NoidLib/custom/NoidArk.php';
 
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
@@ -19,6 +17,7 @@ use Noid\Lib\Log;
 
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
+use Noid\Lib\Custom\NoidArk;
 
 // set db type as mysql instead
 GlobalsArk::$db_type = 'ark_mysql';
@@ -296,7 +295,7 @@ function olddbcreate()
                         }
 
                         $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db/' . $database;
-                        $report = Database::custom_dbcreate( $database,
+                        $report = Database::dbcreate( $database,
                             $dbpath,
                             'utsc',
                             trim($_POST['enterPrefix']),
@@ -306,8 +305,6 @@ function olddbcreate()
                             trim($_POST['enterRedirect']),
                             trim($_POST['enterInsitutionName']),
                         );
-
-
                         header("Location: admin.php");
                     }
                     if (file_exists(NoidUI::dbpath())) {
@@ -386,17 +383,16 @@ function olddbcreate()
                     <div class="col-sm-7">
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number'])) {
-                            // create Ark service procession object
-                            $noidUI = new NoidUI();
 
-                            // execute command with entered params
-                            $result = $noidUI->exec_command("mint " . $_POST['mint-number'], $noidUI->path($_GET["db"]));
+                            $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                            $contact = time();
+                            while($_POST['mint-number']--){
+                                $id = NoidArk::mint($noid, $contact);
+                            };
+                            //$result = NoidArk::bind($noid, $contact, 1, 'set', "7 :/c", 'myelem', 'myvalue');
+                            //$result = NoidArk::fetch($noid, 1, "7 :/c", 'myelem');
 
-                            // remove any empty identifer happen to be in the result array
-                            $newIDs = array_filter(explode("id: ", $result));
 
-                            // Create an CSV and write minted identifiers to that new CSV
-                            $noidUI->mintToCSV($noidUI->path($_GET["db"]), $newIDs, time());
 
                             // redirect to the page.
                             header("Location: admin.php?db=" . $_GET["db"]);
