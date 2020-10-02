@@ -74,6 +74,28 @@ define("NAAN_UTSC", 61220);
                     {data: '_value'},
                 ]
             });
+
+            jQuery('#bound_table').DataTable({
+                //ajax: 'http://192.168.1.16:8080/rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>',
+                "ajax": {
+                    "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
+                    "dataSrc": ""
+                },
+                columns: [
+                    {data: 'id'},
+                    {data: 'metadata'},
+
+                ],
+                "columnDefs": [ {
+                    "targets": 1,
+                    "data": "metadata",
+                    "render":  function(data, type, row){
+                        data = data.split("|").join("<br/>");
+                        data = data.split(":").join(": ");
+                        return data;
+                    }
+                } ]
+            });
         });
 
     </script>
@@ -452,6 +474,20 @@ define("NAAN_UTSC", 61220);
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
                         ?>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <table id="bound_table" class="display" style="width:100%">
+                                    <thead>
+                                    <tr>
+                                        <th>Ark ID</th>
+                                        <th>Bound Data</th>
+                                    </tr>
+                                    </thead>
+                                </table>
+                            </div>
+
+                        </div>
+
                     </div>
                 </div>
             </div>

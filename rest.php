@@ -62,7 +62,8 @@ function selectBinded()
             $r = [];
         }
         $r['id'] = $currentID;
-        $r[$key_data[1]] = $row['_value'];
+        //$r[$key_data[1]] = $row['_value'];
+        $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
     }
     return json_encode($result);
 }
