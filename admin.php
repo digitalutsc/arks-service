@@ -23,45 +23,6 @@ use Noid\Lib\Custom\NoidArk;
 GlobalsArk::$db_type = 'ark_mysql';
 define("NAAN_UTSC", 61220);
 
-function olddbcreate()
-{
-
-    // check parent database folder created yet, if not, create it.
-    if (!file_exists($noidUI->path($database))) {
-        mkdir($noidUI->path($database), 0775);
-    }
-    // Execute dbcomment with entered parameters.
-    $result = $noidUI->exec_command("dbcreate " . $_POST['enterPrefix'] . $_POST['selectTemplate'] . " " . $_POST['identifier_minter'] . " 61220 " . $_POST['enterRedirect'] . " " . $_POST['enterInsitutionName'], $noidUI->path($database));
-
-    // check new database directory created yet. if yes, display success message, if not display error message.
-    $isReadable = file_exists($noidUI->path($database) . '/NOID/README');
-    if ($isReadable) {
-        $result = <<<EOS
-                                <div class="alert alert-success" role="alert">
-                                    New database <i>$database</i> created successfully.
-                                </div>
-                            EOS;
-        print $result;
-
-        //TODO: create a database's metadata file
-        $metadata = array(
-            "enterPrefix" => $_POST['enterPrefix'],
-            "selectTemplate" => $_POST['selectTemplate'],
-            "identifier_minter" => $_POST['identifier_minter'],
-            "enterRedirect" => $_POST['enterRedirect'],
-            "enterInsitutionName" => $_POST['enterInsitutionName'],
-        );
-        $noidUI->saveMetadataToCSV($noidUI->path($database), $database, $metadata);
-    } else {
-        $result = <<<EOS
-                                <div class="alert alert-danger" role="alert">
-                                    Sorry, failed to create <i>$database</i>.
-                                </div>
-                            EOS;
-        print $result;
-    }
-}
-
 ?>
 
 <html>
@@ -69,6 +30,13 @@ function olddbcreate()
     <title>Ark Services</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
           integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <link rel="stylesheet" href="datatables/datatables.min.css">
+    <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script type="text/javascript" language="javascript"
+            src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+
+    <script type="text/javascript" language="javascript" src="datatables/datatables.min.js"></script>
+
     <style>
         .form-group.required .control-label:after {
             content: "*";
@@ -94,7 +62,22 @@ function olddbcreate()
             ".redek": "prefix plus random 4 mixed digits, one of them a check char",
             ".reedeedk": 'Minting order is random with limit 70,728,100 entry,, prefix must be must be must be "f5",'
         };
+        $(document).ready(function () {
+            jQuery('#minted_table').DataTable({
+                //ajax: 'http://192.168.1.16:8080/rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>',
+                "ajax": {
+                    "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
+                    "dataSrc": ""
+                },
+                columns: [
+                    {data: '_key'},
+                    {data: '_value'},
+                ]
+            });
+        });
+
     </script>
+
 </head>
 <body>
 <div class="container">
@@ -290,12 +273,11 @@ function olddbcreate()
                         // create db directory if not exsit
 
                         if (!file_exists(getcwd() . "/db")) {
-                            var_dump(getcwd() . "/db");
                             mkdir(getcwd() . "/db", 0775);
                         }
 
-                        $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db/' . $database;
-                        $report = Database::dbcreate( $database,
+                        $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
+                        $report = Database::dbcreate($database,
                             $dbpath,
                             'utsc',
                             trim($_POST['enterPrefix']),
@@ -386,54 +368,43 @@ function olddbcreate()
 
                             $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
                             $contact = time();
-                            while($_POST['mint-number']--){
+                            while ($_POST['mint-number']--) {
                                 $id = NoidArk::mint($noid, $contact);
                             };
-                            //$result = NoidArk::bind($noid, $contact, 1, 'set', "7 :/c", 'myelem', 'myvalue');
-                            //$result = NoidArk::fetch($noid, 1, "7 :/c", 'myelem');
-
-
+                            print '
+                                <div class="alert alert-success" role="alert">
+                                    Ark IDs have been minted successfully.
+                                </div>
+                            ';
 
                             // redirect to the page.
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
-
-                        // List all minted identifer in csv which created each time execute mint
-                        if (file_exists(NoidUI::dbpath())) {
-                            $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/mint');
-                            if (count($dirs) > 2) {
-                                ?>
-                                <div class="row">
-                                    <table class="table table-bordered">
-                                        <thead>
-                                        <tr>
-                                            <th scope="col">Past minting</th>
-                                            <th scope="col">Date</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <?php
-                                        foreach ($dirs as $dir) {
-                                            if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                                                $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/mint/' . $dir . '">' . $dir . '</a>';
-                                                $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
-
-                                                print <<<EOS
-                                        <tr>
-                                            <td scope="row">$csv</td>
-                                            <td scope="row">$date</td>
-                                        </tr>
-                                    EOS;
-                                            }
-                                        }
-                                        ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            <?php }
-                        }
                         ?>
+                        <div class="row">
+                            <?php
+                            $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                            //$totalArkIDs = Database::$engine->get(Globals::_RR . "/oacounter");
+                            $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
+                            $totalArkIDs = Database::$engine->select("_key REGEXP '^$prefix' and _key REGEXP ':/c$'");
+                            /*print "<pre>";
+                            print_r ($prefix);
+                            print_r ($totalArkIDs);
+                            print "</pre>";*/
+                            ?>
 
+                            <div class="col-md-12">
+                                <table id="minted_table" class="display" style="width:100%">
+                                    <thead>
+                                    <tr>
+                                        <th>Ark ID</th>
+                                        <th>Value</th>
+                                    </tr>
+                                    </thead>
+                                </table>
+                            </div>
+
+                        </div>
 
                     </div>
                 </div>

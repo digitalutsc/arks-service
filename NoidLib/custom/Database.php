@@ -62,7 +62,6 @@ class Database
         $naa = '',
         $subnaa = '')
     {
-
         NoidArk::init($dbname);
 
         $total = NULL;
@@ -118,7 +117,7 @@ class Database
             return NULL;
         }
 
-        $noid = self::dbopen($dbdir, DatabaseInterface::DB_CREATE);
+        $noid = self::dbopen($dbname, $dbdir, DatabaseInterface::DB_CREATE);
         if (!$noid) {
             Log::addmsg(NULL, "error: a NOID database can not be created in: " . $dbdir . "." . PHP_EOL
                 . "\t" . 'To permit creation of a new minter, rename' . PHP_EOL
@@ -153,8 +152,6 @@ class Database
         self::$engine->set(GlobalsArk::_RR . "/wrap", $term === 'short');     # yyy follow through
 
         self::$engine->set(GlobalsArk::_RR . "/template", $template);
-        error_log("====== prefix =======");
-        error_log($prefix);
         self::$engine->set(GlobalsArk::_RR . "/prefix", $prefix);
         self::$engine->set(GlobalsArk::_RR . "/mask", $mask);
         self::$engine->set(GlobalsArk::_RR . "/firstpart", ($naan ? $naan . '/' : '') . $prefix);
@@ -374,10 +371,6 @@ class Database
         }
 
         $envhome = $dbdir . DIRECTORY_SEPARATOR . $dbname . DIRECTORY_SEPARATOR;
-
-        error_log("=============================");
-        error_log(print_r($envhome, true), 0);
-
         if(!is_dir($envhome) && !mkdir($envhome, 0755, TRUE)){
             $error = error_get_last();
             throw new Exception(sprintf("error: couldn't create database directory %s: %s", $envhome, $error['message']));
@@ -782,5 +775,4 @@ class Database
         print PHP_EOL;
         return 1;
     }
-
 }

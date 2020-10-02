@@ -127,6 +127,23 @@ class MysqlArkDB implements DatabaseInterface
     }
 
     /**
+     * Query ark data with any general where clause
+     * @param $where
+     * @return false|string
+     */
+    public function select($where) {
+
+        if(!($this->handle instanceof mysqli)){
+            return FALSE;
+        }
+
+        if($res = $this->handle->query("SELECT * FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE " . $where)){
+            return $res->fetch_all(MYSQLI_ASSOC);
+        }
+        return FALSE;
+    }
+
+    /**
      * @param string $key
      * @param string $value
      *

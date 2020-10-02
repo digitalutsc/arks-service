@@ -16,23 +16,32 @@ use Noid\Lib\Log;
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
 
+switch($_GET['op']) {
+    case "minted": {
+        echo getMinted();
+        break;
+    }
+    case "prefix": {
+        echo getPrefix();
+        break;
+    }
+    default: {
+        echo json_encode("Operation is mandatory");
+        break;
+    }
+}
 
-epxeriment();
-
-function epxeriment() {
+function getMinted() {
     GlobalsArk::$db_type = 'ark_mysql';
-    $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
-    $report = Database::dbcreate($dbpath, 'jak', ".zd", 'short');
+    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+    $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
+    $result = Database::$engine->select("_key REGEXP '^$prefix' and _key REGEXP ':/c$'");
+    return json_encode($result);
+}
 
-    /*$noid = Db::dbopen(getcwd() . DIRECTORY_SEPARATOR . 'db', DatabaseInterface::DB_WRITE);
-    $contact = time();
-
-    $n = 10;
-    while($n--){
-        $id = Noid::mint($noid, $contact);
-    };
-    $result = Noid::bind($noid, $contact, 1, 'set', "7 :/c", 'myelem', 'myvalue');
-    $result = Noid::fetch($noid, 1, "7 :/c", 'myelem');
-    print_r($result);
-    */
+function getPrefix(){
+    GlobalsArk::$db_type = 'ark_mysql';
+    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+    $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
+    return json_encode($prefix);
 }
