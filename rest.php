@@ -36,7 +36,16 @@ function getMinted() {
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
     $result = Database::$engine->select("_key REGEXP '^$prefix' and _key REGEXP ':/c$'");
-    return json_encode($result);
+    //return json_encode($result);
+    $json = array();
+    foreach ($result as $row) {
+        $urow= array();
+        $urow['_key'] = trim(str_replace(":/c", "", $row['_key']));
+        $urow['_value'] = $row['_value'];
+        array_push($json, (object)$urow);
+    }
+
+    return json_encode($json);
 }
 
 function getPrefix(){
