@@ -382,23 +382,12 @@ define("NAAN_UTSC", 61220);
                         }
                         ?>
                         <div class="row">
-                            <?php
-                            $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-                            //$totalArkIDs = Database::$engine->get(Globals::_RR . "/oacounter");
-                            $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
-                            $totalArkIDs = Database::$engine->select("_key REGEXP '^$prefix' and _key REGEXP ':/c$'");
-                            /*print "<pre>";
-                            print_r ($prefix);
-                            print_r ($totalArkIDs);
-                            print "</pre>";*/
-                            ?>
-
                             <div class="col-md-12">
                                 <table id="minted_table" class="display" style="width:100%">
                                     <thead>
                                     <tr>
                                         <th>Ark ID</th>
-                                        <th>Value</th>
+                                        <th>Minted Date</th>
                                     </tr>
                                     </thead>
                                 </table>
@@ -437,17 +426,28 @@ define("NAAN_UTSC", 61220);
                     <div class="col-sm-8">
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && !empty($_POST['enterIdentifier'])) {
-                            // create Ark service procession object
-                            $noidUI = new NoidUI();
 
-                            // Execute command with entered params
-                            $result = $noidUI->exec_command(" bind set " . $_POST['enterIdentifier'] . " " . $_POST['enterKey'] . " '" . $_POST['enterValue'] . "'", $noidUI->path($_GET["db"]));
 
-                            // display the rsults
-                            print('<div class="alert alert-info">');
-                            print("<p><strong>Result:</strong></p>");
-                            print($result);
-                            print("</div>");
+                            $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                            $contact = time();
+
+                            // check if ark ID exist
+                            $checkExisted = Database::$engine->select("_key REGEXP '^" . $_POST['enterIdentifier'] . "' and _key REGEXP ':/c$'");
+                            if (count($checkExisted) > 0) {
+                                $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], $_POST['enterKey'], $_POST['enterValue']);
+                                print '
+                                    <div class="alert alert-success" role="alert">
+                                        Ark IDs have been bound successfully.
+                                    </div>
+                                ';
+                            }
+                            else {
+                                print '
+                                    <div class="alert alert-warning" role="alert">
+                                        Ark IDs does not exist to be bound.
+                                    </div>
+                                ';
+                            }
                             // refresh the page to clear Post method.
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
