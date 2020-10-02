@@ -84,17 +84,27 @@ define("NAAN_UTSC", 61220);
                 columns: [
                     {data: 'id'},
                     {data: 'metadata'},
+                    {data: 'ark_url'},
 
                 ],
-                "columnDefs": [ {
-                    "targets": 1,
-                    "data": "metadata",
-                    "render":  function(data, type, row){
-                        data = data.split("|").join("<br/>");
-                        data = data.split(":").join(": ");
-                        return data;
+                "columnDefs": [
+                    {
+                        "targets": 1,
+                        "data": "metadata",
+                        "render": function (data, type, row) {
+                            data = data.split("|").join("<br/>");
+                            data = data.split(":").join(": ");
+                            return data;
+                        }
+                    },
+                    {
+                        "targets": 2,
+                        "data": "ark_url",
+                        "render": function (data, type, row) {
+                            return '<a href="'+data+'">'+data+'</a>';
+                        }
                     }
-                } ]
+                ]
             });
         });
 
@@ -462,8 +472,7 @@ define("NAAN_UTSC", 61220);
                                         Ark IDs have been bound successfully.
                                     </div>
                                 ';
-                            }
-                            else {
+                            } else {
                                 print '
                                     <div class="alert alert-warning" role="alert">
                                         Ark IDs does not exist to be bound.
@@ -481,6 +490,7 @@ define("NAAN_UTSC", 61220);
                                     <tr>
                                         <th>Ark ID</th>
                                         <th>Bound Data</th>
+                                        <th>Ark URL</th>
                                     </tr>
                                     </thead>
                                 </table>
