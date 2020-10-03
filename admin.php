@@ -31,10 +31,17 @@ define("NAAN_UTSC", 61220);
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
           integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
     <link rel="stylesheet" href="datatables/datatables.min.css">
+
     <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
     <script type="text/javascript" language="javascript"
             src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
+            integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+            integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
+            crossorigin="anonymous"></script>
     <script type="text/javascript" language="javascript" src="datatables/datatables.min.js"></script>
 
     <style>
@@ -72,6 +79,15 @@ define("NAAN_UTSC", 61220);
                 columns: [
                     {data: '_key'},
                     {data: '_value'},
+                ],
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        extend: 'csv',
+                        exportOptions: {
+                            columns: [0]
+                        }
+                    },
                 ]
             });
 
@@ -83,13 +99,14 @@ define("NAAN_UTSC", 61220);
                 },
                 columns: [
                     {data: 'id'},
+                    {data: 'PID'},
                     {data: 'metadata'},
                     {data: 'ark_url'},
 
                 ],
                 "columnDefs": [
                     {
-                        "targets": 1,
+                        "targets": 2,
                         "data": "metadata",
                         "render": function (data, type, row) {
                             data = data.split("|").join("<br/>");
@@ -98,10 +115,10 @@ define("NAAN_UTSC", 61220);
                         }
                     },
                     {
-                        "targets": 2,
+                        "targets": 3,
                         "data": "ark_url",
                         "render": function (data, type, row) {
-                            return '<a href="'+data+'">'+data+'</a>';
+                            return '<a href="' + data + '">' + data + '</a>';
                         }
                     }
                 ]
@@ -437,25 +454,112 @@ define("NAAN_UTSC", 61220);
             <h5 class="card-header">Bind Set</h5>
             <div class="card-body">
                 <div id="row-bindset" class="row">
-                    <div class="col-sm-4">
-                        <form id="form-bindset" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                            <div class="form-group">
-                                <label for="enterIdentifier">Identifier:</label>
-                                <input type="text" class="form-control" id="enterIdentifier" name="enterIdentifier"
-                                       required>
+                    <div class="col-sm-12">
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#bindsetModal">
+                            Bind Set
+                        </button>
+                        <div class="modal fade" id="bindsetModal" tabindex="-1" aria-labelledby="bindsetModalLabel"
+                             aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="bindsetModalLabel">Bind Set</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="col-sm-12">
+                                            <form id="form-bindset" method="post"
+                                                  action="./admin.php?db=<?php echo $_GET['db'] ?>">
+                                                <div class="form-group">
+                                                    <label for="enterIdentifier">Identifier:</label>
+                                                    <input type="text" class="form-control" id="enterIdentifier"
+                                                           name="enterIdentifier"
+                                                           required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="enterKey">Key:</label>
+                                                    <input type="text" class="form-control" id="enterKey"
+                                                           name="enterKey" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="enterValue">Value:</label>
+                                                    <input type="text" class="form-control" id="enterValue"
+                                                           name="enterValue" required>
+                                                </div>
+                                                <input type="submit" name="bindset" value="Bind"
+                                                       class="btn btn-primary"/>
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                                    Close
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="enterKey">Key:</label>
-                                <input type="text" class="form-control" id="enterKey" name="enterKey" required>
+                        </div>
+
+                        <!-- Bulk Bind Modal -->
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#bulkBindModal">
+                            Bulk Bind
+                        </button>
+                        <div class="modal fade" id="bulkBindModal" tabindex="-1" aria-labelledby="bulkBindModalLabel"
+                             aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="bulkBindModalLabel">Bulk Binding</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-sm-12">
+                                                <form id="form-import" method="post" enctype="multipart/form-data"
+                                                      action="./admin.php?db=<?php echo $_GET['db'] ?>">
+                                                    <div class="form-group">
+                                                        <p><strong><u>Note:</u></strong> For this section, please
+                                                            follow:</p>
+                                                        <ul>
+                                                            <li>Mint first</li>
+                                                            <li>Download the CSV with minted identifiers above and add
+                                                                fields as columns to the
+                                                                CSV
+                                                            </li>
+                                                            <li>Export as a CSV file (only accept CSV) .</li>
+                                                            <li>Import it below</li>
+                                                        </ul>
+
+                                                        <p><strong><label for="importCSV">Upload CSV: </label></strong>
+                                                        </p>
+                                                        <input type="file"
+                                                               id="importCSV" name="importCSV"
+                                                               accept=".csv">
+                                                        <small id="emailHelp" class="form-text text-muted">Only accept
+                                                            CSV</small>
+
+                                                    </div>
+                                                    <input type="submit" name="import" value="Bulk Bind"
+                                                           class="btn btn-primary"/>
+                                                    <button type="button" class="btn btn-secondary"
+                                                            data-dismiss="modal">Close
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="enterValue">Value:</label>
-                                <input type="text" class="form-control" id="enterValue" name="enterValue" required>
-                            </div>
-                            <input type="submit" name="bindset" value="Bind" class="btn btn-primary"/>
-                        </form>
+                        </div>
+
+
                     </div>
-                    <div class="col-sm-8">
+                </div>
+                <div class="row">
+                    <div class="col-sm-12">
                         <?php
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && !empty($_POST['enterIdentifier'])) {
 
@@ -466,7 +570,7 @@ define("NAAN_UTSC", 61220);
                             // check if ark ID exist
                             $checkExisted = Database::$engine->select("_key REGEXP '^" . $_POST['enterIdentifier'] . "' and _key REGEXP ':/c$'");
                             if (count($checkExisted) > 0) {
-                                $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], $_POST['enterKey'], $_POST['enterValue']);
+                                $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], strtoupper($_POST['enterKey']), $_POST['enterValue']);
                                 print '
                                     <div class="alert alert-success" role="alert">
                                         Ark IDs have been bound successfully.
@@ -482,149 +586,8 @@ define("NAAN_UTSC", 61220);
                             // refresh the page to clear Post method.
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
-                        ?>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <table id="bound_table" class="display" style="width:100%">
-                                    <thead>
-                                    <tr>
-                                        <th>Ark ID</th>
-                                        <th>Bound Data</th>
-                                        <th>Ark URL</th>
-                                    </tr>
-                                    </thead>
-                                </table>
-                            </div>
 
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <hr>
-        <div class="card">
-            <h5 class="card-header">Fetch</h5>
-            <div class="card-body">
-
-                <div id="row-fetch" class="row">
-                    <div class="col-sm-3">
-                        <form id="form-fetch" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                            <div class="form-group">
-                                <label for="exampleInputEmail1">Identifer:</label>
-                                <input type="text" class="form-control" id="identifer" name="identifer">
-                            </div>
-                            <input type="submit" name="fetch" value="Fetch" class="btn btn-primary"/>
-                        </form>
-                    </div>
-                    <div class="col-sm-9">
-
-                        <p>
-                            <?php
-
-                            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['fetch'])) {
-                                // creat an ark service processor
-                                $noidUI = new NoidUI();
-
-                                // execute the command with entered params
-                                $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path($_GET["db"]));
-
-                                // display the result
-                                print('<div class="alert alert-info">');
-                                print "<p><strong>Result:</strong></p>";
-                                print($result);
-                                print('</div>');
-
-                                // refresh the page to destroy post section
-                                header("Location: admin.php?db=" . $_GET["db"]);
-                            }
-                            ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr>
-        <div class="card">
-            <h5 class="card-header">Get</h5>
-            <div class="card-body">
-
-                <div id="row-fetch" class="row">
-                    <div class="col-sm-3">
-                        <form id="form-get" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                            <div class="form-group">
-                                <label for="exampleInputEmail1">Identifer:</label>
-                                <input type="text" class="form-control" id="identifer" name="identifer">
-                            </div>
-                            <div class="form-group">
-                                <label for="exampleInputEmail1">Key:</label>
-                                <input type="text" class="form-control" id="key" name="enterkey">
-                            </div>
-                            <input type="submit" name="get" value="Get" class="btn btn-primary"/>
-                        </form>
-                    </div>
-                    <div class="col-sm-9">
-
-                        <p>
-                            <?php
-                            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['get'])) {
-                                // generate Ark service procession object
-                                $noidUI = new NoidUI();
-
-                                // execute with entered params
-                                $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path($_GET["db"]));
-
-                                // display the results
-                                print('<div class="alert alert-info">');
-                                print "<p></p><strong>Result</strong></p>";
-                                print($result);
-                                print('</div>');
-
-                                // refresh the page to destroy post session
-                                header("Location: admin.php?db=" . $_GET["db"]);
-                            }
-                            ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <hr>
-        <div class="card">
-            <h5 class="card-header">Bulk Binding with minted identifiers(For Update)</h5>
-            <div class="card-body">
-                <div id="row-search" class="row">
-                    <div class="col-sm-6">
-                        <form id="form-import" method="post" enctype="multipart/form-data"
-                              action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                            <div class="form-group">
-                                <p><strong><u>Note:</u></strong> For this section, please follow:</p>
-                                <ul>
-                                    <li>Mint first</li>
-                                    <li>Download the CSV with minted identifiers above and add fields as columns to the
-                                        CSV
-                                    </li>
-                                    <li>Export as a CSV file (only accept CSV) .</li>
-                                    <li>Import it below</li>
-                                </ul>
-
-                                <p><strong><label for="importCSV">Upload CSV: </label></strong></p>
-                                <input type="file"
-                                       id="importCSV" name="importCSV"
-                                       accept=".csv">
-                                <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
-
-                            </div>
-                            <input type="submit" name="import" value="Bulk Bind" class="btn btn-primary"/>
-                        </form>
-                    </div>
-                    <div class="col-sm-6">
-                        <?php
+                        //handle bulk bind set
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
 
                             if (is_uploaded_file($_FILES['importCSV']['tmp_name'])) {
@@ -659,24 +622,41 @@ define("NAAN_UTSC", 61220);
                                         $num = count($data);
                                         $row++;
 
+
                                         $identifier = null;
                                         for ($c = 0; $c < $num; $c++) {
 
                                             // capture identifier (strictly recommend first column)
-                                            if ($columns[$c] === 'Identifer') {
-                                                $identifier = $data[$c];
+                                            if ($columns[$c] === 'Ark ID') {
+                                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+
+                                                if (empty($data[$c])) {
+                                                    // mint a new ark id
+                                                    $identifier = NoidArk::mint($noid, $contact);
+                                                    error_log(print_r("New minted: " . $identifier, true), 0);
+                                                }
+                                                else {
+                                                    $identifier = $data[$c];
+                                                }
+                                            }
+                                            if ($columns[$c] == "PID") {
+                                                // TOOD: check if PID exist
+                                                $checkExistedPID = Database::$engine->select("_value = '$data[$c]'");
+                                                if (count($checkExistedPID) > 0) {
+                                                    $identifier = preg_split('/\s+/', $checkExistedPID['_key'])[0];
+                                                }
                                             }
                                             if ($c > 0) { // avoid bindset identifier column
-                                                // mapping each column as params
-                                                $bindset_cmd = " bind set " . $identifier;
-                                                $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
-                                                $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
 
-                                                // display result of each bindset
-                                                print('<div class="alert alert-info">');
-                                                print "<p></p><strong>Result</strong></p>";
-                                                print($result);
-                                                print('</div>');
+                                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                                $contact = time();
+
+                                                // check if ark ID exist
+                                                $checkExisted = Database::$engine->select("_key REGEXP '^" . $identifier . "' and _key REGEXP ':/c$'");
+
+                                                if (count($checkExisted) > 0) {
+                                                    $result = NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($columns[$c]), $data[$c]);
+                                                }
                                             }
                                             if ($c == $num - 1) {
                                                 $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
@@ -694,6 +674,130 @@ define("NAAN_UTSC", 61220);
                             }
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
+
+
+                        ?>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <table id="bound_table" class="display" style="width:100%">
+                                    <thead>
+                                    <tr>
+                                        <th>Ark ID</th>
+                                        <th>PID</th>
+                                        <th>Bound Data</th>
+                                        <th>Ark URL</th>
+                                    </tr>
+                                    </thead>
+                                </table>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!--<hr>
+        <div class="card">
+            <h5 class="card-header">Fetch</h5>
+            <div class="card-body">
+
+                <div id="row-fetch" class="row">
+                    <div class="col-sm-3">
+                        <form id="form-fetch" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
+                            <div class="form-group">
+                                <label for="exampleInputEmail1">Identifer:</label>
+                                <input type="text" class="form-control" id="identifer" name="identifer">
+                            </div>
+                            <input type="submit" name="fetch" value="Fetch" class="btn btn-primary"/>
+                        </form>
+                    </div>
+                    <div class="col-sm-9">
+
+                        <p>
+                            <?php
+
+        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['fetch'])) {
+            // creat an ark service processor
+            $noidUI = new NoidUI();
+
+            // execute the command with entered params
+            $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path($_GET["db"]));
+
+            // display the result
+            print('<div class="alert alert-info">');
+            print "<p><strong>Result:</strong></p>";
+            print($result);
+            print('</div>');
+
+            // refresh the page to destroy post section
+            header("Location: admin.php?db=" . $_GET["db"]);
+        }
+        ?>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <hr>
+        <div class="card">
+            <h5 class="card-header">Get</h5>
+            <div class="card-body">
+
+                <div id="row-fetch" class="row">
+                    <div class="col-sm-3">
+                        <form id="form-get" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
+                            <div class="form-group">
+                                <label for="exampleInputEmail1">Identifer:</label>
+                                <input type="text" class="form-control" id="identifer" name="identifer">
+                            </div>
+                            <div class="form-group">
+                                <label for="exampleInputEmail1">Key:</label>
+                                <input type="text" class="form-control" id="key" name="enterkey">
+                            </div>
+                            <input type="submit" name="get" value="Get" class="btn btn-primary"/>
+                        </form>
+                    </div>
+                    <div class="col-sm-9">
+
+                        <p>
+                            <?php
+        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['get'])) {
+            // generate Ark service procession object
+            $noidUI = new NoidUI();
+
+            // execute with entered params
+            $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path($_GET["db"]));
+
+            // display the results
+            print('<div class="alert alert-info">');
+            print "<p></p><strong>Result</strong></p>";
+            print($result);
+            print('</div>');
+
+            // refresh the page to destroy post session
+            header("Location: admin.php?db=" . $_GET["db"]);
+        }
+        ?>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        -->
+
+        <hr>
+        <div class="card">
+            <h5 class="card-header">History of Bulk Bind</h5>
+            <div class="card-body">
+                <div id="row-search" class="row">
+                    <div class="col-sm-6">
+                        <?php
+
                         if (file_exists(NoidUI::dbpath())) {
                             // List all minted identifer in csv which created each time execute mint
                             $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_minted');

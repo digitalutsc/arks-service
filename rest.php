@@ -62,7 +62,10 @@ function selectBinded()
             $r = [];
         }
         $r['id'] = $currentID;
-        $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
+        if ($key_data[1] == 'PID')
+            $r['PID'] = $row['_value'];
+        else
+            $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
 
         // establish Ark URL
         $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
