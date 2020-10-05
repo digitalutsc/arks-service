@@ -49,11 +49,30 @@ switch ($_GET['op']) {
         echo getPrefix();
         break;
     }
+    case 'dbinfo': {
+        echo getDbInfo();
+        break;
+    }
     default:
     {
         echo json_encode("Operation is mandatory");
         break;
     }
+}
+
+function getDbInfo() {
+    GlobalsArk::$db_type = 'ark_mysql';
+    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+
+    $result = [
+        'prefix' => Database::$engine->get(Globals::_RR . "/prefix"),
+        'generator_type' => Database::$engine->get(Globals::_RR . "/generator_type"),
+        'naa' => Database::$engine->get(Globals::_RR . "/naa"),
+        'naan' => Database::$engine->get(Globals::_RR . "/naan"),
+        'template' => Database::$engine->get(Globals::_RR . "/template")
+    ];
+    Database::dbclose($noid);
+    return json_encode($result);
 }
 
 function selectBinded()
@@ -150,6 +169,7 @@ function getfirstpart()
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
     return json_encode($firstpart);
 }
+
 function getPrefix() {
 
     GlobalsArk::$db_type = 'ark_mysql';

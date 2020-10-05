@@ -385,7 +385,7 @@ define("NAAN_UTSC", 61220);
                                                 $setActive = "<strong>Selected</srong>";
                                                 $highlight = 'class="table-success"';
                                             }
-                                            $metadata = NoidUI::getDatabaseInfo(NoidUI::dbpath($dir), $dir);
+                                            $metadata = json_decode(rest_get("/rest.php?db=".$_GET['db']."&op=dbinfo"));
                                             $detail = "<p>";
                                             foreach ((array)$metadata as $key => $value) {
                                                 $detail .= "<strong>$key</strong>: $value <br />";
