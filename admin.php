@@ -425,7 +425,7 @@ define("NAAN_UTSC", 61220);
                                     Ark IDs have been minted successfully.
                                 </div>
                             ';
-
+                            Database::dbclose($noid);
                             // redirect to the page.
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
@@ -583,6 +583,7 @@ define("NAAN_UTSC", 61220);
                                     </div>
                                 ';
                             }
+                            Database::dbclose($noid);
                             // refresh the page to clear Post method.
                             header("Location: admin.php?db=" . $_GET["db"]);
                         }
@@ -638,6 +639,7 @@ define("NAAN_UTSC", 61220);
                                                 else {
                                                     $identifier = $data[$c];
                                                 }
+                                                Database::dbclose($noid);
                                             }
                                             if ($columns[$c] == "PID") {
                                                 // TOOD: check if PID exist
@@ -657,6 +659,7 @@ define("NAAN_UTSC", 61220);
                                                 if (count($checkExisted) > 0) {
                                                     $result = NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($columns[$c]), $data[$c]);
                                                 }
+                                                Database::dbclose($noid);
                                             }
                                             if ($c == $num - 1) {
                                                 $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';

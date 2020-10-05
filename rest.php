@@ -37,6 +37,14 @@ switch ($_GET['op']) {
         echo selectBinded();
         break;
     }
+    case "pid": {
+        echo getPID($_GET['ark_id']);
+        break;
+    }
+    case 'naa': {
+        echo getNAA();
+        break;
+    }
     default:
     {
         echo json_encode("Operation is mandatory");
@@ -89,8 +97,26 @@ function select($where = "")
         $urow['_value'] = $row['_value'];
         array_push($json, (object)$urow);
     }
-
+    Database::dbclose($noid);
     return json_encode($json);
+}
+
+function getPID($arkID) {
+    if (!isset($arkID))
+        return "Ark ID is not valid";
+    GlobalsArk::$db_type = 'ark_mysql';
+    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+    $result = Database::$engine->select("_key REGEXP '^$arkID' and _key REGEXP 'PID$'");
+    Database::dbclose($noid);
+    return json_encode($result);
+}
+
+function getNAA() {
+    GlobalsArk::$db_type = 'ark_mysql';
+    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+    $naa = Database::$engine->get(Globals::_RR . "/naa");
+    Database::dbclose($noid);
+    return json_encode($naa);
 }
 
 function getMinted()
@@ -109,7 +135,7 @@ function getMinted()
         $urow['_value'] = date("F j, Y, g:i a", $metadata[2]);
         array_push($json, (object)$urow);
     }
-
+    Database::dbclose($noid);
     return json_encode($json);
 }
 

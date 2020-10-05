@@ -1,8 +1,8 @@
 <?php
-include "lib/noid/Noid.php";
 require_once "NoidUI.php";
 require_once "NoidLib/lib/Storage/MysqlDB.php";
 require_once 'NoidLib/custom/GlobalsArk.php';
+require_once 'NoidLib/custom/NoidArk.php';
 require_once 'NoidLib/lib/Db.php';
 require_once 'NoidLib/custom/Database.php';
 
@@ -16,6 +16,7 @@ use Noid\Lib\Log;
 
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
+use Noid\Lib\Custom\NoidArk;
 
 
 if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
@@ -27,22 +28,45 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         GlobalsArk::$db_type = 'ark_mysql';
         foreach ($dirs as $dir) {
             if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                // TODO: Switch database within loop not working, need fixed
-                $noid = Database::dbopen($dir, getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-                $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
+                try {
+                    $result = rest_get("/rest.php?db=$dir&op=prefix");
+                    $prefix = json_decode($result);
+                    if(strpos($uid, $prefix) === 0) {
+                        // look up into this database
+                        $results = rest_get("/rest.php?db=$dir&op=pid&ark_id=$uid");
+                        $results = json_decode($results);
 
-                if(strpos($uid, $prefix) === 0) {
-                    // look up into this database
-                    $results = Database::$engine->select("_key REGEXP '^$uid' and _key  REGEXP 'PID$'");
-                    $dns = Database::$engine->get(Globals::_RR . "/naa");
-                    $url = "http://$dns/islandora/object/". $results[0]['_value'];
-                    break;
+                        $dns = json_decode(rest_get("/rest.php?db=$dir&op=naa"));
+                        $url = "http://$dns/islandora/object/". $results[0]->{'_value'};
+                        break;
+                    }
+                } catch (RequestException $e) {
+                    print_log($e->getMessage());
+                    return null;
                 }
+
             }
         }
-        header("Location: $url");
+        if (!empty($url)) {
+            header("Location: $url");
+        }
+        else {
+            print "Ark ID is not found.";
+        }
+
     }
 }
 else {
     print "invalid argument";
+}
+
+function rest_get($req) {
+    $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
+    $cURLConnection = curl_init();
+    curl_setopt($cURLConnection, CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'].$req);
+    curl_setopt($cURLConnection, CURLOPT_RETURNTRANSFER, true);
+
+    $result = curl_exec($cURLConnection);
+    curl_close($cURLConnection);
+    return $result;
 }
