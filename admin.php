@@ -328,7 +328,7 @@ define("NAAN_UTSC", 61220);
                         $ePrefixflag = false;
                         $dirs = scandir(NoidUI::dbpath());
                         foreach ($dirs as $db) {
-                            if (!in_array($db, ['.', '..', '.gitkeep'])) {
+                            if (!in_array($db, ['.', '..', '.gitkeep', 'log'])) {
                                 $pf = json_decode(rest_get("/rest.php?db=$db&op=prefix"));
 
                                 if ($pf === $_POST['enterPrefix']) {
@@ -362,7 +362,7 @@ define("NAAN_UTSC", 61220);
                     if (file_exists(NoidUI::dbpath())) {
                         // List all created databases in the table
                         $dirs = scandir(NoidUI::dbpath());
-                        if (is_array($dirs) && count($dirs) > 3) {
+                        if (is_array($dirs) && count($dirs) > 4) {
                             ?>
                             <div class="row">
                                 <table class="table table-bordered">
@@ -380,12 +380,12 @@ define("NAAN_UTSC", 61220);
                                     foreach ($dirs as $dir) {
                                         $highlight = "";
                                         $setActive = '<a href="./admin.php?db=' . $dir . '">Select</a>';
-                                        if (!in_array($dir, ['.', '..', '.gitkeep'])) {
+                                        if (!in_array($dir, ['.', '..', '.gitkeep', 'log'])) {
                                             if ((isset($_GET['db']) && $_GET['db'] == $dir)) {
                                                 $setActive = "<strong>Selected</srong>";
                                                 $highlight = 'class="table-success"';
                                             }
-                                            $metadata = json_decode(rest_get("/rest.php?db=".$_GET['db']."&op=dbinfo"));
+                                            $metadata = json_decode(rest_get("/rest.php?db=".$dir."&op=dbinfo"));
                                             $detail = "<p>";
                                             foreach ((array)$metadata as $key => $value) {
                                                 $detail .= "<strong>$key</strong>: $value <br />";
@@ -660,12 +660,12 @@ define("NAAN_UTSC", 61220);
                                                 else {
                                                     $identifier = $data[$c];
                                                 }
-                                                Database::dbclose($noid);
+
                                             }
                                             if ($columns[$c] == "PID") {
                                                 // TOOD: check if PID exist
                                                 $checkExistedPID = Database::$engine->select("_value = '$data[$c]'");
-                                                if (count($checkExistedPID) > 0) {
+                                                if (is_array($checkExistedPID) && count($checkExistedPID) > 0) {
                                                     $identifier = preg_split('/\s+/', $checkExistedPID['_key'])[0];
                                                 }
                                             }
@@ -676,16 +676,15 @@ define("NAAN_UTSC", 61220);
 
                                                 // check if ark ID exist
                                                 $checkExisted = Database::$engine->select("_key REGEXP '^" . $identifier . "' and _key REGEXP ':/c$'");
-
-                                                if (count($checkExisted) > 0) {
+                                                if (is_array($checkExisted) && count($checkExisted) > 0) {
                                                     $result = NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($columns[$c]), $data[$c]);
                                                 }
-                                                Database::dbclose($noid);
                                             }
                                             if ($c == $num - 1) {
                                                 $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
                                                 $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
                                             }
+                                            Database::dbclose($noid);
                                         }
                                         // add columns to import data array
                                         array_push($importedData, $data);
@@ -708,7 +707,7 @@ define("NAAN_UTSC", 61220);
                                     <tr>
                                         <th>Ark ID</th>
                                         <th>PID</th>
-                                        <th>Bound Data</th>
+                                        <th>Other Bound Data</th>
                                         <th>Ark URL</th>
                                     </tr>
                                     </thead>
