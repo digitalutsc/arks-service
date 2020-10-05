@@ -22,9 +22,9 @@ switch ($_GET['op']) {
         echo getMinted();
         break;
     }
-    case "prefix":
+    case "firstpart":
     {
-        echo getPrefix();
+        echo getfirstpart();
         break;
     }
     case 'select':
@@ -43,6 +43,10 @@ switch ($_GET['op']) {
     }
     case 'naa': {
         echo getNAA();
+        break;
+    }
+    case 'prefix': {
+        echo getPrefix();
         break;
     }
     default:
@@ -86,9 +90,9 @@ function select($where = "")
 {
     GlobalsArk::$db_type = 'ark_mysql';
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-    $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
+    $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
 
-    $result = Database::$engine->select("_key REGEXP '^$prefix' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key");
+    $result = Database::$engine->select("_key REGEXP '^$firstpart' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key");
     //return json_encode($result);
     $json = array();
     foreach ($result as $row) {
@@ -123,8 +127,8 @@ function getMinted()
 {
     GlobalsArk::$db_type = 'ark_mysql';
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-    $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
-    $result = Database::$engine->select("_key REGEXP '^$prefix' and _key REGEXP ':/c$'");
+    $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+    $result = Database::$engine->select("_key REGEXP '^$firstpart' and _key REGEXP ':/c$'");
     //return json_encode($result);
     $json = array();
     foreach ($result as $row) {
@@ -139,10 +143,17 @@ function getMinted()
     return json_encode($json);
 }
 
-function getPrefix()
+function getfirstpart()
 {
     GlobalsArk::$db_type = 'ark_mysql';
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-    $prefix = Database::$engine->get(Globals::_RR . "/firstpart");
+    $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+    return json_encode($firstpart);
+}
+function getPrefix() {
+
+    GlobalsArk::$db_type = 'ark_mysql';
+    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+    $prefix = Database::$engine->get(Globals::_RR . "/prefix");
     return json_encode($prefix);
 }

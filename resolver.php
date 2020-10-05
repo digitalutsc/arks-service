@@ -29,9 +29,9 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         foreach ($dirs as $dir) {
             if (!in_array($dir, ['.', '..', '.gitkeep'])) {
                 try {
-                    $result = rest_get("/rest.php?db=$dir&op=prefix");
-                    $prefix = json_decode($result);
-                    if(strpos($uid, $prefix) === 0) {
+                    $result = rest_get("/rest.php?db=$dir&op=firstpart");
+                    $firstpart = json_decode($result);
+                    if(strpos($uid, $firstpart) === 0) {
                         // look up into this database
                         $results = rest_get("/rest.php?db=$dir&op=pid&ark_id=$uid");
                         $results = json_decode($results);
