@@ -324,18 +324,39 @@ define("NAAN_UTSC", 61220);
                         if (!file_exists(getcwd() . "/db")) {
                             mkdir(getcwd() . "/db", 0775);
                         }
+                        // TODO : CHECK entered prefix exist or not
+                        $ePrefixflag = false;
+                        $dirs = scandir(NoidUI::dbpath());
+                        foreach ($dirs as $db) {
+                            if (!in_array($db, ['.', '..', '.gitkeep'])) {
+                                $pf = json_decode(rest_get("/rest.php?db=$db&op=prefix"));
 
-                        $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
-                        $report = Database::dbcreate($database,
-                            $dbpath,
-                            'utsc',
-                            trim($_POST['enterPrefix']),
-                            $_POST['selectTemplate'],
-                            $_POST['identifier_minter'],
-                            trim($_POST['enterNAAN']),
-                            trim($_POST['enterRedirect']),
-                            trim($_POST['enterInsitutionName']),
-                        );
+                                if ($pf === $_POST['enterPrefix']) {
+                                    $ePrefixflag = true;
+                                }
+                            }
+                        }
+                        if ($ePrefixflag === false) {
+                            $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
+                            $report = Database::dbcreate($database,
+                                $dbpath,
+                                'utsc',
+                                trim($_POST['enterPrefix']),
+                                $_POST['selectTemplate'],
+                                $_POST['identifier_minter'],
+                                trim($_POST['enterNAAN']),
+                                trim($_POST['enterRedirect']),
+                                trim($_POST['enterInsitutionName']),
+                            );
+                        }
+                        else {
+                            print '
+                                <div class="alert alert-danger" role="alert">
+                                    The entered prefix has been used, please enter another prefix
+                                </div>
+                            ';
+                        }
+
                         header("Location: admin.php");
                     }
                     if (file_exists(NoidUI::dbpath())) {
@@ -998,3 +1019,17 @@ define("NAAN_UTSC", 61220);
 </div>
 </body>
 </html>
+
+<?php
+
+
+function rest_get($req) {
+    $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
+    $cURLConnection = curl_init();
+    curl_setopt($cURLConnection, CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'].$req);
+    curl_setopt($cURLConnection, CURLOPT_RETURNTRANSFER, true);
+
+    $result = curl_exec($cURLConnection);
+    curl_close($cURLConnection);
+    return $result;
+}
