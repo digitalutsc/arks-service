@@ -390,25 +390,23 @@ $arkdbs = Database::showdatabases();
                                     foreach ($arkdbs as $db[0]) {
                                         $highlight = "";
                                         $setActive = '<a href="./admin.php?db=' . $db[0] . '">Select</a>';
-                                        if (!in_array($db[0], ['.', '..', '.gitkeep', 'log'])) {
-                                            if ((isset($_GET['db']) && $_GET['db'] == $db[0])) {
-                                                $setActive = "<strong>Selected</srong>";
-                                                $highlight = 'class="table-success"';
-                                            }
-                                            $metadata = json_decode(rest_get("/rest.php?db=" . $db[0] . "&op=dbinfo"));
-                                            $detail = "<p>";
-                                            foreach ((array)$metadata as $key => $value) {
-                                                $detail .= "<strong>$key</strong>: $value <br />";
-                                            }
-                                            $detail .= "</p>";
-                                            print <<<EOS
+                                        if ((isset($_GET['db']) && $_GET['db'] == $db[0])) {
+                                            $setActive = "<strong>Selected</srong>";
+                                            $highlight = 'class="table-success"';
+                                        }
+                                        $metadata = json_decode(rest_get("/rest.php?db=" . $db[0] . "&op=dbinfo"));
+                                        $detail = "<p>";
+                                        foreach ((array)$metadata as $key => $value) {
+                                            $detail .= "<strong>$key</strong>: $value <br />";
+                                        }
+                                        $detail .= "</p>";
+                                        print <<<EOS
                                                     <tr $highlight>
                                                         <td scope="row">$db[0]</td>
                                                         <td scope="row">$setActive</td>
                                                         <td scope="row">$detail</td>
                                                     </tr>
                                                 EOS;
-                                        }
                                     }
                                     ?>
                                     </tbody>

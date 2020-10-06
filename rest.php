@@ -64,7 +64,7 @@ switch ($_GET['op']) {
 
 function getDbInfo() {
     GlobalsArk::$db_type = 'ark_mysql';
-
+    
     if (!Database::exist($_GET['db'])) {
         die('Database not found');
     }

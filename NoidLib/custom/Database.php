@@ -89,7 +89,7 @@ class Database
         $existed = false;
         foreach ($dbs as $db) {
             $db = $db[0];
-            if ($dbname === $db) {
+            if (strcmp($dbname, $db)) {
                 $existed = true;
                 break;
             }
