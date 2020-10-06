@@ -34,7 +34,7 @@ switch ($_GET['op']) {
     }
     case 'bound':
     {
-        echo selectBinded();
+        echo selectBound();
         break;
     }
     case "pid": {
@@ -75,7 +75,7 @@ function getDbInfo() {
     return json_encode($result);
 }
 
-function selectBinded()
+function selectBound()
 {
     $rows = json_decode(select());
     array_push($rows, (object)[]);
@@ -95,8 +95,8 @@ function selectBinded()
         $r['id'] = $currentID;
         if ($key_data[1] == 'PID')
             $r['PID'] = $row['_value'];
-        else
-            $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
+
+        $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
 
         // establish Ark URL
         $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';

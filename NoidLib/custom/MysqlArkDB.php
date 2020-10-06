@@ -12,7 +12,6 @@ use \mysqli;
 use \mysqli_result;
 
 
-
 class MysqlArkDB implements DatabaseInterface
 {
     protected $db_name;
@@ -48,6 +47,7 @@ class MysqlArkDB implements DatabaseInterface
             throw new Exception('Mysql connection error: ' . $this->handle->connect_errno);
         }
     }
+
     /**
      * @param string $name
      * @param string $mode
@@ -57,10 +57,10 @@ class MysqlArkDB implements DatabaseInterface
      */
     public function open($name, $mode)
     {
-        if(is_null($this->handle))
+        if (is_null($this->handle))
             $this->connect();
 
-        if(!is_null($this->handle)){
+        if (!is_null($this->handle)) {
             // determine the database name.
             $database = empty(MysqlArkConf::$mysql_dbname) ? trim(MysqlArkConf::$mysql_dbname) : $this->db_name;
 
@@ -74,7 +74,7 @@ class MysqlArkDB implements DatabaseInterface
             $this->handle->query("CREATE TABLE IF NOT EXISTS `" . DatabaseInterface::TABLE_NAME . "` (  `_key` VARCHAR(512) NOT NULL, `_value` VARCHAR(4096) DEFAULT NULL, PRIMARY KEY (`_key`))");
 
             // when create db
-            if(strpos(strtolower($mode), DatabaseInterface::DB_CREATE) !== FALSE){
+            if (strpos(strtolower($mode), DatabaseInterface::DB_CREATE) !== FALSE) {
                 // if create mode, truncate the table records.
                 $this->handle->query("TRUNCATE TABLE `" . DatabaseInterface::TABLE_NAME . "`");
             }
@@ -94,7 +94,7 @@ class MysqlArkDB implements DatabaseInterface
      */
     public function close()
     {
-        if(!($this->handle instanceof mysqli)){
+        if (!($this->handle instanceof mysqli)) {
             return;
         }
 
@@ -110,13 +110,13 @@ class MysqlArkDB implements DatabaseInterface
      */
     public function get($key)
     {
-        if(!($this->handle instanceof mysqli)){
+        if (!($this->handle instanceof mysqli)) {
             return FALSE;
         }
 
         $key = htmlspecialchars($key, ENT_QUOTES | ENT_HTML401);
 
-        if($res = $this->handle->query("SELECT `_value` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` = '{$key}'")){
+        if ($res = $this->handle->query("SELECT `_value` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` = '{$key}'")) {
             $row = $res->fetch_array(MYSQLI_NUM);
             $ret_val = $row[0];
             $res->free();
@@ -125,19 +125,20 @@ class MysqlArkDB implements DatabaseInterface
         }
         return FALSE;
     }
-
+    
     /**
      * Query ark data with any general where clause
      * @param $where
      * @return false|string
      */
-    public function select($where) {
+    public function select($where)
+    {
 
-        if(!($this->handle instanceof mysqli)){
+        if (!($this->handle instanceof mysqli)) {
             return FALSE;
         }
 
-        if($res = $this->handle->query("SELECT * FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE " . $where)){
+        if ($res = $this->handle->query("SELECT * FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE " . $where)) {
             return $res->fetch_all(MYSQLI_ASSOC);
         }
         return FALSE;
@@ -152,7 +153,7 @@ class MysqlArkDB implements DatabaseInterface
      */
     public function set($key, $value)
     {
-        if(!($this->handle instanceof mysqli)){
+        if (!($this->handle instanceof mysqli)) {
             return FALSE;
         }
 
@@ -171,7 +172,7 @@ class MysqlArkDB implements DatabaseInterface
      */
     public function delete($key)
     {
-        if(!($this->handle instanceof mysqli)){
+        if (!($this->handle instanceof mysqli)) {
             return FALSE;
         }
 
@@ -188,15 +189,15 @@ class MysqlArkDB implements DatabaseInterface
      */
     public function exists($key)
     {
-        if(!($this->handle instanceof mysqli)){
+        if (!($this->handle instanceof mysqli)) {
             return FALSE;
         }
 
         $key = htmlspecialchars($key, ENT_QUOTES | ENT_HTML401);
 
         /** @var mysqli_result $res */
-        if($res = $this->handle->query("SELECT `_key` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` = '{$key}'")){
-            if($res->num_rows > 0)
+        if ($res = $this->handle->query("SELECT `_key` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` = '{$key}'")) {
+            if ($res->num_rows > 0)
                 return TRUE;
             else
                 return FALSE;
@@ -214,7 +215,7 @@ class MysqlArkDB implements DatabaseInterface
      */
     public function get_range($pattern)
     {
-        if(is_null($pattern) || !($this->handle instanceof mysqli)){
+        if (is_null($pattern) || !($this->handle instanceof mysqli)) {
             return NULL;
         }
         $results = array();
@@ -222,8 +223,8 @@ class MysqlArkDB implements DatabaseInterface
         /** @var mysqli_result $res */
         $pattern = htmlspecialchars($pattern, ENT_QUOTES | ENT_HTML401);
 
-        if($res = $this->handle->query("SELECT `_key`, `_value` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` LIKE '%{$pattern}%'")){
-            while($row = $res->fetch_array(MYSQLI_NUM)){
+        if ($res = $this->handle->query("SELECT `_key`, `_value` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` LIKE '%{$pattern}%'")) {
+            while ($row = $res->fetch_array(MYSQLI_NUM)) {
                 $key = htmlspecialchars_decode($row[0], ENT_QUOTES | ENT_HTML401);
                 $value = htmlspecialchars_decode($row[1], ENT_QUOTES | ENT_HTML401);
                 $results[$key] = $value;
@@ -250,7 +251,7 @@ class MysqlArkDB implements DatabaseInterface
      */
     public function import($src_db)
     {
-        if(is_null($src_db) || is_null($this->handle) || !($this->handle instanceof mysqli)){
+        if (is_null($src_db) || is_null($this->handle) || !($this->handle instanceof mysqli)) {
             return FALSE;
         }
 
@@ -259,12 +260,12 @@ class MysqlArkDB implements DatabaseInterface
 
         // 2. get data from source database.
         $imported_data = $src_db->get_range('');
-        if(count($imported_data) == 0){
+        if (count($imported_data) == 0) {
             return FALSE;
         }
 
         // 3. write 'em all into this database.
-        foreach($imported_data as $k => $v){
+        foreach ($imported_data as $k => $v) {
             $this->set($k, $v);
         }
 

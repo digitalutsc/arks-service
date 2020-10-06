@@ -2,6 +2,7 @@
 
 namespace Noid\Lib\Custom;
 require_once "NoidLib/custom/NoidArk.php";
+require_once "NoidLib/custom/GlobalsArk.php";
 require_once 'NoidLib/lib/Generator.php';
 require_once 'NoidLib/lib/Helper.php';
 require_once 'NoidLib/lib/Log.php';
@@ -15,6 +16,7 @@ use Noid\Lib\Globals;
 use Noid\Lib\Helper;
 use Noid\Lib\Log;
 use Noid\Lib\Custom\NoidArk;
+use Noid\Lib\Custom\GlobalsArk;
 use \Exception;
 use Noid\Lib\Storage\DatabaseInterface;
 
@@ -40,6 +42,43 @@ class Database
      * @var string $_db_lock
      */
     static protected $_db_lock = 'd';
+
+    /**
+     *
+     * @param string $name
+     */
+    public function showDatabases($name = "")
+    {
+        $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd);
+
+        if (!$link) {
+            echo "Error: Unable to connect to MySQL." . PHP_EOL;
+            echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+            echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+            exit;
+        }
+
+        if ($query = mysqli_query($link, "SHOW DATABASES")) {
+
+            if (!mysqli_query($link, "SET @a:='this will not work'")) {
+                printf("Error: %s\n", mysqli_error($query));
+            }
+            $results = $query->fetch_all();
+
+            $arkdbs = [];
+            foreach ($results as $db) {
+                if (strpos($db[0], GlobalsArk::$db_prefix) === 0) {
+                    // It starts with 'http'
+                    array_push($arkdbs, $db[0]);
+                }
+            }
+
+            $query->close();
+        }
+        mysqli_close($link);
+        return $arkdbs;
+    }
+
 
 
     /**

@@ -6,6 +6,7 @@ require_once 'NoidLib/custom/GlobalsArk.php';
 require_once 'NoidLib/lib/Db.php';
 require_once 'NoidLib/custom/Database.php';
 require_once 'NoidLib/custom/NoidArk.php';
+require_once 'NoidLib/custom/MysqlArkConf.php';
 
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
@@ -17,146 +18,155 @@ use Noid\Lib\Log;
 
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
+use Noid\Lib\Custom\MysqlArkConf;
 use Noid\Lib\Custom\NoidArk;
 
 // set db type as mysql instead
 GlobalsArk::$db_type = 'ark_mysql';
 define("NAAN_UTSC", 61220);
-
+$arkdbs = Database::showdatabases();
 ?>
 
-<html>
-<head>
-    <title>Ark Services</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-          integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-    <link rel="stylesheet" href="datatables/datatables.min.css">
+    <html>
+    <head>
+        <title>Ark Services</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+              integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
+              crossorigin="anonymous">
+        <link rel="stylesheet" href="datatables/datatables.min.css">
 
-    <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-    <script type="text/javascript" language="javascript"
-            src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+        <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+        <script type="text/javascript" language="javascript"
+                src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
-            integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
-            crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
-            integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
-            crossorigin="anonymous"></script>
-    <script type="text/javascript" language="javascript" src="datatables/datatables.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
+                integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
+                crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+                integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
+                crossorigin="anonymous"></script>
+        <script type="text/javascript" language="javascript" src="datatables/datatables.min.js"></script>
 
-    <style>
-        .form-group.required .control-label:after {
-            content: "*";
-            color: #ff0000;
-        }
-    </style>
-    <script>
-        var noidTemplates = {
-            ".rddd": "to mint random 3-digit numbers, stopping after 1000th",
-            ".sdddddd": "to mint sequential 6-digit numbers, stopping after millionth",
-            ".zd": "sequential numbers without limit, adding new digits as needed",
-            ".rdddd": "random 4-digit numbers with constant, prefix must be must be bc",
-            ".sdd": "sequential 2-digit numbers with constant, prefix must be must be 8rf",
-            ".se": "sequential extended-digits (from 0123456789bcdfghjkmnpqrstvwxz)",
-            ".reee": "random 3-extended-digit numbers with constant, prefix must be must be h9",
-            ".zeee": "unlimited sequential numbers with at least 3 extended-digits",
-            ".rdedeedd": "random 7-char numbers, extended-digits at chars 2, 4, and 5",
-            ".zededede": "unlimited mixed digits, adding new extended-digits as needed",
-            ".sdede": "sequential 4-mixed-digit numbers with constant, prefix must be must be sdd",
-            ".rdedk": "random 3 mixed digits plus final (4th) computed check character",
-            ".sdeeedk": "5 sequential mixed digits plus final extended-digit check char",
-            ".zdeek": "sequential digits plus check char, new digits added as needed",
-            ".redek": "prefix plus random 4 mixed digits, one of them a check char",
-            ".reedeedk": 'Minting order is random with limit 70,728,100 entry,, prefix must be must be must be "f5",'
-        };
-        $(document).ready(function () {
-            jQuery('#minted_table').DataTable({
-                //ajax: 'http://192.168.1.16:8080/rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>',
-                "ajax": {
-                    "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
-                    "dataSrc": ""
-                },
-                columns: [
-                    {data: '_key'},
-                    {data: '_value'},
-                ],
-                dom: 'Bfrtip',
-                buttons: [
-                    {
-                        extend: 'csv',
-                        exportOptions: {
-                            columns: [0]
-                        }
+        <style>
+            .form-group.required .control-label:after {
+                content: "*";
+                color: #ff0000;
+            }
+        </style>
+        <script>
+            var noidTemplates = {
+                ".rddd": "to mint random 3-digit numbers, stopping after 1000th",
+                ".sdddddd": "to mint sequential 6-digit numbers, stopping after millionth",
+                ".zd": "sequential numbers without limit, adding new digits as needed",
+                ".rdddd": "random 4-digit numbers with constant, prefix must be must be bc",
+                ".sdd": "sequential 2-digit numbers with constant, prefix must be must be 8rf",
+                ".se": "sequential extended-digits (from 0123456789bcdfghjkmnpqrstvwxz)",
+                ".reee": "random 3-extended-digit numbers with constant, prefix must be must be h9",
+                ".zeee": "unlimited sequential numbers with at least 3 extended-digits",
+                ".rdedeedd": "random 7-char numbers, extended-digits at chars 2, 4, and 5",
+                ".zededede": "unlimited mixed digits, adding new extended-digits as needed",
+                ".sdede": "sequential 4-mixed-digit numbers with constant, prefix must be must be sdd",
+                ".rdedk": "random 3 mixed digits plus final (4th) computed check character",
+                ".sdeeedk": "5 sequential mixed digits plus final extended-digit check char",
+                ".zdeek": "sequential digits plus check char, new digits added as needed",
+                ".redek": "prefix plus random 4 mixed digits, one of them a check char",
+                ".reedeedk": 'Minting order is random with limit 70,728,100 entry,, prefix must be must be must be "f5",'
+            };
+            <?php
+            if (isset($_GET['db']) ) {
+            ?>
+            $(document).ready(function () {
+                jQuery('#minted_table').DataTable({
+                    "ajax": {
+                        "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
+                        "dataSrc": ""
                     },
-                ]
-            });
+                    columns: [
+                        {data: '_key'},
+                        {data: '_value'},
+                    ],
+                    dom: 'Bfrtip',
+                    buttons: [
+                        {
+                            extend: 'csv',
+                            exportOptions: {
+                                columns: [0]
+                            }
+                        },
+                    ]
+                });
 
-            jQuery('#bound_table').DataTable({
-                //ajax: 'http://192.168.1.16:8080/rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>',
-                "ajax": {
-                    "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
-                    "dataSrc": ""
-                },
-                columns: [
-                    {data: 'id'},
-                    {data: 'PID'},
-                    {data: 'metadata'},
-                    {data: 'ark_url'},
-
-                ],
-                "columnDefs": [
-                    {
-                        "targets": 2,
-                        "data": "metadata",
-                        "render": function (data, type, row) {
-                            data = data.split("|").join("<br/>");
-                            data = data.split(":").join(": ");
-                            return data;
-                        }
+                jQuery('#bound_table').DataTable({
+                    "ajax": {
+                        "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
+                        "dataSrc": ""
                     },
-                    {
-                        "targets": 3,
-                        "data": "ark_url",
-                        "render": function (data, type, row) {
-                            return '<a href="' + data + '">' + data + '</a>';
+                    columns: [
+                        {data: 'id'},
+                        {data: 'PID'},
+                        {data: 'metadata'},
+                        {data: 'ark_url'},
+
+                    ],
+                    "columnDefs": [
+                        {
+                            "targets": 2,
+                            "data": "metadata",
+                            "render": function (data, type, row) {
+                                if (data !== undefined && data.indexOf("|") != -1) {
+                                    data = data.split("|").join("<br/>");
+                                    data = data.split(":").join(": ");
+                                }
+                                return data;
+                            }
+                        },
+                        {
+                            "targets": 3,
+                            "data": "ark_url",
+                            "render": function (data, type, row) {
+                                return '<a href="' + data + '">' + data + '</a>';
+                            }
                         }
-                    }
-                ]
+                    ]
+                });
             });
-        });
-
-    </script>
-
-</head>
-<body>
-<div class="container">
+            <?php
+            }
+            ?>
 
 
-    <div class="row">
-        <div class="col-sm text-center">
-            <h1 class="text-center">Ark Service</h1>
-            <a href="/logout.php">Logout</a>
+        </script>
+
+    </head>
+    <body>
+    <div class="container">
+
+
+        <div class="row">
+            <div class="col-sm text-center">
+                <h1 class="text-center">Ark Service</h1>
+                <a href="/logout.php">Logout</a>
+            </div>
         </div>
-    </div>
 
 
-    <div class="card">
-        <?php
-        if (isset($_GET['db'])) {
-            print '<h5 class="card-header">Database <i>' . $_GET['db'] . '</i> is selected.</h5>';
-        } else {
-            print <<<EOS
+        <div class="card">
+            <?php
+            if (isset($_GET['db'])) {
+                print '<h5 class="card-header">Database <i>' . $_GET['db'] . '</i> is selected.</h5>';
+            } else {
+                print <<<EOS
                     <h5 class="card-header">Create Database</h5>
                 EOS;
-        }
-        ?>
+            }
+            ?>
 
-        <div class="card-body">
-            <div id="row-dbcreate" class="row">
-                <div class="col-sm-6">
-                    <?php
-                    if (!isset($_GET['db'])) {
-                        print <<<EOS
+            <div class="card-body">
+                <div id="row-dbcreate" class="row">
+                    <div class="col-sm-6">
+                        <?php
+                        if (!isset($_GET['db'])) {
+                            print <<<EOS
                             <form id="form-dbcreate" action="./admin.php" method="post">
                                 <div class="form-group">
                                     <label for="enterDatabaseName">Database Name:</label>
@@ -241,7 +251,7 @@ define("NAAN_UTSC", 61220);
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label for="enterDatabaseName">Prefix:</label>
+                                    <label for="enterDatabaseName">Prefix (must be unique):</label>
                                     <input type="text" class="form-control" id="enterPrefix" name="enterPrefix" required/>
                                 </div> 
                                 
@@ -276,7 +286,6 @@ define("NAAN_UTSC", 61220);
                                         <option>medium</option>
                                         <option>long</option>
                                     </select>
-                                    <small id="termHelp" class="form-text text-muted">For more infomration  </small>
                                 </div>
                                 
                                 <div class="form-group">
@@ -302,427 +311,434 @@ define("NAAN_UTSC", 61220);
                             </form>
                             EOS;
 
-                    } else {
-                        print <<<EOS
+                        } else {
+                            print <<<EOS
                             <a class="btn btn-secondary" href="./admin.php">Reset</a>
                         EOS;
-                    }
-                    ?>
-
-                </div>
-                <div class="col-sm-6">
-                    <?php
-                    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
-                        // Repace white space (if there is) with underscore
-                        $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
-
-                        // generate an ark service processing object
-                        $noidUI = new NoidUI();
-
-                        // create db directory if not exsit
-
-                        if (!file_exists(getcwd() . "/db")) {
-                            mkdir(getcwd() . "/db", 0775);
                         }
-                        // TODO : CHECK entered prefix exist or not
-                        $ePrefixflag = false;
-                        $dirs = scandir(NoidUI::dbpath());
-                        foreach ($dirs as $db) {
-                            if (!in_array($db, ['.', '..', '.gitkeep', 'log'])) {
-                                $pf = json_decode(rest_get("/rest.php?db=$db&op=prefix"));
+                        ?>
 
-                                if ($pf === $_POST['enterPrefix']) {
-                                    $ePrefixflag = true;
+                    </div>
+                    <div class="col-sm-6">
+                        <?php
+                        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
+                            // Repace white space (if there is) with underscore
+                            $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
+
+                            // add prefix to database.
+                            $database = GlobalsArk::$db_prefix . $database;
+
+                            // generate an ark service processing object
+                            $noidUI = new NoidUI();
+
+                            // create db directory if not exsit
+
+                            if (!file_exists(getcwd() . "/db")) {
+                                mkdir(getcwd() . "/db", 0775);
+                            }
+                            // TODO : CHECK entered prefix exist or not
+                            $ePrefixflag = false;
+
+                            foreach ($arkdbs as $db) {
+                                $db = $db[0];
+                                if (!in_array($db[0], ['.', '..', '.gitkeep', 'log'])) {
+                                    $pf = json_decode(rest_get("/rest.php?db=$db[0]&op=prefix"));
+
+                                    if ($pf === $_POST['enterPrefix']) {
+                                        $ePrefixflag = true;
+                                    }
                                 }
                             }
-                        }
-                        if ($ePrefixflag === false) {
-                            $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
-                            $report = Database::dbcreate($database,
-                                $dbpath,
-                                'utsc',
-                                trim($_POST['enterPrefix']),
-                                $_POST['selectTemplate'],
-                                $_POST['identifier_minter'],
-                                trim($_POST['enterNAAN']),
-                                trim($_POST['enterRedirect']),
-                                trim($_POST['enterInsitutionName']),
-                            );
-                        }
-                        else {
-                            print '
+                            if ($ePrefixflag === false) {
+                                $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
+                                $report = Database::dbcreate($database,
+                                    $dbpath,
+                                    'utsc',
+                                    trim($_POST['enterPrefix']),
+                                    $_POST['selectTemplate'],
+                                    $_POST['identifier_minter'],
+                                    trim($_POST['enterNAAN']),
+                                    trim($_POST['enterRedirect']),
+                                    trim($_POST['enterInsitutionName']),
+                                );
+                            } else {
+                                print '
                                 <div class="alert alert-danger" role="alert">
                                     The entered prefix has been used, please enter another prefix
                                 </div>
                             ';
+                            }
+
+                            header("Location: admin.php");
                         }
 
-                        header("Location: admin.php");
-                    }
-                    if (file_exists(NoidUI::dbpath())) {
                         // List all created databases in the table
-                        $dirs = scandir(NoidUI::dbpath());
-                        if (is_array($dirs) && count($dirs) > 4) {
+                        if (count($arkdbs) > 0) {
+
                             ?>
                             <div class="row">
                                 <table class="table table-bordered">
                                     <thead>
                                     <tr>
-                                        <th scope="col">Past database</th>
-                                        <th scope="col">Select</th>
+                                        <th scope="col">Databases</th>
+                                        <th scope="col">Status</th>
                                         <th scope="col">Basic Info</th>
                                     </tr>
                                     </thead>
                                     <tbody>
                                     <?php
-
-
-                                    foreach ($dirs as $dir) {
+                                    foreach ($arkdbs as $db[0]) {
                                         $highlight = "";
-                                        $setActive = '<a href="./admin.php?db=' . $dir . '">Select</a>';
-                                        if (!in_array($dir, ['.', '..', '.gitkeep', 'log'])) {
-                                            if ((isset($_GET['db']) && $_GET['db'] == $dir)) {
+                                        $setActive = '<a href="./admin.php?db=' . $db[0] . '">Select</a>';
+                                        if (!in_array($db[0], ['.', '..', '.gitkeep', 'log'])) {
+                                            if ((isset($_GET['db']) && $_GET['db'] == $db[0])) {
                                                 $setActive = "<strong>Selected</srong>";
                                                 $highlight = 'class="table-success"';
                                             }
-                                            $metadata = json_decode(rest_get("/rest.php?db=".$dir."&op=dbinfo"));
+                                            $metadata = json_decode(rest_get("/rest.php?db=" . $db[0] . "&op=dbinfo"));
                                             $detail = "<p>";
                                             foreach ((array)$metadata as $key => $value) {
                                                 $detail .= "<strong>$key</strong>: $value <br />";
                                             }
                                             $detail .= "</p>";
                                             print <<<EOS
-                                        <tr $highlight>
-                                            <td scope="row">$dir</td>
-                                            <td scope="row">$setActive</td>
-                                            <td scope="row">$detail</td>
-                                        </tr>
-                                    EOS;
+                                                    <tr $highlight>
+                                                        <td scope="row">$db[0]</td>
+                                                        <td scope="row">$setActive</td>
+                                                        <td scope="row">$detail</td>
+                                                    </tr>
+                                                EOS;
                                         }
                                     }
                                     ?>
                                     </tbody>
                                 </table>
                             </div>
-                        <?php }
-                    }
-                    ?>
+                            <?php
+                        }
+                        ?>
+
+                    </div>
 
                 </div>
-
             </div>
         </div>
-    </div>
 
-    <?php
-    if (isset($_GET['db'])) { // if a database is selected (db name appears in the URL
-        ?>
-        <hr>
-        <div class="card">
-            <h5 class="card-header">Minting</h5>
-            <div class="card-body">
-                <div id="row-mint" class="row">
-                    <div class="col-sm-5">
-                        <form id="form-mint" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                            <div class="form-group">
-                                <input type="hidden" name="db" value="<?php echo $_GET['db'] ?>">
-                                <label for="exampleInputEmail1">How many:</label>
-                                <input type="number" class="form-control" id="mint-number" name="mint-number">
-                            </div>
-                            <input type="submit" name="mint" value="Mint" class="btn btn-primary"/>
-                        </form>
-                    </div>
-                    <div class="col-sm-7">
-                        <?php
-                        if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number'])) {
+        <?php
+        if (isset($_GET['db'])) { // if a database is selected (db name appears in the URL
+            ?>
+            <hr>
+            <div class="card">
+                <h5 class="card-header">Minting</h5>
+                <div class="card-body">
+                    <div id="row-mint" class="row">
+                        <div class="col-sm-5">
+                            <form id="form-mint" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
+                                <div class="form-group">
+                                    <input type="hidden" name="db" value="<?php echo $_GET['db'] ?>">
+                                    <label for="exampleInputEmail1">How many:</label>
+                                    <input type="number" class="form-control" id="mint-number" name="mint-number">
+                                </div>
+                                <input type="submit" name="mint" value="Mint" class="btn btn-primary"/>
+                            </form>
+                        </div>
+                        <div class="col-sm-7">
+                            <?php
+                            if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number'])) {
 
-                            $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-                            $contact = time();
-                            while ($_POST['mint-number']--) {
-                                $id = NoidArk::mint($noid, $contact);
-                            };
-                            print '
+                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                $contact = time();
+                                while ($_POST['mint-number']--) {
+                                    $id = NoidArk::mint($noid, $contact);
+                                };
+                                print '
                                 <div class="alert alert-success" role="alert">
                                     Ark IDs have been minted successfully.
                                 </div>
                             ';
-                            Database::dbclose($noid);
-                            // redirect to the page.
-                            header("Location: admin.php?db=" . $_GET["db"]);
-                        }
-                        ?>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <table id="minted_table" class="display" style="width:100%">
-                                    <thead>
-                                    <tr>
-                                        <th>Ark ID</th>
-                                        <th>Minted Date</th>
-                                    </tr>
-                                    </thead>
-                                </table>
+                                Database::dbclose($noid);
+                                // redirect to the page.
+                                header("Location: admin.php?db=" . $_GET["db"]);
+                            }
+                            ?>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <table id="minted_table" class="display" style="width:100%">
+                                        <thead>
+                                        <tr>
+                                            <th>Ark ID</th>
+                                            <th>Minted Date</th>
+                                        </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+
                             </div>
 
                         </div>
-
                     </div>
                 </div>
             </div>
-        </div>
 
-        <hr>
-        <div class="card">
-            <h5 class="card-header">Bind Set</h5>
-            <div class="card-body">
-                <div id="row-bindset" class="row">
-                    <div class="col-sm-12">
-                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#bindsetModal">
-                            Bind Set
-                        </button>
-                        <div class="modal fade" id="bindsetModal" tabindex="-1" aria-labelledby="bindsetModalLabel"
-                             aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="bindsetModalLabel">Bind Set</h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="col-sm-12">
-                                            <form id="form-bindset" method="post"
-                                                  action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                                                <div class="form-group">
-                                                    <label for="enterIdentifier">Identifier:</label>
-                                                    <input type="text" class="form-control" id="enterIdentifier"
-                                                           name="enterIdentifier"
-                                                           required>
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="enterKey">Key:</label>
-                                                    <input type="text" class="form-control" id="enterKey"
-                                                           name="enterKey" required>
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="enterValue">Value:</label>
-                                                    <input type="text" class="form-control" id="enterValue"
-                                                           name="enterValue" required>
-                                                </div>
-                                                <input type="submit" name="bindset" value="Bind"
-                                                       class="btn btn-primary"/>
-                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                                                    Close
-                                            </form>
+            <hr>
+            <div class="card">
+                <h5 class="card-header">Bind Set</h5>
+                <div class="card-body">
+                    <div id="row-bindset" class="row">
+                        <div class="col-sm-12">
+                            <button type="button" class="btn btn-primary" data-toggle="modal"
+                                    data-target="#bindsetModal">
+                                Bind Set
+                            </button>
+                            <div class="modal fade" id="bindsetModal" tabindex="-1" aria-labelledby="bindsetModalLabel"
+                                 aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="bindsetModalLabel">Bind Set</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
                                         </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Bulk Bind Modal -->
-                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#bulkBindModal">
-                            Bulk Bind
-                        </button>
-                        <div class="modal fade" id="bulkBindModal" tabindex="-1" aria-labelledby="bulkBindModalLabel"
-                             aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="bulkBindModalLabel">Bulk Binding</h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="row">
+                                        <div class="modal-body">
                                             <div class="col-sm-12">
-                                                <form id="form-import" method="post" enctype="multipart/form-data"
+                                                <form id="form-bindset" method="post"
                                                       action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                     <div class="form-group">
-                                                        <p><strong><u>Note:</u></strong> For this section, please
-                                                            follow:</p>
-                                                        <ul>
-                                                            <li>Mint first</li>
-                                                            <li>Download the CSV with minted identifiers above and add
-                                                                fields as columns to the
-                                                                CSV
-                                                            </li>
-                                                            <li>Export as a CSV file (only accept CSV) .</li>
-                                                            <li>Import it below</li>
-                                                        </ul>
-
-                                                        <p><strong><label for="importCSV">Upload CSV: </label></strong>
-                                                        </p>
-                                                        <input type="file"
-                                                               id="importCSV" name="importCSV"
-                                                               accept=".csv">
-                                                        <small id="emailHelp" class="form-text text-muted">Only accept
-                                                            CSV</small>
-
+                                                        <label for="enterIdentifier">Identifier:</label>
+                                                        <input type="text" class="form-control" id="enterIdentifier"
+                                                               name="enterIdentifier"
+                                                               required>
                                                     </div>
-                                                    <input type="submit" name="import" value="Bulk Bind"
+                                                    <div class="form-group">
+                                                        <label for="enterKey">Key:</label>
+                                                        <input type="text" class="form-control" id="enterKey"
+                                                               name="enterKey" required>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="enterValue">Value:</label>
+                                                        <input type="text" class="form-control" id="enterValue"
+                                                               name="enterValue" required>
+                                                    </div>
+                                                    <input type="submit" name="bindset" value="Bind"
                                                            class="btn btn-primary"/>
                                                     <button type="button" class="btn btn-secondary"
-                                                            data-dismiss="modal">Close
-                                                    </button>
+                                                            data-dismiss="modal">
+                                                        Close
                                                 </form>
                                             </div>
                                         </div>
-                                    </div>
 
+                                    </div>
                                 </div>
                             </div>
+
+                            <!-- Bulk Bind Modal -->
+                            <button type="button" class="btn btn-primary" data-toggle="modal"
+                                    data-target="#bulkBindModal">
+                                Bulk Bind
+                            </button>
+                            <div class="modal fade" id="bulkBindModal" tabindex="-1"
+                                 aria-labelledby="bulkBindModalLabel"
+                                 aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="bulkBindModalLabel">Bulk Binding</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-sm-12">
+                                                    <form id="form-import" method="post" enctype="multipart/form-data"
+                                                          action="./admin.php?db=<?php echo $_GET['db'] ?>">
+                                                        <div class="form-group">
+                                                            <p><strong><u>Note:</u></strong> For this section, please
+                                                                follow:</p>
+                                                            <ul>
+                                                                <li>Mint first</li>
+                                                                <li>Download the CSV with minted identifiers above and
+                                                                    add
+                                                                    fields as columns to the
+                                                                    CSV
+                                                                </li>
+                                                                <li>Export as a CSV file (only accept CSV) .</li>
+                                                                <li>Import it below</li>
+                                                            </ul>
+
+                                                            <p><strong><label for="importCSV">Upload
+                                                                        CSV: </label></strong>
+                                                            </p>
+                                                            <input type="file"
+                                                                   id="importCSV" name="importCSV"
+                                                                   accept=".csv">
+                                                            <small id="emailHelp" class="form-text text-muted">Only
+                                                                accept
+                                                                CSV</small>
+
+                                                        </div>
+                                                        <input type="submit" name="import" value="Bulk Bind"
+                                                               class="btn btn-primary"/>
+                                                        <button type="button" class="btn btn-secondary"
+                                                                data-dismiss="modal">Close
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+
                         </div>
-
-
                     </div>
-                </div>
-                <div class="row">
-                    <div class="col-sm-12">
-                        <?php
-                        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && !empty($_POST['enterIdentifier'])) {
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <?php
+                            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && !empty($_POST['enterIdentifier'])) {
 
 
-                            $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-                            $contact = time();
+                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                $contact = time();
 
-                            // check if ark ID exist
-                            $checkExisted = Database::$engine->select("_key REGEXP '^" . $_POST['enterIdentifier'] . "' and _key REGEXP ':/c$'");
-                            if (count($checkExisted) > 0) {
-                                $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], strtoupper($_POST['enterKey']), $_POST['enterValue']);
-                                print '
+                                // check if ark ID exist
+                                $checkExisted = Database::$engine->select("_key REGEXP '^" . $_POST['enterIdentifier'] . "' and _key REGEXP ':/c$'");
+                                if (count($checkExisted) > 0) {
+                                    $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], strtoupper($_POST['enterKey']), $_POST['enterValue']);
+                                    print '
                                     <div class="alert alert-success" role="alert">
                                         Ark IDs have been bound successfully.
                                     </div>
                                 ';
-                            } else {
-                                print '
+                                } else {
+                                    print '
                                     <div class="alert alert-warning" role="alert">
                                         Ark IDs does not exist to be bound.
                                     </div>
                                 ';
-                            }
-                            Database::dbclose($noid);
-                            // refresh the page to clear Post method.
-                            header("Location: admin.php?db=" . $_GET["db"]);
-                        }
-
-                        //handle bulk bind set
-                        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
-
-                            if (is_uploaded_file($_FILES['importCSV']['tmp_name'])) {
-                                // generate Ark service procession object
-                                $noidUI = new NoidUI();
-
-                                //Read and scan through imported csv
-                                if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
-                                    // read the first row as columns
-                                    $columns = fgetcsv($handle, 0, ",");
-                                    if (in_array("pid", $columns)) {
-                                        $pidi = array_search("pid", $columns);
-                                        if ($pidi !== FALSE) {
-                                            $columns[$pidi] = "PID";
-                                        }
-                                    } else {
-                                        die ("The imported CSV must have column name 'pid' or 'PID'");
-                                    }
-                                    array_push($columns, "Ark Link");
-
-                                    // add columns to import data array
-                                    $importedData = array_merge([], $columns);
-
-                                    // loop through the rest of rows
-                                    $flag = true;
-                                    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                                        // avoid the 1st row since it's header
-                                        if ($flag) {
-                                            $flag = false;
-                                            continue;
-                                        }
-                                        $num = count($data);
-                                        $row++;
-
-
-                                        $identifier = null;
-                                        for ($c = 0; $c < $num; $c++) {
-
-                                            // capture identifier (strictly recommend first column)
-                                            if ($columns[$c] === 'Ark ID') {
-                                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-
-                                                if (empty($data[$c])) {
-                                                    // mint a new ark id
-                                                    $identifier = NoidArk::mint($noid, $contact);
-                                                    error_log(print_r("New minted: " . $identifier, true), 0);
-                                                }
-                                                else {
-                                                    $identifier = $data[$c];
-                                                }
-
-                                            }
-                                            if ($columns[$c] == "PID") {
-                                                // TOOD: check if PID exist
-                                                $checkExistedPID = Database::$engine->select("_value = '$data[$c]'");
-                                                if (is_array($checkExistedPID) && count($checkExistedPID) > 0) {
-                                                    $identifier = preg_split('/\s+/', $checkExistedPID['_key'])[0];
-                                                }
-                                            }
-                                            if ($c > 0) { // avoid bindset identifier column
-
-                                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-                                                $contact = time();
-
-                                                // check if ark ID exist
-                                                $checkExisted = Database::$engine->select("_key REGEXP '^" . $identifier . "' and _key REGEXP ':/c$'");
-                                                if (is_array($checkExisted) && count($checkExisted) > 0) {
-                                                    $result = NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($columns[$c]), $data[$c]);
-                                                }
-                                            }
-                                            if ($c == $num - 1) {
-                                                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-                                                $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
-                                            }
-                                            Database::dbclose($noid);
-                                        }
-                                        // add columns to import data array
-                                        array_push($importedData, $data);
-                                    }
-                                    //TODO: write each row to new csv
-
-                                    $noidUI->importedToCSV("import_minted", $noidUI->path($_GET["db"]), $columns, $importedData, time());
-                                    fclose($handle);
                                 }
+                                Database::dbclose($noid);
+                                // refresh the page to clear Post method.
+                                header("Location: admin.php?db=" . $_GET["db"]);
                             }
-                            header("Location: admin.php?db=" . $_GET["db"]);
-                        }
+
+                            //handle bulk bind set
+                            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
+
+                                if (is_uploaded_file($_FILES['importCSV']['tmp_name'])) {
+                                    // generate Ark service procession object
+                                    $noidUI = new NoidUI();
+
+                                    //Read and scan through imported csv
+                                    if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
+                                        // read the first row as columns
+                                        $columns = fgetcsv($handle, 0, ",");
+                                        if (in_array("pid", $columns)) {
+                                            $pidi = array_search("pid", $columns);
+                                            if ($pidi !== FALSE) {
+                                                $columns[$pidi] = "PID";
+                                            }
+                                        } else {
+                                            die ("The imported CSV must have column name 'pid' or 'PID'");
+                                        }
+                                        array_push($columns, "Ark Link");
+
+                                        // add columns to import data array
+                                        $importedData = array_merge([], $columns);
+
+                                        // loop through the rest of rows
+                                        $flag = true;
+                                        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                                            // avoid the 1st row since it's header
+                                            if ($flag) {
+                                                $flag = false;
+                                                continue;
+                                            }
+                                            $num = count($data);
+                                            $row++;
 
 
-                        ?>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <table id="bound_table" class="display" style="width:100%">
-                                    <thead>
-                                    <tr>
-                                        <th>Ark ID</th>
-                                        <th>PID</th>
-                                        <th>Other Bound Data</th>
-                                        <th>Ark URL</th>
-                                    </tr>
-                                    </thead>
-                                </table>
+                                            $identifier = null;
+                                            for ($c = 0; $c < $num; $c++) {
+
+                                                // capture identifier (strictly recommend first column)
+                                                if ($columns[$c] === 'Ark ID') {
+                                                    $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+
+                                                    if (empty($data[$c])) {
+                                                        // mint a new ark id
+                                                        $identifier = NoidArk::mint($noid, $contact);
+                                                        error_log(print_r("New minted: " . $identifier, true), 0);
+                                                    } else {
+                                                        $identifier = $data[$c];
+                                                    }
+
+                                                }
+                                                if ($columns[$c] == "PID") {
+                                                    // TOOD: check if PID exist
+                                                    $checkExistedPID = Database::$engine->select("_value = '$data[$c]'");
+                                                    if (is_array($checkExistedPID) && count($checkExistedPID) > 0) {
+                                                        $identifier = preg_split('/\s+/', $checkExistedPID['_key'])[0];
+                                                    }
+                                                }
+                                                if ($c > 0) { // avoid bindset identifier column
+
+                                                    $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                                    $contact = time();
+
+                                                    // check if ark ID exist
+                                                    $checkExisted = Database::$engine->select("_key REGEXP '^" . $identifier . "' and _key REGEXP ':/c$'");
+                                                    if (is_array($checkExisted) && count($checkExisted) > 0) {
+                                                        $result = NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($columns[$c]), $data[$c]);
+                                                    }
+                                                }
+                                                if ($c == $num - 1) {
+                                                    $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
+                                                    $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
+                                                }
+                                                Database::dbclose($noid);
+                                            }
+                                            // add columns to import data array
+                                            array_push($importedData, $data);
+                                        }
+                                        //TODO: write each row to new csv
+
+                                        $noidUI->importedToCSV("import_minted", $noidUI->path($_GET["db"]), $columns, $importedData, time());
+                                        fclose($handle);
+                                    }
+                                }
+                                header("Location: admin.php?db=" . $_GET["db"]);
+                            }
+
+
+                            ?>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <table id="bound_table" class="display" style="width:100%">
+                                        <thead>
+                                        <tr>
+                                            <th>Ark ID</th>
+                                            <th>PID</th>
+                                            <th>Other Bound Data</th>
+                                            <th>Ark URL</th>
+                                        </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+
                             </div>
 
                         </div>
-
                     </div>
                 </div>
             </div>
-        </div>
 
 
-        <!--<hr>
+            <!--<hr>
         <div class="card">
             <h5 class="card-header">Fetch</h5>
             <div class="card-body">
@@ -742,23 +758,23 @@ define("NAAN_UTSC", 61220);
                         <p>
                             <?php
 
-        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['fetch'])) {
-            // creat an ark service processor
-            $noidUI = new NoidUI();
+            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['fetch'])) {
+                // creat an ark service processor
+                $noidUI = new NoidUI();
 
-            // execute the command with entered params
-            $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path($_GET["db"]));
+                // execute the command with entered params
+                $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path($_GET["db"]));
 
-            // display the result
-            print('<div class="alert alert-info">');
-            print "<p><strong>Result:</strong></p>";
-            print($result);
-            print('</div>');
+                // display the result
+                print('<div class="alert alert-info">');
+                print "<p><strong>Result:</strong></p>";
+                print($result);
+                print('</div>');
 
-            // refresh the page to destroy post section
-            header("Location: admin.php?db=" . $_GET["db"]);
-        }
-        ?>
+                // refresh the page to destroy post section
+                header("Location: admin.php?db=" . $_GET["db"]);
+            }
+            ?>
                         </p>
                     </div>
                 </div>
@@ -789,23 +805,23 @@ define("NAAN_UTSC", 61220);
 
                         <p>
                             <?php
-        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['get'])) {
-            // generate Ark service procession object
-            $noidUI = new NoidUI();
+            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['get'])) {
+                // generate Ark service procession object
+                $noidUI = new NoidUI();
 
-            // execute with entered params
-            $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path($_GET["db"]));
+                // execute with entered params
+                $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path($_GET["db"]));
 
-            // display the results
-            print('<div class="alert alert-info">');
-            print "<p></p><strong>Result</strong></p>";
-            print($result);
-            print('</div>');
+                // display the results
+                print('<div class="alert alert-info">');
+                print "<p></p><strong>Result</strong></p>";
+                print($result);
+                print('</div>');
 
-            // refresh the page to destroy post session
-            header("Location: admin.php?db=" . $_GET["db"]);
-        }
-        ?>
+                // refresh the page to destroy post session
+                header("Location: admin.php?db=" . $_GET["db"]);
+            }
+            ?>
                         </p>
                     </div>
                 </div>
@@ -813,219 +829,69 @@ define("NAAN_UTSC", 61220);
         </div>
         -->
 
-        <hr>
-        <div class="card">
-            <h5 class="card-header">History of Bulk Bind</h5>
-            <div class="card-body">
-                <div id="row-search" class="row">
-                    <div class="col-sm-6">
-                        <?php
+            <hr>
+            <div class="card">
+                <h5 class="card-header">History of Bulk Bind</h5>
+                <div class="card-body">
+                    <div id="row-search" class="row">
+                        <div class="col-sm-6">
+                            <?php
 
-                        if (file_exists(NoidUI::dbpath())) {
-                            // List all minted identifer in csv which created each time execute mint
-                            $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_minted');
-                            if (count($dirs) > 2) {
-                                ?>
-                                <div class="row">
-                                    <table class="table table-bordered">
-                                        <thead>
-                                        <tr>
-                                            <th scope="col">Past imported</th>
-                                            <th scope="col">Date</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <?php
-                                        foreach ($dirs as $dir) {
-                                            if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                                                $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
-                                                $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
+                            if (file_exists(NoidUI::dbpath())) {
+                                // List all minted identifer in csv which created each time execute mint
+                                $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_minted');
+                                if (count($dirs) > 2) {
+                                    ?>
+                                    <div class="row">
+                                        <table class="table table-bordered">
+                                            <thead>
+                                            <tr>
+                                                <th scope="col">Past imported</th>
+                                                <th scope="col">Date</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <?php
+                                            foreach ($dirs as $dir) {
+                                                if (!in_array($dir, ['.', '..', '.gitkeep'])) {
+                                                    $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
+                                                    $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
 
-                                                print <<<EOS
+                                                    print <<<EOS
                                         <tr>
                                             <td scope="row">$csv</td>
                                             <td scope="row">$date</td>
                                         </tr>
                                     EOS;
-                                            }
-                                        }
-                                        ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            <?php }
-                        }
-                        ?>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr>
-        <div class="card">
-            <h5 class="card-header">Bulk Binding <u>without</u> minted identifiers (For New)</h5>
-            <div class="card-body">
-                <div id="row-search" class="row">
-                    <div class="col-sm-6">
-                        <form id="form-importnoid" method="post" enctype="multipart/form-data"
-                              action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                            <div class="form-group">
-                                <p><strong><u>Note:</u></strong> For this section, please follow:</p>
-                                <ul>
-                                    <li>Download this initial CSV template by <a href="template.csv" download>this
-                                            link.</a></li>
-                                    <li>Mandatory: Leave the first column with the header as "Identifier".</li>
-                                    <li>Add other needed fields as columns to the CSV.</li>
-                                    <li>Export as a CSV file (only accept CSV) .</li>
-                                    <li>Import it below</li>
-                                </ul>
-                                <p><strong><label for="importCSV_noID">Upload CSV: </label></strong></p>
-                                <input type="file"
-                                       id="importCSV_noID" name="importCSV_noID"
-                                       accept=".csv">
-                                <small id="emailHelp" class="form-text text-muted">Only accept CSV</small>
-
-                            </div>
-                            <input type="submit" name="import_noID" value="Bulk Bind" class="btn btn-primary"/>
-                        </form>
-                    </div>
-                    <div class="col-sm-6">
-                        <?php
-                        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import_noID'])) {
-
-                            if (is_uploaded_file($_FILES['importCSV_noID']['tmp_name'])) {
-                                // generate Ark service procession object
-                                $noidUI = new NoidUI();
-
-                                //Read and scan through imported csv
-                                if (($handle = fopen($_FILES['importCSV_noID']['tmp_name'], "r")) !== FALSE) {
-                                    // read the first row as columns
-                                    $columns = fgetcsv($handle, 0, ",");
-                                    array_push($columns, "Ark Link");
-
-                                    if (in_array("pid", $columns)) {
-                                        $pidi = array_search("pid", $columns);
-                                        if ($pidi !== FALSE) {
-                                            $columns[$pidi] = "PID";
-                                        }
-                                    } else {
-                                        die ("The imported CSV must have column name 'pid' or 'PID'");
-                                    }
-                                    // add columns to import data array
-                                    $importedData = array_merge([], $columns);
-
-                                    // loop through the rest of rows
-                                    $flag = true;
-                                    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                                        // avoid the 1st row since it's header
-                                        if ($flag) {
-                                            $flag = false;
-                                            continue;
-                                        }
-                                        $num = count($data);
-                                        $row++;
-
-                                        $identifier = null;
-                                        for ($c = 0; $c < $num; $c++) {
-                                            // capture identifier (strictly recommend first column)
-                                            if ($columns[$c] === 'Identifer') {
-                                                $identifier = $data[$c];
-                                                if (!isset($identifier) || empty($identifier)) {
-                                                    // TODO : look up PID to make sure no duplicates
-                                                    // if exist, update, put status as 'update'
-
-                                                    // if not exist, insert, put status as 'created'
-
-                                                    // execute command with entered params
-                                                    $identifier = $noidUI->exec_command("mint 1", $noidUI->path($_GET["db"]));
-                                                    $identifier = trim($identifier);
-                                                    $identifier = str_replace("id: ", "", $identifier);
-                                                    $data[0] = $identifier;
                                                 }
                                             }
-                                            if ($c > 0) { // avoid bindset identifier column
-                                                // mapping each column as params
-                                                $bindset_cmd = " bind set " . $identifier;
-                                                $bindset_cmd .= " " . $columns[$c] . " '" . $data[$c] . "'";;
-                                                $result = $noidUI->exec_command($bindset_cmd, $noidUI->path($_GET["db"]));
-
-                                                // display result of each bindset
-                                                print('<div class="alert alert-info">');
-                                                print "<p></p><strong>Result</strong></p>";
-                                                print($result);
-                                                print('</div>');
-                                            }
-                                            if ($c == $num - 1) {
-                                                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-                                                $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
-                                            }
-                                        }
-                                        // add columns to import data array
-                                        array_push($importedData, $data);
-                                    }
-                                    //TODO: write each row to new csv
-
-                                    $noidUI->importedToCSV("import_new", $noidUI->path($_GET["db"]), $columns, $importedData, time());
-                                    fclose($handle);
-                                }
+                                            ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php }
                             }
-                            header("Location: admin.php?db=" . $_GET["db"]);
-                        }
-                        if (file_exists(NoidUI::dbpath())) {
-                            // List all minted identifer in csv which created each time execute mint
-                            $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_new');
-                            if (count($dirs) > 2) {
-                                ?>
-                                <div class="row">
-                                    <table class="table table-bordered">
-                                        <thead>
-                                        <tr>
-                                            <th scope="col">Past imported</th>
-                                            <th scope="col">Date</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <?php
-                                        foreach ($dirs as $dir) {
-                                            if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                                                $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_new/' . $dir . '">' . $dir . '</a>';
-                                                $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
+                            ?>
 
-                                                print <<<EOS
-                                        <tr>
-                                            <td scope="row">$csv</td>
-                                            <td scope="row">$date</td>
-                                        </tr>
-                                    EOS;
-                                            }
-                                        }
-                                        ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            <?php }
-                        }
-                        ?>
-
-
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    <?php }
-    ?>
-</div>
-</body>
-</html>
+            <hr>
+        <?php }
+        ?>
+    </div>
+    </body>
+    </html>
 
 <?php
 
 
-function rest_get($req) {
+function rest_get($req)
+{
     $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
     $cURLConnection = curl_init();
-    curl_setopt($cURLConnection, CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'].$req);
+    curl_setopt($cURLConnection, CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'] . $req);
     curl_setopt($cURLConnection, CURLOPT_RETURNTRANSFER, true);
 
     $result = curl_exec($cURLConnection);

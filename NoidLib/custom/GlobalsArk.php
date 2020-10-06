@@ -5,7 +5,9 @@ include "NoidLib/lib/Globals.php";
 use Noid\Lib\Globals;
 
 class GlobalsArk extends Globals{
-    
+    // will add prefix in front of database name when dbcreate
+    static public $db_prefix = "ARK_";
+
     const DB_TYPES = [
         'bdb' => 'Noid\Lib\Storage\BerkeleyDB',
         'mysql' => 'Noid\Lib\Storage\MysqlDB',

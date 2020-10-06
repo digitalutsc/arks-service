@@ -16,6 +16,7 @@ use Noid\Lib\Custom\Database;
 use Noid\Lib\Globals;
 use Noid\Lib\Helper;
 use Noid\Lib\Generator;
+use Noid\Lib\Perl_Random;
 use Noid\Lib\Log;
 
 class NoidArk extends Noid {
