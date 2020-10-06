@@ -44,10 +44,10 @@ class Database
     static protected $_db_lock = 'd';
 
     /**
-     *
+     * list all Arrk database
      * @param string $name
      */
-    public function showDatabases($name = "")
+    public static function showDatabases()
     {
         $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd);
 
@@ -77,6 +77,24 @@ class Database
         }
         mysqli_close($link);
         return $arkdbs;
+    }
+
+    /**
+     * Check ark database name is existed/created
+     * @param String $dbname
+     * @return bool
+     */
+    public function exist(String $dbname) {
+        $dbs = self::showDatabases();
+        $existed = false;
+        foreach ($dbs as $db) {
+            $db = $db[0];
+            if ($dbname === $db) {
+                $existed = true;
+                break;
+            }
+        }
+        return $existed;
     }
 
 

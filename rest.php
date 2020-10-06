@@ -4,6 +4,7 @@ require_once "NoidLib/lib/Storage/MysqlDB.php";
 require_once 'NoidLib/custom/GlobalsArk.php';
 require_once 'NoidLib/lib/Db.php';
 require_once 'NoidLib/custom/Database.php';
+require_once 'NoidLib/custom/MysqlArkConf.php';
 
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
@@ -15,6 +16,7 @@ use Noid\Lib\Log;
 
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
+use Noid\Lib\Custom\MysqlArkConf;
 
 switch ($_GET['op']) {
     case "minted":
@@ -62,6 +64,11 @@ switch ($_GET['op']) {
 
 function getDbInfo() {
     GlobalsArk::$db_type = 'ark_mysql';
+
+    if (!Database::exist($_GET['db'])) {
+        die('Database not found');
+    }
+
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
 
     $result = [
@@ -108,6 +115,9 @@ function selectBound()
 function select($where = "")
 {
     GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die('Database not found');
+    }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
 
@@ -128,6 +138,9 @@ function getPID($arkID) {
     if (!isset($arkID))
         return "Ark ID is not valid";
     GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die('Database not found');
+    }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $result = Database::$engine->select("_key REGEXP '^$arkID' and _key REGEXP 'PID$'");
     Database::dbclose($noid);
@@ -136,6 +149,9 @@ function getPID($arkID) {
 
 function getNAA() {
     GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die('Database not found');
+    }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $naa = Database::$engine->get(Globals::_RR . "/naa");
     Database::dbclose($noid);
@@ -145,6 +161,9 @@ function getNAA() {
 function getMinted()
 {
     GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die('Database not found');
+    }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
     $result = Database::$engine->select("_key REGEXP '^$firstpart' and _key REGEXP ':/c$'");
@@ -165,6 +184,9 @@ function getMinted()
 function getfirstpart()
 {
     GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die('Database not found');
+    }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
     return json_encode($firstpart);
@@ -173,6 +195,9 @@ function getfirstpart()
 function getPrefix() {
 
     GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die('Database not found');
+    }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $prefix = Database::$engine->get(Globals::_RR . "/prefix");
     return json_encode($prefix);
