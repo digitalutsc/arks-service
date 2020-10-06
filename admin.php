@@ -374,7 +374,6 @@ $arkdbs = Database::showdatabases();
 
                         // List all created databases in the table
                         if (count($arkdbs) > 0) {
-
                             ?>
                             <div class="row">
                                 <table class="table table-bordered">
@@ -387,14 +386,14 @@ $arkdbs = Database::showdatabases();
                                     </thead>
                                     <tbody>
                                     <?php
-                                    foreach ($arkdbs as $db[0]) {
+                                    foreach ($arkdbs as $db) {
                                         $highlight = "";
-                                        $setActive = '<a href="./admin.php?db=' . $db[0] . '">Select</a>';
-                                        if ((isset($_GET['db']) && $_GET['db'] == $db[0])) {
+                                        $setActive = '<a href="./admin.php?db=' . $db . '">Select</a>';
+                                        if ((isset($_GET['db']) && $_GET['db'] == $db)) {
                                             $setActive = "<strong>Selected</srong>";
                                             $highlight = 'class="table-success"';
                                         }
-                                        $metadata = json_decode(rest_get("/rest.php?db=" . $db[0] . "&op=dbinfo"));
+                                        $metadata = json_decode(rest_get("/rest.php?db=" . $db . "&op=dbinfo"));
                                         $detail = "<p>";
                                         foreach ((array)$metadata as $key => $value) {
                                             $detail .= "<strong>$key</strong>: $value <br />";
@@ -402,7 +401,7 @@ $arkdbs = Database::showdatabases();
                                         $detail .= "</p>";
                                         print <<<EOS
                                                     <tr $highlight>
-                                                        <td scope="row">$db[0]</td>
+                                                        <td scope="row">$db</td>
                                                         <td scope="row">$setActive</td>
                                                         <td scope="row">$detail</td>
                                                     </tr>
@@ -548,7 +547,7 @@ $arkdbs = Database::showdatabases();
                                             </button>
                                         </div>
                                         <div class="modal-body">
-                                            <div class="row">
+                                            <div class="row" style="padding-bottom: 10px;">
                                                 <div class="col-sm-12">
                                                     <form id="form-import" method="post" enctype="multipart/form-data"
                                                           action="./admin.php?db=<?php echo $_GET['db'] ?>">
@@ -635,14 +634,17 @@ $arkdbs = Database::showdatabases();
                                     if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
                                         // read the first row as columns
                                         $columns = fgetcsv($handle, 0, ",");
-                                        if (in_array("pid", $columns)) {
-                                            $pidi = array_search("pid", $columns);
-                                            if ($pidi !== FALSE) {
-                                                $columns[$pidi] = "PID";
-                                            }
-                                        } else {
-                                            die ("The imported CSV must have column name 'pid' or 'PID'");
+
+                                        // check if CSV has 3 mandatory fields, otherwise, it won't proceed with bulk bind
+                                        if (!in_array("PID", $columns) ||
+                                            !in_array("URL", $columns) ||
+                                            !in_array("mods_local_identifier", $columns)){
+                                            exit ('<div class="alert alert-danger" role="alert" style="margin-top:10px;">
+                                                        The imported CSV must have column name "PID", "URL", and "mods_local_identifier". Please <a href="/admin.php?db='. $_GET['db'] .'">Try again.</a>
+                                                    </div>');
                                         }
+
+
                                         array_push($columns, "Ark Link");
 
                                         // add columns to import data array
@@ -676,11 +678,11 @@ $arkdbs = Database::showdatabases();
                                                     }
 
                                                 }
-                                                if ($columns[$c] == "PID") {
-                                                    // TOOD: check if PID exist
-                                                    $checkExistedPID = Database::$engine->select("_value = '$data[$c]'");
-                                                    if (is_array($checkExistedPID) && count($checkExistedPID) > 0) {
-                                                        $identifier = preg_split('/\s+/', $checkExistedPID['_key'])[0];
+                                                if ($columns[$c] == "mods_local_identifier") {
+                                                    // TOOD: check if Local exist
+                                                    $checkExistedLocalID = Database::$engine->select("_value = '$data[$c]'");
+                                                    if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
+                                                        $identifier = preg_split('/\s+/', $checkExistedLocalID['_key'])[0];
                                                     }
                                                 }
                                                 if ($c > 0) { // avoid bindset identifier column
