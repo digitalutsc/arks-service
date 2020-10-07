@@ -97,6 +97,7 @@ $arkdbs = Database::showdatabases();
                         options += '<option value="'+$objects[i]._key+'">'+$objects[i]._key+'</option>';
                     }
                     $('#enterIdentifier').html(options).selectpicker();
+                    $('#enterToClearIdentifier').html(options).selectpicker();
                 });
 
                 jQuery('#minted_table').DataTable({
@@ -508,7 +509,7 @@ $arkdbs = Database::showdatabases();
                         <div class="col-sm-12">
                             <button type="button" class="btn btn-primary" data-toggle="modal"
                                     data-target="#bindsetModal">
-                                Bind Set
+                                Single Bind Set
                             </button>
                             <div class="modal fade" id="bindsetModal" tabindex="-1" aria-labelledby="bindsetModalLabel"
                                  aria-hidden="true">
@@ -557,8 +558,49 @@ $arkdbs = Database::showdatabases();
                                 </div>
                             </div>
 
+                            <button type="button" class="btn btn-secondary" data-toggle="modal"
+                                    data-target="#clearbindsetModal">
+                                Clear Bind
+                            </button>
+                            <div class="modal fade" id="clearbindsetModal" tabindex="-1" aria-labelledby="clearbindsetModalLabel"
+                                 aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="clearbindsetModalLabel">Clear Bind</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="col-sm-12">
+                                                <form id="form-clear-bindset" method="post"
+                                                      action="./admin.php?db=<?php echo $_GET['db'] ?>">
+                                                    <div class="form-group">
+                                                        <label for="enterToClearIdentifier">Identifier:</label>
+                                                        <select id="enterToClearIdentifier" name="enterToClearIdentifier" class="form-control" data-live-search="true">
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="enterKey">Key:</label>
+                                                        <input type="text" class="form-control" id="enterKey"
+                                                               name="enterKey" required>
+                                                    </div>
+                                                    <input type="submit" name="clear-bindset" value="Bind"
+                                                           class="btn btn-primary"/>
+                                                    <button type="button" class="btn btn-secondary"
+                                                            data-dismiss="modal">
+                                                        Close
+                                                </form>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Bulk Bind Modal -->
-                            <button type="button" class="btn btn-primary" data-toggle="modal"
+                            <button type="button" class="btn btn-success" data-toggle="modal"
                                     data-target="#bulkBindModal">
                                 Bulk Bind
                             </button>
@@ -652,7 +694,10 @@ $arkdbs = Database::showdatabases();
 
                             //handle bulk bind set
                             if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
+                                // show progressing of bulkc importing.
 
+
+                                // read csv and start processing.
                                 if (is_uploaded_file($_FILES['importCSV']['tmp_name'])) {
                                     // generate Ark service procession object
                                     $noidUI = new NoidUI();
@@ -669,6 +714,11 @@ $arkdbs = Database::showdatabases();
                                             exit ('<div class="alert alert-danger" role="alert" style="margin-top:10px;">
                                                         The imported CSV must have column name "PID", "URL", and "mods_local_identifier". Please <a href="/admin.php?db='. $_GET['db'] .'">Try again.</a>
                                                     </div>');
+                                        }
+                                        else {
+                                            print '<div class="progress">
+                                                  <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+                                                </div>';
                                         }
 
 
