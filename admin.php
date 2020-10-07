@@ -39,6 +39,7 @@ $arkdbs = Database::showdatabases();
         <script type="text/javascript" language="javascript"
                 src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
 
+        <!-- bootsrap -->
         <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
                 integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
                 crossorigin="anonymous"></script>
@@ -47,10 +48,18 @@ $arkdbs = Database::showdatabases();
                 crossorigin="anonymous"></script>
         <script type="text/javascript" language="javascript" src="datatables/datatables.min.js"></script>
 
+        <!-- bootstrap select-->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.1/js/i18n/defaults-en_US.js"></script>
+
         <style>
             .form-group.required .control-label:after {
                 content: "*";
                 color: #ff0000;
+            }
+            .dropdown-menu {
+                max-height:350px !important;
             }
         </style>
         <script>
@@ -76,6 +85,20 @@ $arkdbs = Database::showdatabases();
             if (isset($_GET['db']) ) {
             ?>
             $(document).ready(function () {
+
+                // To style only selects with the select-ark-id class
+                // ajax load data to dropdown list
+                jQuery.ajax({
+                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=minted"
+                }).then(function(data) {
+                    $objects = JSON.parse(data);
+                    var options = '';
+                    for (var i = 0; i < $objects.length; i++) {
+                        options += '<option value="'+$objects[i]._key+'">'+$objects[i]._key+'</option>';
+                    }
+                    $('#enterIdentifier').html(options).selectpicker();
+                });
+
                 jQuery('#minted_table').DataTable({
                     "ajax": {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
@@ -502,10 +525,14 @@ $arkdbs = Database::showdatabases();
                                                 <form id="form-bindset" method="post"
                                                       action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                     <div class="form-group">
+
+
                                                         <label for="enterIdentifier">Identifier:</label>
-                                                        <input type="text" class="form-control" id="enterIdentifier"
+                                                        <!--<input type="text" class="form-control" id="enterIdentifier"
                                                                name="enterIdentifier"
-                                                               required>
+                                                               required>-->
+                                                        <select id="enterIdentifier" name="enterIdentifier" class="form-control" data-live-search="true">
+                                                        </select>
                                                     </div>
                                                     <div class="form-group">
                                                         <label for="enterKey">Key:</label>
