@@ -82,6 +82,9 @@ switch ($_GET['op']) {
 
 function bulkbind_upload(){
     GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die('Database not found');
+    }
     $result = null;
     if (is_array($_POST) && isset($_POST['data'])) {
         $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
