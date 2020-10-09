@@ -49,7 +49,8 @@ $arkdbs = Database::showdatabases();
         <script type="text/javascript" language="javascript" src="datatables/datatables.min.js"></script>
 
         <!-- bootstrap select-->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+        <link rel="stylesheet"
+              href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
         <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.1/js/i18n/defaults-en_US.js"></script>
 
@@ -58,8 +59,9 @@ $arkdbs = Database::showdatabases();
                 content: "*";
                 color: #ff0000;
             }
+
             .dropdown-menu {
-                max-height:350px !important;
+                max-height: 350px !important;
             }
         </style>
         <script>
@@ -90,11 +92,11 @@ $arkdbs = Database::showdatabases();
                 // ajax load data to dropdown list
                 jQuery.ajax({
                     url: "rest.php?db=<?php echo $_GET['db']; ?>&op=minted"
-                }).then(function(data) {
+                }).then(function (data) {
                     $objects = JSON.parse(data);
                     var options = '';
                     for (var i = 0; i < $objects.length; i++) {
-                        options += '<option value="'+$objects[i]._key+'">'+$objects[i]._key+'</option>';
+                        options += '<option value="' + $objects[i]._key + '">' + $objects[i]._key + '</option>';
                     }
                     $('#enterIdentifier').html(options).selectpicker();
                     $('#enterToClearIdentifier').html(options).selectpicker();
@@ -394,6 +396,7 @@ $arkdbs = Database::showdatabases();
                             }
 
                             header("Location: admin.php");
+                            
                         }
 
                         // List all created databases in the table
@@ -480,6 +483,7 @@ $arkdbs = Database::showdatabases();
                                 Database::dbclose($noid);
                                 // redirect to the page.
                                 header("Location: admin.php?db=" . $_GET["db"]);
+                                
                             }
                             ?>
                             <div class="row">
@@ -532,7 +536,8 @@ $arkdbs = Database::showdatabases();
                                                         <!--<input type="text" class="form-control" id="enterIdentifier"
                                                                name="enterIdentifier"
                                                                required>-->
-                                                        <select id="enterIdentifier" name="enterIdentifier" class="form-control" data-live-search="true">
+                                                        <select id="enterIdentifier" name="enterIdentifier"
+                                                                class="form-control" data-live-search="true">
                                                         </select>
                                                     </div>
                                                     <div class="form-group">
@@ -562,7 +567,8 @@ $arkdbs = Database::showdatabases();
                                     data-target="#clearbindsetModal">
                                 Clear Bind
                             </button>
-                            <div class="modal fade" id="clearbindsetModal" tabindex="-1" aria-labelledby="clearbindsetModalLabel"
+                            <div class="modal fade" id="clearbindsetModal" tabindex="-1"
+                                 aria-labelledby="clearbindsetModalLabel"
                                  aria-hidden="true">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
@@ -578,7 +584,9 @@ $arkdbs = Database::showdatabases();
                                                       action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                     <div class="form-group">
                                                         <label for="enterToClearIdentifier">Identifier:</label>
-                                                        <select id="enterToClearIdentifier" name="enterToClearIdentifier" class="form-control" data-live-search="true">
+                                                        <select id="enterToClearIdentifier"
+                                                                name="enterToClearIdentifier" class="form-control"
+                                                                data-live-search="true">
                                                         </select>
                                                     </div>
                                                     <div class="form-group">
@@ -650,10 +658,164 @@ $arkdbs = Database::showdatabases();
                                                         <button type="button" class="btn btn-secondary"
                                                                 data-dismiss="modal">Close
                                                         </button>
+
+                                                        <div class="row">
+                                                            <div class="col-sm-12">
+                                                                <span id="message"></span>
+                                                                <div class="form-group" id="process"
+                                                                     style="display:none;">
+                                                                    <div class="progress">
+                                                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                                             role="progressbar" aria-valuemin="0"
+                                                                             aria-valuemax="100">
+                                                                        </div>
+
+                                                                    </div>
+                                                                    <span id="process_data">0</span> - <span
+                                                                            id="total_data">0</span>
+                                                                </div>
+
+                                                            </div>
+                                                        </div>
+
+
                                                     </form>
                                                 </div>
                                             </div>
                                         </div>
+                                        <script>
+                                            $('#form-import').on('submit', function (event) {
+                                                $('#message').html('');
+                                                event.preventDefault();
+
+                                                var csv = $('#importCSV');
+                                                var csvFile = csv[0].files[0];
+                                                var ext = csv.val().split(".").pop().toLowerCase();
+
+                                                if ($.inArray(ext, ["csv"]) === -1) {
+                                                    alert('upload csv');
+                                                    return false;
+                                                }
+                                                if (csvFile != undefined) {
+                                                    reader = new FileReader();
+                                                    reader.onload = function (e) {
+
+                                                        csvResult = e.target.result.split(/\r|\n|\r\n/);
+                                                        var total_data = csvResult.length;
+                                                        if (total_data > 1) {
+                                                            $('#process').css('display', 'block');
+                                                        }
+                                                        // get headers
+                                                        var keys = csvResult[0].split(',');
+                                                        console.log(keys);
+
+                                                        $.each(csvResult, function (index, item) {
+                                                            if (index > 0 && (item !== "" )) {
+                                                                var values = item.split(',')
+                                                                var pdata = {};
+                                                                for (var i = 0; i < values.length; i++) {
+                                                                    // enforce csv must follow sequence LocalID, PID, URL,
+                                                                    pdata[keys[i].toUpperCase()] = values[i];
+                                                                }
+                                                                console.log(pdata);
+                                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata})
+                                                                    .done(function (data) {
+                                                                        var result = JSON.parse(data);
+                                                                        if (result.success === 1) {
+                                                                            $('#total_data').text(total_data);
+                                                                            var width = Math.round((index / total_data) * 100);
+                                                                            $('#process_data').text(index);
+                                                                            $('.progress-bar').css('width', width + '%');
+
+                                                                            if (width >= 99) {
+                                                                                $('#process').css('display', 'none');
+                                                                                $('#importCSV').val('');
+                                                                                $('#message').html('<div class="alert alert-success">Bulk Bind successfully completed.</div>');
+                                                                                $('#import').attr('disabled', false);
+                                                                                $('#import').val('Import');
+                                                                            }
+                                                                        }
+                                                                        else if (result.success == 0) {
+                                                                            $('#message').html('<div class="alert alert-danger">'+result.message+'</div>');
+                                                                            $('#importCSV').attr('disabled',false);
+                                                                            $('#importCSV').val('Import');
+                                                                        }
+                                                                    })
+                                                                    .fail(function () {
+                                                                        alert("error");
+                                                                    });
+                                                            }
+
+                                                        });
+
+                                                    }
+                                                    reader.readAsText(csvFile);
+                                                }
+                                            });
+                                            /*$.ajax({
+                                                url: "rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload",
+                                                    method: "POST",
+                                                    data: new FormData(this),
+                                                    dataType: "json",
+                                                    contentType: false,
+                                                    cache: false,
+                                                    processData: false,
+                                                    beforeSend: function () {
+                                                        $('#import').attr('disabled', 'disabled');
+                                                        $('#import').val('Importing');
+                                                    },
+                                                    success: function (data) {
+                                                        console.log(data);
+                                                        if (data.success) {
+
+                                                            $('#total_data').text(data.total_line);
+
+                                                            start_import();
+
+                                                            clear_timer = setInterval(get_import_data, 2000);
+
+                                                            //$('#message').html('<div class="alert alert-success">CSV File Uploaded</div>');
+                                                        }
+                                                        if (data.error) {
+                                                            $('#message').html('<div class="alert alert-danger">' + data.error + '</div>');
+                                                            $('#import').attr('disabled', false);
+                                                            $('#import').val('Import');
+                                                        }
+                                                    }
+                                                })
+                                            });
+
+
+                                            function start_import() {
+                                                $('#process').css('display', 'block');
+                                                $.ajax({
+                                                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=import",
+                                                    success: function () {
+
+                                                    }
+                                                })
+                                            }
+
+                                            function get_import_data() {
+                                                $.ajax({
+                                                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=process",
+                                                    success: function (data) {
+                                                        var total_data = $('#total_data').text();
+                                                        var width = Math.round((data / total_data) * 100);
+                                                        $('#process_data').text(data);
+                                                        $('.progress-bar').css('width', width + '%');
+                                                        if (width >= 100) {
+                                                            clearInterval(clear_timer);
+                                                            $('#process').css('display', 'none');
+                                                            $('#file').val('');
+                                                            $('#message').html('<div class="alert alert-success">Data Successfully Imported</div>');
+                                                            $('#import').attr('disabled', false);
+                                                            $('#import').val('Import');
+                                                        }
+                                                    }
+                                                })
+                                            }*/
+                                        </script>
 
                                     </div>
                                 </div>
@@ -664,135 +826,7 @@ $arkdbs = Database::showdatabases();
                     </div>
                     <div class="row">
                         <div class="col-sm-12">
-                            <?php
-                            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && !empty($_POST['enterIdentifier'])) {
 
-
-                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-                                $contact = time();
-
-                                // check if ark ID exist
-                                $checkExisted = Database::$engine->select("_key REGEXP '^" . $_POST['enterIdentifier'] . "' and _key REGEXP ':/c$'");
-                                if (count($checkExisted) > 0) {
-                                    $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], strtoupper($_POST['enterKey']), $_POST['enterValue']);
-                                    print '
-                                    <div class="alert alert-success" role="alert">
-                                        Ark IDs have been bound successfully.
-                                    </div>
-                                ';
-                                } else {
-                                    print '
-                                    <div class="alert alert-warning" role="alert">
-                                        Ark IDs does not exist to be bound.
-                                    </div>
-                                ';
-                                }
-                                Database::dbclose($noid);
-                                // refresh the page to clear Post method.
-                                header("Location: admin.php?db=" . $_GET["db"]);
-                            }
-
-                            //handle bulk bind set
-                            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
-                                // show progressing of bulkc importing.
-
-
-                                // read csv and start processing.
-                                if (is_uploaded_file($_FILES['importCSV']['tmp_name'])) {
-                                    // generate Ark service procession object
-                                    $noidUI = new NoidUI();
-
-                                    //Read and scan through imported csv
-                                    if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
-                                        // read the first row as columns
-                                        $columns = fgetcsv($handle, 0, ",");
-
-                                        // check if CSV has 3 mandatory fields, otherwise, it won't proceed with bulk bind
-                                        if (!in_array("PID", $columns) ||
-                                            !in_array("URL", $columns) ||
-                                            !in_array("mods_local_identifier", $columns)){
-                                            exit ('<div class="alert alert-danger" role="alert" style="margin-top:10px;">
-                                                        The imported CSV must have column name "PID", "URL", and "mods_local_identifier". Please <a href="/admin.php?db='. $_GET['db'] .'">Try again.</a>
-                                                    </div>');
-                                        }
-                                        else {
-                                            print '<div class="progress">
-                                                  <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
-                                                </div>';
-                                        }
-
-
-                                        array_push($columns, "Ark Link");
-
-                                        // add columns to import data array
-                                        $importedData = array_merge([], $columns);
-
-                                        // loop through the rest of rows
-                                        $flag = true;
-                                        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                                            // avoid the 1st row since it's header
-                                            if ($flag) {
-                                                $flag = false;
-                                                continue;
-                                            }
-                                            $num = count($data);
-                                            $row++;
-
-
-                                            $identifier = null;
-                                            for ($c = 0; $c < $num; $c++) {
-
-                                                // capture identifier (strictly recommend first column)
-                                                if ($columns[$c] === 'Ark ID') {
-                                                    $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-
-                                                    if (empty($data[$c])) {
-                                                        // mint a new ark id
-                                                        $identifier = NoidArk::mint($noid, $contact);
-                                                        error_log(print_r("New minted: " . $identifier, true), 0);
-                                                    } else {
-                                                        $identifier = $data[$c];
-                                                    }
-
-                                                }
-                                                if ($columns[$c] == "mods_local_identifier") {
-                                                    // TOOD: check if Local exist
-                                                    $checkExistedLocalID = Database::$engine->select("_value = '$data[$c]'");
-                                                    if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
-                                                        $identifier = preg_split('/\s+/', $checkExistedLocalID['_key'])[0];
-                                                    }
-                                                }
-                                                if ($c > 0) { // avoid bindset identifier column
-
-                                                    $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-                                                    $contact = time();
-
-                                                    // check if ark ID exist
-                                                    $checkExisted = Database::$engine->select("_key REGEXP '^" . $identifier . "' and _key REGEXP ':/c$'");
-                                                    if (is_array($checkExisted) && count($checkExisted) > 0) {
-                                                        $result = NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($columns[$c]), $data[$c]);
-                                                    }
-                                                }
-                                                if ($c == $num - 1) {
-                                                    $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-                                                    $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
-                                                }
-                                                Database::dbclose($noid);
-                                            }
-                                            // add columns to import data array
-                                            array_push($importedData, $data);
-                                        }
-                                        //TODO: write each row to new csv
-
-                                        $noidUI->importedToCSV("import_minted", $noidUI->path($_GET["db"]), $columns, $importedData, time());
-                                        fclose($handle);
-                                    }
-                                }
-                                header("Location: admin.php?db=" . $_GET["db"]);
-                            }
-
-
-                            ?>
                             <div class="row">
                                 <div class="col-md-12">
                                     <table id="bound_table" class="display" style="width:100%">
@@ -850,6 +884,7 @@ $arkdbs = Database::showdatabases();
 
                 // refresh the page to destroy post section
                 header("Location: admin.php?db=" . $_GET["db"]);
+                
             }
             ?>
                         </p>
@@ -897,6 +932,7 @@ $arkdbs = Database::showdatabases();
 
                 // refresh the page to destroy post session
                 header("Location: admin.php?db=" . $_GET["db"]);
+                
             }
             ?>
                         </p>

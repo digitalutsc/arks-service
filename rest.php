@@ -1,11 +1,13 @@
 <?php
-
+require_once "NoidUI.php";
 require_once "NoidLib/lib/Storage/MysqlDB.php";
 require_once 'NoidLib/custom/GlobalsArk.php';
 require_once 'NoidLib/lib/Db.php';
 require_once 'NoidLib/custom/Database.php';
 require_once 'NoidLib/custom/MysqlArkConf.php';
+require_once 'NoidLib/custom/NoidArk.php';
 
+use Noid\Lib\Custom\NoidArk;
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
 use Noid\Lib\Storage\DatabaseInterface;
@@ -55,11 +57,80 @@ switch ($_GET['op']) {
         echo getDbInfo();
         break;
     }
+    case 'bulkbind': {
+        if (isset($_GET['stage']) && $_GET['stage'] == 'upload'){
+            echo bulkbind_upload();
+        }
+        else if (isset($_GET['stage']) && $_GET['stage'] == 'import'){
+            echo bulkbind_import();
+        }
+        else if (isset($_GET['stage']) && $_GET['stage'] == 'processing') {
+            echo bulkbind_processing();
+        }
+        else {
+            echo  json_encode("Invalid stage");
+        }
+        break;
+    }
     default:
     {
         echo json_encode("Operation is mandatory");
         break;
     }
+}
+
+
+function bulkbind_upload(){
+    GlobalsArk::$db_type = 'ark_mysql';
+    $result = null;
+    if (is_array($_POST) && isset($_POST['data'])) {
+        $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+        // capture identifier (strictly recommend first column)
+        $contact = time();
+
+        if (!empty($_POST['data']['PID'])) {
+
+            // TOOD: check if decided unique field exist, to avoid duplication
+            $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['PID']."'");
+            if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
+                $identifier = preg_split('/\s+/', $checkExistedLocalID[0]['_key'])[0];
+            }
+            else {
+                if (empty($_POST['data'][strtoupper('Ark ID')] )) {
+                    // mint a new ark id
+                    $identifier = NoidArk::mint($noid, $contact);
+                }
+                else {
+                    $identifier = $_POST['data'][strtoupper('Ark ID')];
+                }
+            }
+        }
+        else {
+            if (empty($_POST['data'][strtoupper('Ark ID')] )) {
+                // mint a new ark id
+                $identifier = NoidArk::mint($noid, $contact);
+            }
+            else {
+                $identifier = $_POST['data'][strtoupper('Ark ID')];
+            }
+        }
+
+        foreach ($_POST['data'] as $key => $pair) {
+            if ($key !== strtoupper('Ark ID')) {
+                // check if ark ID exist
+                NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($key), $pair);
+            }
+        }
+        Database::dbclose($noid);
+        return json_encode(['success' => 1]);
+    }
+    return json_encode(['success' => 0, 'message' => 'Invalid data imported']);
+
+
+}
+
+function bulkbind_processing() {
+
 }
 
 function getDbInfo() {
@@ -201,4 +272,134 @@ function getPrefix() {
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $prefix = Database::$engine->get(Globals::_RR . "/prefix");
     return json_encode($prefix);
+}
+
+
+
+
+
+
+
+
+function bulkbind_import() {
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && !empty($_POST['enterIdentifier'])) {
+        $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+        $contact = time();
+
+        // check if ark ID exist
+        $checkExisted = Database::$engine->select("_key REGEXP '^" . $_POST['enterIdentifier'] . "' and _key REGEXP ':/c$'");
+        if (count($checkExisted) > 0) {
+            $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], strtoupper($_POST['enterKey']), $_POST['enterValue']);
+            print '
+                                    <div class="alert alert-success" role="alert">
+                                        Ark IDs have been bound successfully.
+                                    </div>
+                                ';
+        } else {
+            print '
+                                    <div class="alert alert-warning" role="alert">
+                                        Ark IDs does not exist to be bound.
+                                    </div>
+                                ';
+        }
+        Database::dbclose($noid);
+        // refresh the page to clear Post method.
+        header("Location: admin.php?db=" . $_GET["db"]);
+    }
+
+    //handle bulk bind set
+    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['import'])) {
+
+        // read csv and start processing.
+        if (is_uploaded_file($_FILES['importCSV']['tmp_name'])) {
+            // generate Ark service procession object
+            $noidUI = new NoidUI();
+
+            //Read and scan through imported csv
+            if (($handle = fopen($_FILES['importCSV']['tmp_name'], "r")) !== FALSE) {
+                // read the first row as columns
+                $columns = fgetcsv($handle, 0, ",");
+
+                // check if CSV has 3 mandatory fields, otherwise, it won't proceed with bulk bind
+                if (!in_array("PID", $columns) ||
+                    !in_array("URL", $columns) ||
+                    !in_array("mods_local_identifier", $columns)) {
+                    exit ('<div class="alert alert-danger" role="alert" style="margin-top:10px;">
+                                                        The imported CSV must have column name "PID", "URL", and "mods_local_identifier". Please <a href="/admin.php?db=' . $_GET['db'] . '">Try again.</a>
+                                                    </div>');
+                } else {
+                    print '<div class="progress">
+                                                  <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+                                                </div>';
+                }
+
+
+                array_push($columns, "Ark Link");
+
+                // add columns to import data array
+                $importedData = array_merge([], $columns);
+
+                // loop through the rest of rows
+                $flag = true;
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    // avoid the 1st row since it's header
+                    if ($flag) {
+                        $flag = false;
+                        continue;
+                    }
+                    $num = count($data);
+                    $row++;
+
+
+                    $identifier = null;
+                    for ($c = 0; $c < $num; $c++) {
+
+                        // capture identifier (strictly recommend first column)
+                        if ($columns[$c] === 'Ark ID') {
+                            $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+
+                            if (empty($data[$c])) {
+                                // mint a new ark id
+                                $identifier = NoidArk::mint($noid, $contact);
+                                error_log(print_r("New minted: " . $identifier, true), 0);
+                            } else {
+                                $identifier = $data[$c];
+                            }
+
+                        }
+                        if ($columns[$c] == "mods_local_identifier") {
+                            // TOOD: check if Local exist
+                            $checkExistedLocalID = Database::$engine->select("_value = '$data[$c]'");
+                            if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
+                                $identifier = preg_split('/\s+/', $checkExistedLocalID['_key'])[0];
+                            }
+                        }
+                        if ($c > 0) { // avoid bindset identifier column
+
+                            $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                            $contact = time();
+
+                            // check if ark ID exist
+                            $checkExisted = Database::$engine->select("_key REGEXP '^" . $identifier . "' and _key REGEXP ':/c$'");
+                            if (is_array($checkExisted) && count($checkExisted) > 0) {
+                                $result = NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($columns[$c]), $data[$c]);
+                            }
+                        }
+                        if ($c == $num - 1) {
+                            $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
+                            $data[$num] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $identifier;
+                        }
+                        Database::dbclose($noid);
+                    }
+                    // add columns to import data array
+                    array_push($importedData, $data);
+                }
+                //TODO: write each row to new csv
+
+                $noidUI->importedToCSV("import_minted", $noidUI->path($_GET["db"]), $columns, $importedData, time());
+                fclose($handle);
+            }
+        }
+        header("Location: admin.php?db=" . $_GET["db"]);
+    }
 }
