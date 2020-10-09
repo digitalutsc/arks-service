@@ -396,7 +396,7 @@ $arkdbs = Database::showdatabases();
                             }
 
                             header("Location: admin.php");
-                            
+
                         }
 
                         // List all created databases in the table
@@ -483,7 +483,7 @@ $arkdbs = Database::showdatabases();
                                 Database::dbclose($noid);
                                 // redirect to the page.
                                 header("Location: admin.php?db=" . $_GET["db"]);
-                                
+
                             }
                             ?>
                             <div class="row">
@@ -615,7 +615,7 @@ $arkdbs = Database::showdatabases();
                             <div class="modal fade" id="bulkBindModal" tabindex="-1"
                                  aria-labelledby="bulkBindModalLabel"
                                  aria-hidden="true">
-                                <div class="modal-dialog">
+                                <div id="bulk-binding-modal" class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h5 class="modal-title" id="bulkBindModalLabel">Bulk Binding</h5>
@@ -632,14 +632,15 @@ $arkdbs = Database::showdatabases();
                                                             <p><strong><u>Note:</u></strong> For this section, please
                                                                 follow:</p>
                                                             <ul>
-                                                                <li>Mint first</li>
-                                                                <li>Download the CSV with minted identifiers above and
-                                                                    add
-                                                                    fields as columns to the
-                                                                    CSV
+                                                                <li>Setup a CSV (only file type supported)</li>
+                                                                <li>Make sure your CSV has 3 mandatory columns:
+                                                                    <ul>
+                                                                        <li>mods_local_identifier,</li>
+                                                                        <li>PID,</li>
+                                                                        <li>and URL</li>
+                                                                    </ul>
                                                                 </li>
-                                                                <li>Export as a CSV file (only accept CSV) .</li>
-                                                                <li>Import it below</li>
+                                                                <li>Upload the CSV to start Bulk Bind process.</li>
                                                             </ul>
 
                                                             <p><strong><label for="importCSV">Upload
@@ -653,11 +654,6 @@ $arkdbs = Database::showdatabases();
                                                                 CSV</small>
 
                                                         </div>
-                                                        <input type="submit" name="import" value="Bulk Bind"
-                                                               class="btn btn-primary"/>
-                                                        <button type="button" class="btn btn-secondary"
-                                                                data-dismiss="modal">Close
-                                                        </button>
 
                                                         <div class="row">
                                                             <div class="col-sm-12">
@@ -669,22 +665,35 @@ $arkdbs = Database::showdatabases();
                                                                              role="progressbar" aria-valuemin="0"
                                                                              aria-valuemax="100">
                                                                         </div>
-
                                                                     </div>
-                                                                    <span id="process_data">0</span> - <span
-                                                                            id="total_data">0</span>
+                                                                    Binding <span id="process_data">0</span> of <span
+                                                                            id="total_data">0</span> records.
                                                                 </div>
 
                                                             </div>
                                                         </div>
 
+                                                        <div class="row">
+                                                            <div class="col-sm-12">
+                                                                <input type="submit" name="import" value="Bulk Bind"
+                                                                       class="btn btn-primary"/>
+                                                                <button type="button" class="btn btn-secondary"
+                                                                        data-dismiss="modal">Close
+                                                                </button>
+                                                            </div>
+                                                        </div>
 
                                                     </form>
                                                 </div>
                                             </div>
                                         </div>
                                         <script>
+
                                             $('#form-import').on('submit', function (event) {
+                                                /*$('#bulk-binding-modal').modal({
+                                                    backdrop: 'static',
+                                                    keyboard: false
+                                                })*/
                                                 $('#message').html('');
                                                 event.preventDefault();
 
@@ -693,7 +702,7 @@ $arkdbs = Database::showdatabases();
                                                 var ext = csv.val().split(".").pop().toLowerCase();
 
                                                 if ($.inArray(ext, ["csv"]) === -1) {
-                                                    alert('upload csv');
+                                                    $('#message').html('<div class="alert alert-danger">Only accept CSV file</div>');
                                                     return false;
                                                 }
                                                 if (csvFile != undefined) {
@@ -707,46 +716,59 @@ $arkdbs = Database::showdatabases();
                                                         }
                                                         // get headers
                                                         var keys = csvResult[0].split(',');
-                                                        console.log(keys);
+                                                        if  ($.inArray( "PID", keys ) === -1 ||  !$.inArray( "mods_local_identifier", keys ) === -1 || $.inArray( "URL", keys ) === -1 ) {
+                                                            $('#message').html('<div class="alert alert-danger">' +
+                                                                ' <li>Make sure your CSV has 3 mandatory columns:\n' +
+                                                                '<ul>\n' +
+                                                                '<li>mods_local_identifier,</li>\n' +
+                                                                '<li>PID,</li>\n' +
+                                                                '<li>and URL</li>\n' +
+                                                                '</ul>\n' +
+                                                                '</li>'
+                                                                +'</div>');
+                                                            $('#process').css('display', 'none');
+                                                            return false;
+                                                        }
+                                                        else {
+                                                            $.each(csvResult, function (index, item) {
+                                                                if (index > 0 && (item !== "")) {
+                                                                    var values = item.split(',')
+                                                                    var pdata = {};
+                                                                    for (var i = 0; i < values.length; i++) {
+                                                                        // enforce csv must follow sequence LocalID, PID, URL,
+                                                                        if (keys[i] !== undefined) {
+                                                                            pdata[keys[i].toUpperCase()] = values[i];
+                                                                        }
+                                                                    }
+                                                                    $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata})
+                                                                        .done(function (data) {
+                                                                            var result = JSON.parse(data);
+                                                                            if (result.success === 1) {
+                                                                                $('#total_data').text(total_data);
+                                                                                var width = Math.round((index / total_data) * 100);
+                                                                                $('#process_data').text(index);
+                                                                                $('.progress-bar').css('width', width + '%');
 
-                                                        $.each(csvResult, function (index, item) {
-                                                            if (index > 0 && (item !== "" )) {
-                                                                var values = item.split(',')
-                                                                var pdata = {};
-                                                                for (var i = 0; i < values.length; i++) {
-                                                                    // enforce csv must follow sequence LocalID, PID, URL,
-                                                                    pdata[keys[i].toUpperCase()] = values[i];
-                                                                }
-                                                                console.log(pdata);
-                                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata})
-                                                                    .done(function (data) {
-                                                                        var result = JSON.parse(data);
-                                                                        if (result.success === 1) {
-                                                                            $('#total_data').text(total_data);
-                                                                            var width = Math.round((index / total_data) * 100);
-                                                                            $('#process_data').text(index);
-                                                                            $('.progress-bar').css('width', width + '%');
-
-                                                                            if (width >= 99) {
-                                                                                $('#process').css('display', 'none');
-                                                                                $('#importCSV').val('');
-                                                                                $('#message').html('<div class="alert alert-success">Bulk Bind successfully completed.</div>');
-                                                                                $('#import').attr('disabled', false);
-                                                                                $('#import').val('Import');
+                                                                                if (width >= 99) {
+                                                                                    $('#process').css('display', 'none');
+                                                                                    $('#importCSV').val('');
+                                                                                    $('#message').html('<div class="alert alert-success">Bulk Bind successfully completed.</div>');
+                                                                                    $('#import').attr('disabled', false);
+                                                                                    $('#import').val('Import');
+                                                                                }
+                                                                            } else if (result.success == 0) {
+                                                                                $('#message').html('<div class="alert alert-danger">' + result.message + '</div>');
+                                                                                $('#importCSV').attr('disabled', false);
+                                                                                $('#importCSV').val('Import');
                                                                             }
-                                                                        }
-                                                                        else if (result.success == 0) {
-                                                                            $('#message').html('<div class="alert alert-danger">'+result.message+'</div>');
-                                                                            $('#importCSV').attr('disabled',false);
-                                                                            $('#importCSV').val('Import');
-                                                                        }
-                                                                    })
-                                                                    .fail(function () {
-                                                                        alert("error");
-                                                                    });
-                                                            }
+                                                                        })
+                                                                        .fail(function () {
+                                                                            console.log("error");
+                                                                        });
+                                                                }
+                                                            });
+                                                        }
 
-                                                        });
 
                                                     }
                                                     reader.readAsText(csvFile);
@@ -884,7 +906,7 @@ $arkdbs = Database::showdatabases();
 
                 // refresh the page to destroy post section
                 header("Location: admin.php?db=" . $_GET["db"]);
-                
+
             }
             ?>
                         </p>
@@ -932,7 +954,7 @@ $arkdbs = Database::showdatabases();
 
                 // refresh the page to destroy post session
                 header("Location: admin.php?db=" . $_GET["db"]);
-                
+
             }
             ?>
                         </p>
