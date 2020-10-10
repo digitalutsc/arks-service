@@ -393,7 +393,6 @@ function bulkbind_import() {
                             if (empty($data[$c])) {
                                 // mint a new ark id
                                 $identifier = NoidArk::mint($noid, $contact);
-                                error_log(print_r("New minted: " . $identifier, true), 0);
                             } else {
                                 $identifier = $data[$c];
                             }

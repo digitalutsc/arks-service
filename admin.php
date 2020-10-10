@@ -533,6 +533,70 @@ $arkdbs = Database::showdatabases();
             <div class="card">
                 <h5 class="card-header">Bind Set</h5>
                 <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <?php
+                            // handle bind set
+                            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && $_POST['enterIdentifier'] != -1) {
+                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                $contact = time();
+
+                                // check if ark ID exist
+                                $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], strtoupper($_POST['enterKey']), $_POST['enterValue']);
+                                if (isset($result)) {
+
+                                    print '
+                                    <div class="alert alert-success" role="alert">
+                                        Ark IDs have been bound successfully.
+                                    </div>
+                                ';
+                                } else {
+                                    print '
+                                    <div class="alert alert-warning" role="alert">
+                                        Ark IDs does not exist to be bound.
+                                    </div>
+                                ';
+                                }
+                                Database::dbclose($noid);
+                                // refresh the page to clear Post method.
+                                header("Location: admin.php?db=" . $_GET["db"]);
+                            }
+                            ?>
+                        </div>
+                    </div>
+
+                    <?php
+                    // handle clear bind set
+                    if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['clear-bindset'])) { ?>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <?php
+                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                $status = NoidArk::clearBind($noid, $_POST['enterToClearIdentifier'], $_POST['enterKeytoClear']);
+                                if ($status !== false) {
+                                    print '
+                                                                <div class="alert alert-success" role="alert">
+                                                                    Ark ID <i>'.$_POST['enterToClearIdentifier'].'</i> - '.$_POST['enterKeytoClear'].' has been cleared
+                                                                </div>
+                                                            ';
+                                }
+                                else {
+                                    print '
+                                                                <div class="alert alert-success" role="alert">
+                                                                    Ark ID <i>'.$_POST['enterToClearIdentifier'].'</i> - '.$_POST['enterKeytoClear'].' failed to be cleared
+                                                                </div>
+                                                            ';
+                                }
+
+                                Database::dbclose($noid);
+
+                                // redirect to the page.
+                                header("Location: admin.php?db=" . $_GET["db"]);
+                                ?>
+                            </div>
+                        </div>
+                    <?php } ?>
+
                     <div id="row-bindset" class="row">
                         <div class="col-sm-12">
                             <button type="button" class="btn btn-primary" data-toggle="modal"
@@ -554,12 +618,7 @@ $arkdbs = Database::showdatabases();
                                                 <form id="form-bindset" method="post"
                                                       action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                     <div class="form-group">
-
-
                                                         <label for="enterIdentifier">Identifier:</label>
-                                                        <!--<input type="text" class="form-control" id="enterIdentifier"
-                                                               name="enterIdentifier"
-                                                               required>-->
                                                         <select id="enterIdentifier" name="enterIdentifier"
                                                                 class="form-control" data-live-search="true">
                                                         </select>
@@ -587,6 +646,9 @@ $arkdbs = Database::showdatabases();
                                 </div>
                             </div>
 
+
+
+                            <!-- Clear Bind set -->
                             <button type="button" class="btn btn-secondary" data-toggle="modal"
                                     data-target="#clearbindsetModal">
                                 Clear Bind
@@ -639,30 +701,7 @@ $arkdbs = Database::showdatabases();
                                             </div>
 
                                         </div>
-                                        <?php
-                                        if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['clear-bindset'])) { ?>
-                                            <div class="row">
-                                                <div class="col-sm-12">
-                                                    <?php
-                                                    $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
-                                                    NoidArk::_clear_bindings($noid, $_POST['enterToClearIdentifier'], 0);
-                                                    Database::$engine->delete($_POST['enterToClearIdentifier'] . "\t" . Globals::_RR . "/p");
-                                                    if (Database::$engine->get(Globals::_RR . "/longterm")) {
-                                                        $status = NoidArk::hold_set($noid, $_POST['enterToClearIdentifier']);
-                                                    }
-                                                    print '
-                                                                <div class="alert alert-success" role="alert">
-                                                                    Ark ID has been removed.
-                                                                </div>
-                                                            ';
-                                                    Database::dbclose($noid);
 
-                                                    // redirect to the page.
-                                                    header("Location: admin.php?db=" . $_GET["db"]);
-                                                    ?>
-                                                </div>
-                                            </div>
-                                        <?php } ?>
                                     </div>
                                 </div>
                             </div>
@@ -841,7 +880,7 @@ $arkdbs = Database::showdatabases();
 
                             <!-- Fetch -->
                             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#fetchModal">
-                                Fetch
+                                Identified Search
                             </button>
 
                             <!-- Modal -->
@@ -849,7 +888,7 @@ $arkdbs = Database::showdatabases();
                                 <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="fetchModalLabel">Fetch</h5>
+                                            <h5 class="modal-title" id="fetchModalLabel">Identified Search</h5>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -864,33 +903,6 @@ $arkdbs = Database::showdatabases();
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Get -->
-                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#getModal">
-                                Get
-                            </button>
-
-                            <!-- Modal -->
-                            <div class="modal fade" id="getModal" tabindex="-1" role="dialog" aria-labelledby="getModalLabel" aria-hidden="true">
-                                <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="getModalLabel">Modal title</h5>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <div class="modal-body">
-                                            ...
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                            <button type="button" class="btn btn-primary">Save changes</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
 
                         </div>
                     </div>
@@ -904,7 +916,7 @@ $arkdbs = Database::showdatabases();
                                         <tr>
                                             <th>Ark ID</th>
                                             <th>PID</th>
-                                            <th>Other Bound Data</th>
+                                            <th>Metadata</th>
                                             <th>Ark URL</th>
                                         </tr>
                                         </thead>

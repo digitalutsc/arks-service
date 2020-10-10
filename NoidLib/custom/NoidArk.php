@@ -66,6 +66,31 @@ class NoidArk extends Noid {
         // function _dba_fetch_range() went as named "get_range()" to DatabaseInterface(BerkeleyDB and MysqlDB)
     }
 
+    /**
+     * @param $noid
+     * @param $id
+     * @return int|null
+     */
+    static public function clearBind($noid, $id, $elem = null) {
+        self::init();
+        $status = false;
+        $db = Database::getDb($noid);
+        if(is_null($db)){
+            return NULL;
+        }
+        $first = "$id\t";
+        $values = Database::$engine->get_range($first);
+        if($values){
+            foreach($values as $key => $value){
+                if (isset($elem) && !empty($elem) && strpos($key, $elem) !== FALSE) {
+                    $status = Database::$engine->delete($key);
+                    break;
+                }
+            }
+        }
+        return $status;
+    }
+
 
     /**
      * Returns ANVL message on success, null on error.
