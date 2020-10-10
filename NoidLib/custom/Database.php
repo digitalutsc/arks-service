@@ -88,8 +88,7 @@ class Database
         $dbs = self::showDatabases();
         $existed = false;
         foreach ($dbs as $db) {
-            $db = $db[0];
-            if (strcmp($dbname, $db)) {
+            if (strcmp($dbname, $db) === 0) {
                 $existed = true;
                 break;
             }

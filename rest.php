@@ -20,10 +20,23 @@ use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
 use Noid\Lib\Custom\MysqlArkConf;
 
+if (!isset($_GET['db'])) {
+    die(json_encode("No database selected"));
+}
+
 switch ($_GET['op']) {
     case "minted":
     {
         echo getMinted();
+        break;
+    }
+    case "fields": {
+        if (isset($_GET['ark_id']) ) {
+            echo getFields($_GET['ark_id']);
+        }
+        else {
+            echo  json_encode("Invalid Ark ID");
+        }
         break;
     }
     case "firstpart":
@@ -79,11 +92,27 @@ switch ($_GET['op']) {
     }
 }
 
+function getFields($ark_id) {
+    GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die(json_encode('Database not found'));
+    }
+    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+    $where = "_key REGEXP '^" .$ark_id ."\t' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+    $result = Database::$engine->select($where);
+
+    $json = array();
+    foreach ($result as $row) {
+        array_push($json, trim(str_replace($ark_id,"", $row['_key'])));
+    }
+    Database::dbclose($noid);
+    return json_encode($json);
+}
 
 function bulkbind_upload(){
     GlobalsArk::$db_type = 'ark_mysql';
     if (!Database::exist($_GET['db'])) {
-        die('Database not found');
+        die(json_encode(['success' => 0, 'message' => 'Database not found']));
     }
     $result = null;
     if (is_array($_POST) && isset($_POST['data'])) {
@@ -91,7 +120,7 @@ function bulkbind_upload(){
         // capture identifier (strictly recommend first column)
         $contact = time();
 
-        if (!empty($_POST['data']['PID'])) {
+        if (!empty($_POST['data'][strtoupper('mods_local_identifier')])) {
 
             // TOOD: check if decided unique field exist, to avoid duplication
             $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['PID']."'");
@@ -132,15 +161,11 @@ function bulkbind_upload(){
 
 }
 
-function bulkbind_processing() {
-
-}
-
 function getDbInfo() {
     GlobalsArk::$db_type = 'ark_mysql';
 
     if (!Database::exist($_GET['db'])) {
-        die('Database not found');
+        die(json_encode('Database not found'));
     }
 
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
@@ -158,6 +183,10 @@ function getDbInfo() {
 
 function selectBound()
 {
+    GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die(json_encode('Database not found'));
+    }
     $rows = json_decode(select());
     array_push($rows, (object)[]);
     $currentID = null;
@@ -190,7 +219,7 @@ function select($where = "")
 {
     GlobalsArk::$db_type = 'ark_mysql';
     if (!Database::exist($_GET['db'])) {
-        die('Database not found');
+        die(json_encode('Database not found'));
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
@@ -213,7 +242,7 @@ function getPID($arkID) {
         return "Ark ID is not valid";
     GlobalsArk::$db_type = 'ark_mysql';
     if (!Database::exist($_GET['db'])) {
-        die('Database not found');
+        die(json_encode('Database not found'));
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $result = Database::$engine->select("_key REGEXP '^$arkID' and _key REGEXP 'PID$'");
@@ -224,7 +253,7 @@ function getPID($arkID) {
 function getNAA() {
     GlobalsArk::$db_type = 'ark_mysql';
     if (!Database::exist($_GET['db'])) {
-        die('Database not found');
+        die(json_encode('Database not found'));
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $naa = Database::$engine->get(Globals::_RR . "/naa");
@@ -236,7 +265,7 @@ function getMinted()
 {
     GlobalsArk::$db_type = 'ark_mysql';
     if (!Database::exist($_GET['db'])) {
-        die('Database not found');
+        die(json_encode('Database not found'));
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
@@ -259,7 +288,7 @@ function getfirstpart()
 {
     GlobalsArk::$db_type = 'ark_mysql';
     if (!Database::exist($_GET['db'])) {
-        die('Database not found');
+        die(json_encode('Database not found'));
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
@@ -270,7 +299,7 @@ function getPrefix() {
 
     GlobalsArk::$db_type = 'ark_mysql';
     if (!Database::exist($_GET['db'])) {
-        die('Database not found');
+        die(json_encode('Database not found'));
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $prefix = Database::$engine->get(Globals::_RR . "/prefix");

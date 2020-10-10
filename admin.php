@@ -94,13 +94,37 @@ $arkdbs = Database::showdatabases();
                     url: "rest.php?db=<?php echo $_GET['db']; ?>&op=minted"
                 }).then(function (data) {
                     $objects = JSON.parse(data);
-                    var options = '';
+                    var options = '<option value="-1" selected disabled>-- Select --</option>';
                     for (var i = 0; i < $objects.length; i++) {
                         options += '<option value="' + $objects[i]._key + '">' + $objects[i]._key + '</option>';
                     }
                     $('#enterIdentifier').html(options).selectpicker();
                     $('#enterToClearIdentifier').html(options).selectpicker();
                 });
+
+
+                $('#enterToClearIdentifier').on('change', function(e){
+                    /*console.log(this.value,
+                        this.options[this.selectedIndex].value,
+                        $(this).find("option:selected").val());*/
+                    var selected = this.value;
+                    $('#enterKeytoClear').empty();
+                    console.log("rest.php?db=<?php echo $_GET['db']; ?>&ark_id="+selected+"&op=fields");
+                    jQuery.ajax({
+                        url: "rest.php?db=<?php echo $_GET['db']; ?>&ark_id="+selected+"&op=fields"
+                    }).then(function (data) {
+                        var objects = JSON.parse(data);
+                        var options = '';
+                        for (var i = 0; i < objects.length; i++) {
+                            options += '<option value="' + objects[i] + '">' + objects[i] + '</option>';
+                        }
+                        console.log(options);
+                        $('#enterKeytoClear').html(options).selectpicker();
+                        $('#enterKeytoClear').html(options).selectpicker();
+                    });
+                    
+                });
+
 
                 jQuery('#minted_table').DataTable({
                     "ajax": {
@@ -579,34 +603,69 @@ $arkdbs = Database::showdatabases();
                                             </button>
                                         </div>
                                         <div class="modal-body">
-                                            <div class="col-sm-12">
-                                                <form id="form-clear-bindset" method="post"
-                                                      action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                                                    <div class="form-group">
-                                                        <label for="enterToClearIdentifier">Identifier:</label>
-                                                        <select id="enterToClearIdentifier"
-                                                                name="enterToClearIdentifier" class="form-control"
-                                                                data-live-search="true">
-                                                        </select>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label for="enterKey">Key:</label>
-                                                        <input type="text" class="form-control" id="enterKey"
-                                                               name="enterKey" required>
-                                                    </div>
-                                                    <input type="submit" name="clear-bindset" value="Bind"
-                                                           class="btn btn-primary"/>
-                                                    <button type="button" class="btn btn-secondary"
-                                                            data-dismiss="modal">
-                                                        Close
-                                                </form>
-                                            </div>
-                                        </div>
+                                            <div class="row">
+                                                <div class="col-sm-12">
+                                                    <form id="form-clear-bindset" method="post"
+                                                          action="./admin.php?db=<?php echo $_GET['db'] ?>">
+                                                        <div class="form-group">
+                                                            <label for="enterToClearIdentifier">Identifier:</label>
+                                                            <select id="enterToClearIdentifier"
+                                                                    name="enterToClearIdentifier" class="form-control"
+                                                                    data-live-search="true">
+                                                                <option value="-1" selected disabled>-- Select --</option>
+                                                            </select>
+                                                        </div>
 
+                                                        <div class="form-group">
+                                                            <label for="enterKeytoClear">Name:</label>
+                                                            <select id="enterKeytoClear"
+                                                                    name="enterKeytoClear" class="form-control">
+                                                                <option value="-1" selected disabled>-- Select --</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <!--<div class="form-group">
+                                                            <label for="enterKey">Key:</label>
+                                                            <input type="text" class="form-control" id="enterKey"
+                                                                   name="enterKey" required>
+                                                        </div>-->
+                                                        <input type="submit" name="clear-bindset" value="Clear"
+                                                               class="btn btn-primary"/>
+                                                        <button type="button" class="btn btn-secondary"
+                                                                data-dismiss="modal">
+                                                            Close
+                                                    </form>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                        <?php
+                                        if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['clear-bindset'])) { ?>
+                                            <div class="row">
+                                                <div class="col-sm-12">
+                                                    <?php
+                                                    $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                                    NoidArk::_clear_bindings($noid, $_POST['enterToClearIdentifier'], 0);
+                                                    Database::$engine->delete($_POST['enterToClearIdentifier'] . "\t" . Globals::_RR . "/p");
+                                                    if (Database::$engine->get(Globals::_RR . "/longterm")) {
+                                                        $status = NoidArk::hold_set($noid, $_POST['enterToClearIdentifier']);
+                                                    }
+                                                    print '
+                                                                <div class="alert alert-success" role="alert">
+                                                                    Ark ID has been removed.
+                                                                </div>
+                                                            ';
+                                                    Database::dbclose($noid);
+
+                                                    // redirect to the page.
+                                                    header("Location: admin.php?db=" . $_GET["db"]);
+                                                    ?>
+                                                </div>
+                                            </div>
+                                        <?php } ?>
                                     </div>
                                 </div>
                             </div>
-
                             <!-- Bulk Bind Modal -->
                             <button type="button" class="btn btn-success" data-toggle="modal"
                                     data-target="#bulkBindModal">
@@ -716,20 +775,19 @@ $arkdbs = Database::showdatabases();
                                                         }
                                                         // get headers
                                                         var keys = csvResult[0].split(',');
-                                                        if  ($.inArray( "PID", keys ) === -1 ||  !$.inArray( "mods_local_identifier", keys ) === -1 || $.inArray( "URL", keys ) === -1 ) {
+                                                        if (!$.inArray("PID", keys) === -1 || !$.inArray("pid", keys) === -1 || !$.inArray("mods_local_identifier", keys) === -1 /*|| $.inArray( "URL", keys ) === -1 */) {
                                                             $('#message').html('<div class="alert alert-danger">' +
                                                                 ' <li>Make sure your CSV has 3 mandatory columns:\n' +
                                                                 '<ul>\n' +
                                                                 '<li>mods_local_identifier,</li>\n' +
-                                                                '<li>PID,</li>\n' +
-                                                                '<li>and URL</li>\n' +
+                                                                '<li>PID.</li>\n' +
+                                                                //'<li>and URL</li>\n' +
                                                                 '</ul>\n' +
                                                                 '</li>'
-                                                                +'</div>');
+                                                                + '</div>');
                                                             $('#process').css('display', 'none');
                                                             return false;
-                                                        }
-                                                        else {
+                                                        } else {
                                                             $.each(csvResult, function (index, item) {
                                                                 if (index > 0 && (item !== "")) {
                                                                     var values = item.split(',')
@@ -774,71 +832,61 @@ $arkdbs = Database::showdatabases();
                                                     reader.readAsText(csvFile);
                                                 }
                                             });
-                                            /*$.ajax({
-                                                url: "rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload",
-                                                    method: "POST",
-                                                    data: new FormData(this),
-                                                    dataType: "json",
-                                                    contentType: false,
-                                                    cache: false,
-                                                    processData: false,
-                                                    beforeSend: function () {
-                                                        $('#import').attr('disabled', 'disabled');
-                                                        $('#import').val('Importing');
-                                                    },
-                                                    success: function (data) {
-                                                        console.log(data);
-                                                        if (data.success) {
 
-                                                            $('#total_data').text(data.total_line);
-
-                                                            start_import();
-
-                                                            clear_timer = setInterval(get_import_data, 2000);
-
-                                                            //$('#message').html('<div class="alert alert-success">CSV File Uploaded</div>');
-                                                        }
-                                                        if (data.error) {
-                                                            $('#message').html('<div class="alert alert-danger">' + data.error + '</div>');
-                                                            $('#import').attr('disabled', false);
-                                                            $('#import').val('Import');
-                                                        }
-                                                    }
-                                                })
-                                            });
-
-
-                                            function start_import() {
-                                                $('#process').css('display', 'block');
-                                                $.ajax({
-                                                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=import",
-                                                    success: function () {
-
-                                                    }
-                                                })
-                                            }
-
-                                            function get_import_data() {
-                                                $.ajax({
-                                                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=process",
-                                                    success: function (data) {
-                                                        var total_data = $('#total_data').text();
-                                                        var width = Math.round((data / total_data) * 100);
-                                                        $('#process_data').text(data);
-                                                        $('.progress-bar').css('width', width + '%');
-                                                        if (width >= 100) {
-                                                            clearInterval(clear_timer);
-                                                            $('#process').css('display', 'none');
-                                                            $('#file').val('');
-                                                            $('#message').html('<div class="alert alert-success">Data Successfully Imported</div>');
-                                                            $('#import').attr('disabled', false);
-                                                            $('#import').val('Import');
-                                                        }
-                                                    }
-                                                })
-                                            }*/
                                         </script>
 
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Fetch -->
+                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#fetchModal">
+                                Fetch
+                            </button>
+
+                            <!-- Modal -->
+                            <div class="modal fade" id="fetchModal" tabindex="-1" role="dialog" aria-labelledby="fetchModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="fetchModalLabel">Fetch</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            ...
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                            <button type="button" class="btn btn-primary">Save changes</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Get -->
+                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#getModal">
+                                Get
+                            </button>
+
+                            <!-- Modal -->
+                            <div class="modal fade" id="getModal" tabindex="-1" role="dialog" aria-labelledby="getModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="getModalLabel">Modal title</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            ...
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                            <button type="button" class="btn btn-primary">Save changes</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -870,99 +918,6 @@ $arkdbs = Database::showdatabases();
                 </div>
             </div>
 
-
-            <!--<hr>
-        <div class="card">
-            <h5 class="card-header">Fetch</h5>
-            <div class="card-body">
-
-                <div id="row-fetch" class="row">
-                    <div class="col-sm-3">
-                        <form id="form-fetch" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                            <div class="form-group">
-                                <label for="exampleInputEmail1">Identifer:</label>
-                                <input type="text" class="form-control" id="identifer" name="identifer">
-                            </div>
-                            <input type="submit" name="fetch" value="Fetch" class="btn btn-primary"/>
-                        </form>
-                    </div>
-                    <div class="col-sm-9">
-
-                        <p>
-                            <?php
-
-            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['fetch'])) {
-                // creat an ark service processor
-                $noidUI = new NoidUI();
-
-                // execute the command with entered params
-                $result = $noidUI->exec_command("fetch " . $_POST['identifer'], $noidUI->path($_GET["db"]));
-
-                // display the result
-                print('<div class="alert alert-info">');
-                print "<p><strong>Result:</strong></p>";
-                print($result);
-                print('</div>');
-
-                // refresh the page to destroy post section
-                header("Location: admin.php?db=" . $_GET["db"]);
-
-            }
-            ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <hr>
-        <div class="card">
-            <h5 class="card-header">Get</h5>
-            <div class="card-body">
-
-                <div id="row-fetch" class="row">
-                    <div class="col-sm-3">
-                        <form id="form-get" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
-                            <div class="form-group">
-                                <label for="exampleInputEmail1">Identifer:</label>
-                                <input type="text" class="form-control" id="identifer" name="identifer">
-                            </div>
-                            <div class="form-group">
-                                <label for="exampleInputEmail1">Key:</label>
-                                <input type="text" class="form-control" id="key" name="enterkey">
-                            </div>
-                            <input type="submit" name="get" value="Get" class="btn btn-primary"/>
-                        </form>
-                    </div>
-                    <div class="col-sm-9">
-
-                        <p>
-                            <?php
-            if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['get'])) {
-                // generate Ark service procession object
-                $noidUI = new NoidUI();
-
-                // execute with entered params
-                $result = $noidUI->exec_command("get " . $_POST['identifer'] . ' ' . $_POST['enterKey'], $noidUI->path($_GET["db"]));
-
-                // display the results
-                print('<div class="alert alert-info">');
-                print "<p></p><strong>Result</strong></p>";
-                print($result);
-                print('</div>');
-
-                // refresh the page to destroy post session
-                header("Location: admin.php?db=" . $_GET["db"]);
-
-            }
-            ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        -->
 
             <hr>
             <div class="card">
