@@ -37,7 +37,7 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
                         $results = json_decode($results);
 
                         $dns = json_decode(rest_get("/rest.php?db=$dir&op=naa"));
-                        $url = "http://$dns/islandora/object/". $results[0]->{'_value'};
+                        $url = "https://$dns/islandora/object/". $results[0]->{'_value'};
                         break;
                     }
                 } catch (RequestException $e) {

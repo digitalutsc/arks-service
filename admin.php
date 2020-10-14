@@ -707,13 +707,13 @@ ob_start();
                                 </div>
                             </div>
                             <!-- Bulk Bind Modal -->
-                            <button type="button" class="btn btn-success" data-toggle="modal"
+                            <button id="btn-bulk-bind" type="button" class="btn btn-success" data-toggle="modal"
                                     data-target="#bulkBindModal">
                                 Bulk Bind
                             </button>
                             <div class="modal fade" id="bulkBindModal" tabindex="-1"
                                  aria-labelledby="bulkBindModalLabel"
-                                 aria-hidden="true">
+                                 aria-hidden="true" data-backdrop="static" data-keyboard="false">
                                 <div id="bulk-binding-modal" class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
