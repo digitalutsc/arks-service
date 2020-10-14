@@ -734,11 +734,11 @@ ob_start();
                                                                 follow:</p>
                                                             <ul>
                                                                 <li>Setup a CSV (only file type supported)</li>
-                                                                <li>Make sure your CSV has 3 mandatory columns:
+                                                                <li>Make sure your CSV has 3 mandatory columns <strong>(Case insensitive)</strong>:
                                                                     <ul>
                                                                         <li>mods_local_identifier,</li>
                                                                         <li>PID,</li>
-                                                                        <li>and URL</li>
+                                                                        <li>Mods_location(URL)</li>
                                                                     </ul>
                                                                 </li>
                                                                 <li>Upload the CSV to start Bulk Bind process.</li>
@@ -768,7 +768,7 @@ ob_start();
                                                                         </div>
                                                                     </div>
                                                                     Binding <span id="process_data">0</span> of <span
-                                                                            id="total_data">0</span> records.
+                                                                            id="total_data">0</span> objects.
                                                                 </div>
 
                                                             </div>
@@ -810,20 +810,22 @@ ob_start();
                                                     reader = new FileReader();
                                                     reader.onload = function (e) {
 
-                                                        csvResult = e.target.result.split(/\r|\n|\r\n/);
+                                                        //csvResult = e.target.result.split(/\r|\n|\r\n/);
+                                                        csvResult = e.target.result.split(/\n/);
                                                         var total_data = csvResult.length;
                                                         if (total_data > 1) {
                                                             $('#process').css('display', 'block');
                                                         }
                                                         // get headers
-                                                        var keys = csvResult[0].split(',');
-                                                        if (!$.inArray("PID", keys) === -1 || !$.inArray("pid", keys) === -1 || !$.inArray("mods_local_identifier", keys) === -1 /*|| $.inArray( "URL", keys ) === -1 */) {
+                                                        var keys = csvResult[0].split(',').map(function(x){ return x.toUpperCase(); });
+
+                                                        if ($.inArray("PID".toUpperCase(), keys) === -1 && $.inArray("mods_local_identifier".toUpperCase(), keys) === -1 || $.inArray( "Mods_location".toUpperCase(), keys ) === -1 ) {
                                                             $('#message').html('<div class="alert alert-danger">' +
                                                                 ' <li>Make sure your CSV has 3 mandatory columns:\n' +
                                                                 '<ul>\n' +
                                                                 '<li>mods_local_identifier,</li>\n' +
                                                                 '<li>PID.</li>\n' +
-                                                                //'<li>and URL</li>\n' +
+                                                                '<li>Mods_location(URL)</li>\n' +
                                                                 '</ul>\n' +
                                                                 '</li>'
                                                                 + '</div>');
