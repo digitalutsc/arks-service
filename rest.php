@@ -228,9 +228,8 @@ function selectBound()
         $r['id'] = $currentID;
         if ($key_data[1] == 'PID')
             $r['PID'] = $row['_value'];
-        if ($key_data[1] == strtoupper('mods_local_identifier'))
-            $r['mods_local_identifier'] = $row['_value'];
-
+        if ($key_data[1] == "MODS_IDENTIFIER_LOCAL")
+            $r['MODS_IDENTIFIER_LOCAL'] = $row['_value'];
         $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
 
 
@@ -344,7 +343,7 @@ function getfirstpart()
 }
 
 /**
- * Get prefix 
+ * Get prefix
  * @return false|string
  */
 function getPrefix() {

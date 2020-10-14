@@ -37,8 +37,7 @@ ob_start();
         <link rel="stylesheet" href="datatables/datatables.min.css">
 
         <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-        <script type="text/javascript" language="javascript"
-                src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+
 
         <!-- bootsrap -->
         <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
@@ -47,7 +46,9 @@ ob_start();
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
                 integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
                 crossorigin="anonymous"></script>
-        <script type="text/javascript" language="javascript" src="datatables/datatables.min.js"></script>
+
+        <script type="text/javascript" language="javascript"
+                src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
 
         <!-- bootstrap select-->
         <link rel="stylesheet"
@@ -149,26 +150,61 @@ ob_start();
                     ]
                 });
 
+                // Make a Ajax call to Rest api and render data to table
                 jQuery('#bound_table').DataTable({
                     "ajax": {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
                         "dataSrc": ""
                     },
+                    "initComplete":function( settings, json){
+                        $(".collapse").collapse({
+                            toggle: false
+                        });
+                        // enable show/hide metadata button after ajax loaded
+                        $('[data-toggle="collapse"]').click(function(e){
+                            e.preventDefault();
+                            var target_element= $(this).attr("data-target");
+                            $(target_element).collapse('toggle');
+                            return false;
+                        });
+                    },
                     columns: [
                         {data: 'id'},
                         {data: 'PID'},
-                        {data: 'metadata'},
+                        {data: 'MODS_IDENTIFIER_LOCAL'},
                         {data: 'ark_url'},
-
+                        {data: 'metadata'},
                     ],
+
                     "columnDefs": [
                         {
                             "targets": 2,
+                            "data": "MODS_IDENTIFIER_LOCAL",
+                            "render": function (data, type, row) {
+                                if( data ) {
+                                    return data;
+                                }
+                                else {
+                                    return " ";
+                                }
+
+                            }
+                        },
+                        {
+                            "targets": 4,
                             "data": "metadata",
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
+                                    var now = row.MODS_IDENTIFIER_LOCAL;
+                                   // console.log(row);
                                     data = data.split("|").join("<br/>");
                                     data = data.split(":").join(": ");
+                                    data = ' <button type="button" class="btn btn-link metadata-btn" data-toggle="collapse"  aria-expanded="false" aria-controls="'+ now +'" data-target="#'+ now +'">' +
+                                        '    Show/Hide' +
+                                        '  </button>' +
+                                        '<div class="collapse" id="'+ now +'">' +
+                                        '  <div class="card card-body">' + data + '</div>' +
+                                        '</div>';
                                 }
                                 return data;
                             }
@@ -177,7 +213,7 @@ ob_start();
                             "targets": 3,
                             "data": "ark_url",
                             "render": function (data, type, row) {
-                                return '<a href="' + data + '">' + data + '</a>';
+                                return '<a target="_blank" href="' + data + '">' + data + '</a>';
                             }
                         }
                     ]
@@ -778,7 +814,7 @@ ob_start();
                                                             <div class="col-sm-12">
                                                                 <input type="submit" name="import" value="Bulk Bind"
                                                                        class="btn btn-primary"/>
-                                                                <button type="button" class="btn btn-secondary"
+                                                                <button type="button" id="btn-close-bulkbind" class="btn btn-secondary"
                                                                         data-dismiss="modal">Close
                                                                 </button>
                                                             </div>
@@ -797,6 +833,9 @@ ob_start();
                                                 })*/
                                                 $('#message').html('');
                                                 event.preventDefault();
+
+                                                // disable close button in bulk bind popup to keep it in focus
+                                                $('#btn-close-bulkbind').prop('disabled', true);
 
                                                 var csv = $('#importCSV');
                                                 var csvFile = csv[0].files[0];
@@ -857,6 +896,7 @@ ob_start();
                                                                                     $('#message').html('<div class="alert alert-success">Bulk Bind successfully completed.</div>');
                                                                                     $('#import').attr('disabled', false);
                                                                                     $('#import').val('Import');
+                                                                                    $('#btn-close-bulkbind').prop('disabled', false);
                                                                                 }
                                                                             } else if (result.success == 0) {
                                                                                 $('#message').html('<div class="alert alert-danger">' + result.message + '</div>');
@@ -894,8 +934,10 @@ ob_start();
                                         <tr>
                                             <th>Ark ID</th>
                                             <th>PID</th>
-                                            <th>Metadata</th>
+                                            <th>MODS_IDENTIFIER_LOCAL</th>
                                             <th>Ark URL</th>
+                                            <th>Metadata</th>
+
                                         </tr>
                                         </thead>
                                     </table>
