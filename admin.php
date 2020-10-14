@@ -25,6 +25,7 @@ use Noid\Lib\Custom\NoidArk;
 GlobalsArk::$db_type = 'ark_mysql';
 define("NAAN_UTSC", 61220);
 $arkdbs = Database::showdatabases();
+ob_start();
 ?>
 
     <html>
@@ -618,7 +619,7 @@ $arkdbs = Database::showdatabases();
                                                 <form id="form-bindset" method="post"
                                                       action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                     <div class="form-group">
-                                                        <label for="enterIdentifier">Identifier:</label>
+                                                        <label for="enterIdentifier">Ark ID:</label>
                                                         <select id="enterIdentifier" name="enterIdentifier"
                                                                 class="form-control" data-live-search="true">
                                                         </select>
@@ -648,10 +649,10 @@ $arkdbs = Database::showdatabases();
 
 
 
-                            <!-- Clear Bind set -->
+                            <!-- Remove Metadata set -->
                             <button type="button" class="btn btn-secondary" data-toggle="modal"
                                     data-target="#clearbindsetModal">
-                                Clear Bind
+                                Remove Metadata
                             </button>
                             <div class="modal fade" id="clearbindsetModal" tabindex="-1"
                                  aria-labelledby="clearbindsetModalLabel"
@@ -659,7 +660,7 @@ $arkdbs = Database::showdatabases();
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="clearbindsetModalLabel">Clear Bind</h5>
+                                            <h5 class="modal-title" id="clearbindsetModalLabel">Remove Metadata</h5>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -670,7 +671,7 @@ $arkdbs = Database::showdatabases();
                                                     <form id="form-clear-bindset" method="post"
                                                           action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                         <div class="form-group">
-                                                            <label for="enterToClearIdentifier">Identifier:</label>
+                                                            <label for="enterToClearIdentifier">Ark ID:</label>
                                                             <select id="enterToClearIdentifier"
                                                                     name="enterToClearIdentifier" class="form-control"
                                                                     data-live-search="true">
@@ -877,33 +878,6 @@ $arkdbs = Database::showdatabases();
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Fetch -->
-                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#fetchModal">
-                                Identified Search
-                            </button>
-
-                            <!-- Modal -->
-                            <div class="modal fade" id="fetchModal" tabindex="-1" role="dialog" aria-labelledby="fetchModalLabel" aria-hidden="true">
-                                <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="fetchModalLabel">Identified Search</h5>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <div class="modal-body">
-                                            ...
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                            <button type="button" class="btn btn-primary">Save changes</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                         </div>
                     </div>
                     <div class="row">
@@ -929,57 +903,6 @@ $arkdbs = Database::showdatabases();
                     </div>
                 </div>
             </div>
-
-
-            <hr>
-            <div class="card">
-                <h5 class="card-header">History of Bulk Bind</h5>
-                <div class="card-body">
-                    <div id="row-search" class="row">
-                        <div class="col-sm-6">
-                            <?php
-
-                            if (file_exists(NoidUI::dbpath())) {
-                                // List all minted identifer in csv which created each time execute mint
-                                $dirs = scandir(NoidUI::dbpath() . $_GET['db'] . '/import_minted');
-                                if (count($dirs) > 2) {
-                                    ?>
-                                    <div class="row">
-                                        <table class="table table-bordered">
-                                            <thead>
-                                            <tr>
-                                                <th scope="col">Past imported</th>
-                                                <th scope="col">Date</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            <?php
-                                            foreach ($dirs as $dir) {
-                                                if (!in_array($dir, ['.', '..', '.gitkeep'])) {
-                                                    $csv = (isset($_GET['db']) && $_GET['db'] == $dir) ? 'Currently Active' : '<a href="' . 'db/' . $_GET['db'] . '/import_minted/' . $dir . '">' . $dir . '</a>';
-                                                    $date = date("F j, Y, g:i a", explode('.', $dir)[0]);
-
-                                                    print <<<EOS
-                                        <tr>
-                                            <td scope="row">$csv</td>
-                                            <td scope="row">$date</td>
-                                        </tr>
-                                    EOS;
-                                                }
-                                            }
-                                            ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                <?php }
-                            }
-                            ?>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <hr>
         <?php }
         ?>
     </div>
@@ -987,7 +910,7 @@ $arkdbs = Database::showdatabases();
     </html>
 
 <?php
-
+ob_flush();
 
 function rest_get($req)
 {
