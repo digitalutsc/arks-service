@@ -110,18 +110,20 @@ ob_start();
                         $(this).find("option:selected").val());*/
                     var selected = this.value;
                     $('#enterKeytoClear').empty();
-                    console.log("rest.php?db=<?php echo $_GET['db']; ?>&ark_id="+selected+"&op=fields");
+
                     jQuery.ajax({
                         url: "rest.php?db=<?php echo $_GET['db']; ?>&ark_id="+selected+"&op=fields"
                     }).then(function (data) {
                         var objects = JSON.parse(data);
+                        console.log(objects);
                         var options = '';
                         for (var i = 0; i < objects.length; i++) {
                             options += '<option value="' + objects[i] + '">' + objects[i] + '</option>';
                         }
                         console.log(options);
-                        $('#enterKeytoClear').html(options).selectpicker();
-                        $('#enterKeytoClear').html(options).selectpicker();
+
+
+                        $('#enterKeytoClear').html(options).selectpicker('refresh');
                     });
                     
                 });
