@@ -34,8 +34,6 @@ ob_start();
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
               integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
               crossorigin="anonymous">
-        <link rel="stylesheet" href="datatables/datatables.min.css">
-
         <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
 
 
@@ -47,8 +45,20 @@ ob_start();
                 integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
                 crossorigin="anonymous"></script>
 
+        <!-- datatables -->
+        <link rel="stylesheet"
+              href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css">
+        <link rel="stylesheet"
+              href="https://cdn.datatables.net/select/1.3.1/css/select.dataTables.min.css">
+
         <script type="text/javascript" language="javascript"
                 src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+        <script type="text/javascript" language="javascript"
+                src="https://cdn.datatables.net/buttons/1.6.4/js/dataTables.buttons.min.js"></script>
+        <script type="text/javascript" language="javascript"
+                src="https://cdn.datatables.net/buttons/1.6.4/js/buttons.html5.min.js"></script>
+        <script type="text/javascript" language="javascript"
+                src="https://cdn.datatables.net/select/1.3.1/js/dataTables.select.min.js"></script>
 
         <!-- bootstrap select-->
         <link rel="stylesheet"
@@ -64,6 +74,14 @@ ob_start();
 
             .dropdown-menu {
                 max-height: 350px !important;
+            }
+
+            table.dataTable tr th.select-checkbox.selected::after {
+                content: "✔";
+                margin-top: -11px;
+                margin-left: -4px;
+                text-align: center;
+                text-shadow: rgb(176, 190, 217) 1px 1px, rgb(176, 190, 217) -1px -1px, rgb(176, 190, 217) 1px -1px, rgb(176, 190, 217) -1px 1px;
             }
         </style>
         <script>
@@ -130,28 +148,62 @@ ob_start();
                 });
 
 
-                jQuery('#minted_table').DataTable({
+                let mintedTable = jQuery('#minted_table').DataTable({
+                    dom: 'lBfrtip',
                     "ajax": {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
                         "dataSrc": ""
                     },
                     columns: [
+                        {data: 'select'},
                         {data: '_key'},
                         {data: '_value'},
                     ],
+                    columnDefs: [
+                    {
+                        orderable: false,
+                        className: 'select-checkbox',
+                        targets:   0
+                    } ],
+                    select: {
+                        style:    'multi',
+                        selector: 'td:first-child'
+                    },
                     buttons: [
                         {
                             extend: 'csv',
                             text: 'Export to CSV',
                             exportOptions: {
-                                columns: [0]
+                                columns: [1]
                             }
                         },
                     ]
                 });
 
+                mintedTable.on("click", "th.select-checkbox", function() {
+                    if ($("th.select-checkbox").hasClass("selected")) {
+                        mintedTable.rows().deselect();
+                        $("th.select-checkbox").removeClass("selected");
+                    } else {
+                        mintedTable.rows().select();
+                        $("th.select-checkbox").addClass("selected");
+                    }
+                }).on("select deselect", function() {
+                    ("Some selection or deselection going on")
+                    if (mintedTable.rows({
+                        selected: true
+                    }).count() !== mintedTable.rows().count()) {
+                        $("th.select-checkbox").removeClass("selected");
+                    } else {
+                        $("th.select-checkbox").addClass("selected");
+                    }
+                });
+
+
+
                 // Make a Ajax call to Rest api and render data to table
-                jQuery('#bound_table').DataTable({
+                let boundTable = jQuery('#bound_table').DataTable({
+                    dom: 'lBfrtip',
                     "ajax": {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
                         "dataSrc": ""
@@ -164,20 +216,38 @@ ob_start();
                         enableShowHideMetadataColumn();
                     },
                     columns: [
+                        {data: 'select'},
                         {data: 'id'},
                         {data: 'PID'},
                         {data: 'LOCAL_ID'},
                         {data: 'ark_url'},
                         {data: 'metadata'},
                     ],
-
                     "fnDrawCallback": function( oSettings ) {
                         //console.log( 'DataTables has redrawn the table' );
                         enableShowHideMetadataColumn();
                     },
+                    select: {
+                        style:    'multi',
+                        selector: 'td:first-child'
+                    },
+                    buttons: [
+                        {
+                            extend: 'csv',
+                            text: 'Export to CSV',
+                            exportOptions: {
+                                columns: [1, 2, 3,4,5]
+                            }
+                        },
+                    ],
                     "columnDefs": [
                         {
-                            "targets": 2,
+                            orderable: false,
+                            className: 'select-checkbox',
+                            targets:   0
+                        },
+                        {
+                            "targets": 3,
                             "data": "LOCAL_ID",
                             "render": function (data, type, row) {
                                 if( data ) {
@@ -190,7 +260,7 @@ ob_start();
                             }
                         },
                         {
-                            "targets": 4,
+                            "targets": 5,
                             "data": "metadata",
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
@@ -211,7 +281,7 @@ ob_start();
                             }
                         },
                         {
-                            "targets": 3,
+                            "targets": 4,
                             "data": "ark_url",
                             "render": function (data, type, row) {
                                 return '<a target="_blank" href="' + data + '">' + data + '</a>';
@@ -219,6 +289,26 @@ ob_start();
                         }
                     ]
                 });
+
+                boundTable.on("click", "th.select-checkbox", function() {
+                    if ($("th.select-checkbox").hasClass("selected")) {
+                        boundTable.rows().deselect();
+                        $("th.select-checkbox").removeClass("selected");
+                    } else {
+                        boundTable.rows().select();
+                        $("th.select-checkbox").addClass("selected");
+                    }
+                }).on("select deselect", function() {
+                    ("Some selection or deselection going on")
+                    if (boundTable.rows({
+                        selected: true
+                    }).count() !== boundTable.rows().count()) {
+                        $("th.select-checkbox").removeClass("selected");
+                    } else {
+                        $("th.select-checkbox").addClass("selected");
+                    }
+                });
+
 
                 function enableShowHideMetadataColumn(){
                     // enable show/hide metadata button after ajax loaded
@@ -574,6 +664,7 @@ ob_start();
                                     <table id="minted_table" class="display" style="width:100%">
                                         <thead>
                                         <tr>
+                                            <th></th>
                                             <th>Ark ID</th>
                                             <th>Minted Date</th>
                                         </tr>
@@ -962,14 +1053,14 @@ ob_start();
                                 <div class="col-md-12">
                                     <table id="bound_table" class="display" style="width:100%">
                                         <thead>
-                                        <tr>
-                                            <th>Ark ID</th>
-                                            <th>PID</th>
-                                            <th>LOCAL_ID</th>
-                                            <th>Ark URL</th>
-                                            <th>Metadata</th>
-
-                                        </tr>
+                                            <tr>
+                                                <th></th>
+                                                <th>Ark ID</th>
+                                                <th>PID</th>
+                                                <th>LOCAL_ID</th>
+                                                <th>Ark URL</th>
+                                                <th>Metadata</th>
+                                            </tr>
                                         </thead>
                                     </table>
                                 </div>

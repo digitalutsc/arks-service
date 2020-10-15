@@ -229,6 +229,7 @@ function selectBound()
                 array_push($result, $r);
             $r = [];
         }
+        $r['select'] = " ";
         $r['id'] = $currentID;
         if ($key_data[1] == 'PID')
             $r['PID'] = $row['_value'];
@@ -338,6 +339,7 @@ function getMinted()
     $json = array();
     foreach ($result as $row) {
         $urow = array();
+        $urow['select']= ' ';
         $urow['_key'] = trim(str_replace(":/c", "", $row['_key']));
 
         $metadata = explode('|', $row['_value']);
