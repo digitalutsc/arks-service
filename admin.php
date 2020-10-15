@@ -161,12 +161,7 @@ ob_start();
                             toggle: false
                         });
                         // enable show/hide metadata button after ajax loaded
-                        $('[data-toggle="collapse"]').click(function(e){
-                            e.preventDefault();
-                            var target_element= $(this).attr("data-target");
-                            $(target_element).collapse('toggle');
-                            return false;
-                        });
+                        enableShowHideMetadataColumn();
                     },
                     columns: [
                         {data: 'id'},
@@ -176,6 +171,10 @@ ob_start();
                         {data: 'metadata'},
                     ],
 
+                    "fnDrawCallback": function( oSettings ) {
+                        console.log( 'DataTables has redrawn the table' );
+                        enableShowHideMetadataColumn();
+                    },
                     "columnDefs": [
                         {
                             "targets": 2,
@@ -196,11 +195,13 @@ ob_start();
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
                                     var now = row.MODS_IDENTIFIER_LOCAL;
-                                   // console.log(row);
+                                    if (now !== undefined) {
+                                        now = now.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '');
+                                    }
                                     data = data.split("|").join("<br/>");
                                     data = data.split(":").join(": ");
                                     data = ' <button type="button" class="btn btn-link metadata-btn" data-toggle="collapse"  aria-expanded="false" aria-controls="'+ now +'" data-target="#'+ now +'">' +
-                                        '    Show/Hide' +
+                                        '<span>Show</span>' +
                                         '  </button>' +
                                         '<div class="collapse" id="'+ now +'">' +
                                         '  <div class="card card-body">' + data + '</div>' +
@@ -218,6 +219,25 @@ ob_start();
                         }
                     ]
                 });
+
+                function enableShowHideMetadataColumn(){
+                    // enable show/hide metadata button after ajax loaded
+                    $('[data-toggle="collapse"]').click(function(e){
+                        e.preventDefault();
+                        var button = $(this);
+                        var target_element= button.attr("data-target");
+                        console.log(target_element);
+                        console.log($(target_element));
+                        $(target_element).collapse('toggle');
+                        $(target_element).on('shown.bs.collapse', function () {
+                            $("span", button).text('Hide');
+                        })
+                        $(target_element).on('hidden.bs.collapse', function () {
+                            $("span", button).text('Show');
+                        })
+                    });
+                }
+
             });
             <?php
             }
