@@ -106,7 +106,7 @@ ob_start();
 
 
                 $('#enterToClearIdentifier').on('change', function(e){
-                    /*console.log(this.value,
+                    /*//console.log(this.value,
                         this.options[this.selectedIndex].value,
                         $(this).find("option:selected").val());*/
                     var selected = this.value;
@@ -116,12 +116,12 @@ ob_start();
                         url: "rest.php?db=<?php echo $_GET['db']; ?>&ark_id="+selected+"&op=fields"
                     }).then(function (data) {
                         var objects = JSON.parse(data);
-                        console.log(objects);
+                        //console.log(objects);
                         var options = '';
                         for (var i = 0; i < objects.length; i++) {
                             options += '<option value="' + objects[i] + '">' + objects[i] + '</option>';
                         }
-                        console.log(options);
+                        //console.log(options);
 
 
                         $('#enterKeytoClear').html(options).selectpicker('refresh');
@@ -139,10 +139,10 @@ ob_start();
                         {data: '_key'},
                         {data: '_value'},
                     ],
-                    dom: 'Bfrtip',
                     buttons: [
                         {
                             extend: 'csv',
+                            text: 'Export to CSV',
                             exportOptions: {
                                 columns: [0]
                             }
@@ -166,19 +166,19 @@ ob_start();
                     columns: [
                         {data: 'id'},
                         {data: 'PID'},
-                        {data: 'MODS_IDENTIFIER_LOCAL'},
+                        {data: 'LOCAL_ID'},
                         {data: 'ark_url'},
                         {data: 'metadata'},
                     ],
 
                     "fnDrawCallback": function( oSettings ) {
-                        console.log( 'DataTables has redrawn the table' );
+                        //console.log( 'DataTables has redrawn the table' );
                         enableShowHideMetadataColumn();
                     },
                     "columnDefs": [
                         {
                             "targets": 2,
-                            "data": "MODS_IDENTIFIER_LOCAL",
+                            "data": "LOCAL_ID",
                             "render": function (data, type, row) {
                                 if( data ) {
                                     return data;
@@ -194,7 +194,7 @@ ob_start();
                             "data": "metadata",
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
-                                    var now = row.MODS_IDENTIFIER_LOCAL;
+                                    var now = row.LOCAL_ID;
                                     if (now !== undefined) {
                                         now = now.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '');
                                     }
@@ -226,8 +226,8 @@ ob_start();
                         e.preventDefault();
                         var button = $(this);
                         var target_element= button.attr("data-target");
-                        console.log(target_element);
-                        console.log($(target_element));
+                        //console.log(target_element);
+                        //console.log($(target_element));
                         $(target_element).collapse('toggle');
                         $(target_element).on('shown.bs.collapse', function () {
                             $("span", button).text('Hide');
@@ -590,7 +590,7 @@ ob_start();
 
             <hr>
             <div class="card">
-                <h5 class="card-header">Bind Set</h5>
+                <h5 class="card-header">Arks</h5>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-sm-12">
@@ -776,7 +776,7 @@ ob_start();
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h5 class="modal-title" id="bulkBindModalLabel">Bulk Binding</h5>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <button id="bulk-binding-dismiss-button" type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
                                         </div>
@@ -792,9 +792,9 @@ ob_start();
                                                                 <li>Setup a CSV (only file type supported)</li>
                                                                 <li>Make sure your CSV has 3 mandatory columns <strong>(Case insensitive)</strong>:
                                                                     <ul>
-                                                                        <li>mods_local_identifier,</li>
+                                                                        <li>LOCAL_ID,</li>
                                                                         <li>PID,</li>
-                                                                        <li>Mods_location(URL)</li>
+                                                                        <li>URL</li>
                                                                     </ul>
                                                                 </li>
                                                                 <li>Upload the CSV to start Bulk Bind process.</li>
@@ -856,6 +856,7 @@ ob_start();
 
                                                 // disable close button in bulk bind popup to keep it in focus
                                                 $('#btn-close-bulkbind').prop('disabled', true);
+                                                $('#bulk-binding-dismiss-button').prop('disabled', false);
 
                                                 var csv = $('#importCSV');
                                                 var csvFile = csv[0].files[0];
@@ -877,18 +878,23 @@ ob_start();
                                                         }
                                                         // get headers
                                                         var keys = csvResult[0].split(',').map(function(x){ return x.toUpperCase(); });
+                                                        console.log($.inArray("LOCAL_ID", keys));
+                                                        if ($.inArray("PID", keys) === -1 ||
+                                                            $.inArray("LOCAL_ID", keys) === -1 ||
+                                                            $.inArray( "URL", keys ) === -1 ) {
 
-                                                        if ($.inArray("PID".toUpperCase(), keys) === -1 && $.inArray("mods_local_identifier".toUpperCase(), keys) === -1 || $.inArray( "Mods_location".toUpperCase(), keys ) === -1 ) {
                                                             $('#message').html('<div class="alert alert-danger">' +
                                                                 ' <li>Make sure your CSV has 3 mandatory columns:\n' +
                                                                 '<ul>\n' +
-                                                                '<li>mods_local_identifier,</li>\n' +
+                                                                '<li>LOCAL_ID,</li>\n' +
                                                                 '<li>PID.</li>\n' +
-                                                                '<li>Mods_location(URL)</li>\n' +
+                                                                '<li>URL</li>\n' +
                                                                 '</ul>\n' +
                                                                 '</li>'
                                                                 + '</div>');
                                                             $('#process').css('display', 'none');
+                                                            $('#btn-close-bulkbind').prop('disabled', false);
+                                                            $('#bulk-binding-dismiss-button').prop('disabled', false);
                                                             return false;
                                                         } else {
                                                             $.each(csvResult, function (index, item) {
@@ -906,10 +912,10 @@ ob_start();
                                                                             var result = JSON.parse(data);
                                                                             if (result.success === 1) {
                                                                                 $('#total_data').text(total_data);
-                                                                                var width = Math.round((index / total_data) * 100);
+                                                                                var width = Math.round(((index+1) / total_data) * 100);
                                                                                 $('#process_data').text(index);
                                                                                 $('.progress-bar').css('width', width + '%');
-
+                                                                                console.log(width);
                                                                                 if (width >= 99) {
                                                                                     $('#process').css('display', 'none');
                                                                                     $('#importCSV').val('');
@@ -917,6 +923,11 @@ ob_start();
                                                                                     $('#import').attr('disabled', false);
                                                                                     $('#import').val('Import');
                                                                                     $('#btn-close-bulkbind').prop('disabled', false);
+                                                                                    $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                                                    $('#btn-close-bulkbind').click(function() {
+                                                                                        location.reload();
+                                                                                    });
+
                                                                                 }
                                                                             } else if (result.success == 0) {
                                                                                 $('#message').html('<div class="alert alert-danger">' + result.message + '</div>');
@@ -954,7 +965,7 @@ ob_start();
                                         <tr>
                                             <th>Ark ID</th>
                                             <th>PID</th>
-                                            <th>MODS_IDENTIFIER_LOCAL</th>
+                                            <th>LOCAL_ID</th>
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
 

@@ -33,9 +33,14 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
                     $firstpart = json_decode($result);
                     if(strpos($uid, $firstpart) === 0) {
                         // look up into this database
-                        $results = rest_get("/rest.php?db=$dir&op=pid&ark_id=$uid");
+                        // first url field
+                        $results = rest_get("/rest.php?db=$dir&op=url&ark_id=$uid");
                         $results = json_decode($results);
-
+                        if (count($results) <= 0) {
+                            // if url field is empty, go for the PID
+                            $results = rest_get("/rest.php?db=$dir&op=pid&ark_id=$uid");
+                            $results = json_decode($results);
+                        }
                         $dns = json_decode(rest_get("/rest.php?db=$dir&op=naa"));
                         $url = "https://$dns/islandora/object/". $results[0]->{'_value'};
                         break;

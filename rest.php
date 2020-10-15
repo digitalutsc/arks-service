@@ -61,6 +61,10 @@ switch ($_GET['op']) {
         echo getPID($_GET['ark_id']);
         break;
     }
+    case "url": {
+        echo getURL($_GET['ark_id']);
+        break;
+    }
     case 'naa': {
         echo getNAA();
         break;
@@ -75,7 +79,7 @@ switch ($_GET['op']) {
     }
     case 'bulkbind': {
         if (isset($_GET['stage']) && $_GET['stage'] == 'upload'){
-            echo bulkbind_upload();
+            echo bulkbind();
         }
         else if (isset($_GET['stage']) && $_GET['stage'] == 'import'){
             echo bulkbind_import();
@@ -123,7 +127,7 @@ function getFields($ark_id) {
  *
  * @return false|string
  */
-function bulkbind_upload(){
+function bulkbind(){
     GlobalsArk::$db_type = 'ark_mysql';
     if (!Database::exist($_GET['db'])) {
         die(json_encode(['success' => 0, 'message' => 'Database not found']));
@@ -134,7 +138,7 @@ function bulkbind_upload(){
         // capture identifier (strictly recommend first column)
         $contact = time();
 
-        if (!empty($_POST['data'][strtoupper('mods_local_identifier')])) {
+        if (!empty($_POST['data'][strtoupper('LOCAL_ID')])) {
 
             // TOOD: check if decided unique field exist, to avoid duplication
             $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['PID']."'");
@@ -228,8 +232,8 @@ function selectBound()
         $r['id'] = $currentID;
         if ($key_data[1] == 'PID')
             $r['PID'] = $row['_value'];
-        if ($key_data[1] == "MODS_IDENTIFIER_LOCAL")
-            $r['MODS_IDENTIFIER_LOCAL'] = $row['_value'];
+        if ($key_data[1] == "LOCAL_ID")
+            $r['LOCAL_ID'] = $row['_value'];
         $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
 
 
@@ -281,6 +285,23 @@ function getPID($arkID) {
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $result = Database::$engine->select("_key REGEXP '^$arkID' and _key REGEXP 'PID$'");
+    Database::dbclose($noid);
+    return json_encode($result);
+}
+
+/**
+ * @param $arkID
+ * @return false|string
+ */
+function getURL($arkID) {
+    if (!isset($arkID))
+        return "Ark ID is not valid";
+    GlobalsArk::$db_type = 'ark_mysql';
+    if (!Database::exist($_GET['db'])) {
+        die(json_encode('Database not found'));
+    }
+    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+    $result = Database::$engine->select("_key REGEXP '^$arkID' and _key REGEXP 'URL$'");
     Database::dbclose($noid);
     return json_encode($result);
 }
