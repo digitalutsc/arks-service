@@ -1,13 +1,5 @@
 <?php
-require_once "NoidUI.php";
-require_once "index.php";
-require_once "NoidLib/lib/Storage/MysqlDB.php";
-require_once 'NoidLib/custom/GlobalsArk.php';
-require_once 'NoidLib/lib/Db.php';
-require_once 'NoidLib/custom/Database.php';
-require_once 'NoidLib/custom/NoidArk.php';
-require_once 'NoidLib/custom/MysqlArkConf.php';
-
+require_once "functions.php";
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
 use Noid\Lib\Storage\DatabaseInterface;
@@ -25,13 +17,8 @@ ob_start();
 // set db type as mysql instead
 GlobalsArk::$db_type = 'ark_mysql';
 define("NAAN_UTSC", 61220);
-$arkdbs = Database::showdatabases();
-if (count($arkdbs) == 0 || !in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
-    // redirect to install.php
-    header("Location: install.php");
-    print_r($arkdbs);
-    exit;
-}
+
+init_system();
 ?>
 
     <html>
@@ -1088,15 +1075,3 @@ if (count($arkdbs) == 0 || !in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
 
 <?php
 ob_flush();
-
-function rest_get($req)
-{
-    $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-    $cURLConnection = curl_init();
-    curl_setopt($cURLConnection, CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'] . $req);
-    curl_setopt($cURLConnection, CURLOPT_RETURNTRANSFER, true);
-
-    $result = curl_exec($cURLConnection);
-    curl_close($cURLConnection);
-    return $result;
-}

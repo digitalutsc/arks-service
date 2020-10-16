@@ -319,7 +319,7 @@ class NoidArk extends Noid {
                 foreach($values as $key => $value){
                     $skip = preg_match('|^' . preg_quote("$first" . Globals::_RR . "/", '|') . '|', $key);
                     if(!$skip){
-                        # if $verbose (ie, fetch), include label and
+                        # if $verbose (ie, fetch), require_once label and
                         # remember to strip "Id\t" from front of $key
                         if($verbose){
                             $retval .= (preg_match('/^[^\t]*\t(.*)/', $key, $matches) ? $matches[1] : $key) . ': ';
@@ -1363,7 +1363,7 @@ class NoidArk extends Noid {
             foreach($values as $key => $value){
                 $skip = preg_match('|^' . preg_quote("$first" . Globals::_RR . "/", '|') . '|', $key);
                 if(!$skip && $verbose){
-                    # if $verbose (ie, fetch), include label and
+                    # if $verbose (ie, fetch), require_once label and
                     # remember to strip "Id\t" from front of $key
                     $key = preg_match('/^[^\t]*\t(.*)/', $key, $matches) ? $matches[1] : $key;
                     $retvals[] = $key . ': ' . sprintf('clearing %d bytes', strlen($value));

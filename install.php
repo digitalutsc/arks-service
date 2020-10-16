@@ -1,14 +1,6 @@
 <?php
 
-require_once "NoidUI.php";
-require_once "index.php";
-require_once "NoidLib/lib/Storage/MysqlDB.php";
-require_once 'NoidLib/custom/GlobalsArk.php';
-require_once 'NoidLib/lib/Db.php';
-require_once 'NoidLib/custom/Database.php';
-require_once 'NoidLib/custom/NoidArk.php';
-require_once 'NoidLib/custom/MysqlArkConf.php';
-
+require_once "functions.php";
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
 use Noid\Lib\Storage\DatabaseInterface;
@@ -24,11 +16,11 @@ use Noid\Lib\Custom\NoidArk;
 
 ob_start();
 GlobalsArk::$db_type = 'ark_mysql';
+
 $arkdbs = Database::showdatabases();
 if (count($arkdbs) > 0 && in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
     // redirect to install.php
-    header("Location: admin.php");
-    print_r($arkdbs);
+    header("Location: index.php");
     exit;
 }
 
@@ -109,13 +101,13 @@ if (count($arkdbs) > 0 && in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
                 }
 
                 $sql = "CREATE TABLE IF NOT EXISTS user (
-                id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(50) NOT NULL UNIQUE,
-                firstname VARCHAR(30) NOT NULL,
-                lastname VARCHAR(30) NOT NULL,
-                pasword VARCHAR(128)  NOT NULL,
-                UNIQUE (username)
-        )";
+                        id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                        username VARCHAR(50) NOT NULL UNIQUE,
+                        firstname VARCHAR(30) NOT NULL,
+                        lastname VARCHAR(30) NOT NULL,
+                        pasword VARCHAR(128)  NOT NULL,
+                        UNIQUE (username)
+                )";
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
@@ -192,52 +184,6 @@ if (count($arkdbs) > 0 && in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
         </div>
     </div>
     <?php
-
-
-    /**
-     * Official Encryption code for secure site
-     *
-     * https://www.geeksforgeeks.org/how-to-encrypt-and-decrypt-a-php-string/
-     *
-     * @param type $stringToEncrypt : string to encyrpt
-     * @param type $encryption_key : module name
-     * @param type $encryption_iv : timestamp of application
-     */
-    function secureEncryption($stringToEncrypt, $encryption_key, $encryption_iv)
-    {
-        // Store the cipher method
-        $ciphering = "AES-128-CTR";
-
-        // Use OpenSSl Encryption method
-        $iv_length = openssl_cipher_iv_length($ciphering);
-        $options = 0;
-
-        // Use openssl_encrypt() function to encrypt the data
-        return openssl_encrypt($stringToEncrypt, $ciphering,
-            $encryption_key, $options, $encryption_iv);
-    }
-
-    /**
-     * Official Decryption code for secure site
-     *
-     * https://www.geeksforgeeks.org/how-to-encrypt-and-decrypt-a-php-string/
-     * @param type $stringToEncrypt : string to decrypt
-     * @param type $decryption_key : module name
-     * @param type $decryption_iv : timestamp of application
-     * @return type
-     */
-    function secureDecryption($stringToEncrypt, $decryption_key, $decryption_iv)
-    {
-
-        $ciphering = "AES-128-CTR";
-
-        // Use OpenSSl Encryption method
-        $iv_length = openssl_cipher_iv_length($ciphering);
-        $options = 0;
-        // Use openssl_decrypt() function to decrypt the data
-        return openssl_decrypt($stringToEncrypt, $ciphering,
-            $decryption_key, $options, $decryption_iv);
-    }
     ob_flush();
     ?>
 

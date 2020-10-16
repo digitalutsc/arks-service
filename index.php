@@ -1,69 +1,80 @@
 <?php
-// Source: https://www.php.net/manual/en/features.http-auth.php
-$realm = 'Restricted area';
+require_once "functions.php";
 
-//user => password
-$users = array(
-    'sysadmin' => '1q2w3e4r',
-);
-//$users = array('admin' => 'mypass', 'guest' => 'guest');
+use Noid\Lib\Helper;
+use Noid\Lib\Noid;
+use Noid\Lib\Storage\DatabaseInterface;
+use Noid\Lib\Storage\MysqlDB;
+use Noid\Lib\Globals;
+use Noid\Lib\Db;
+use Noid\Lib\Log;
 
+use Noid\Lib\Custom\Database;
+use Noid\Lib\Custom\GlobalsArk;
+use Noid\Lib\Custom\MysqlArkConf;
+use Noid\Lib\Custom\NoidArk;
+
+
+ob_start();
+init_system();
+
+$realm = "Restricted area";
 
 if (empty($_SERVER['PHP_AUTH_DIGEST'])) {
     header('HTTP/1.1 401 Unauthorized');
     header('WWW-Authenticate: Digest realm="' . $realm .
         '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
-    ?>
-    1Access denied, your entered login credentials are invalid. This site is restricted for University of Toronto Staff only. <a href="/">Please enter your login credentials to login.</a>
-    <?php
-    die();
+    echo 'Access denied, you must have account to proceed. This site is restricted for University of Toronto Staff only. <a href="logout.php">Please enter your login credentials to login.</a>';
+    exit();
 }
 
-
-// analyze the PHP_AUTH_DIGEST variable
-if (!($data = http_digest_parse($_SERVER['PHP_AUTH_DIGEST'])) ||  !isset($users[$data['username']])) {
-    header('HTTP/1.1 401 Unauthorized');
-    header('WWW-Authenticate: Digest realm="' . $realm .
-        '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
-    ?>
-    2Access denied, your entered login credentials are invalid. This site is restricted for University of Toronto Staff only. <a href="/">Please enter your login credentials to login.</a>
-    <?php
-    die();
-}
+$data = http_digest_parse($_SERVER['PHP_AUTH_DIGEST']);
+print_log($data);
 
 
-// generate the valid response
-$A1 = md5($data['username'] . ':' . $realm . ':' . $users[$data['username']]);
-$A2 = md5($_SERVER['REQUEST_METHOD'] . ':' . $data['uri']);
-$valid_response = md5($A1 . ':' . $data['nonce'] . ':' . $data['nc'] . ':' . $data['cnonce'] . ':' . $data['qop'] . ':' . $A2);
-
-if ($data['response'] != $valid_response) {
-    ?>
-    3Access denied, your entered login credentials are invalid. This site is restricted for University of Toronto Staff only. <a href="/">Please enter your login credentials to login.</a>
-    <?php
-    die();
-}
-
-// ok, valid username & password
-if ($_SERVER['REQUEST_URI'] === "index.php" || $_SERVER['REQUEST_URI'] === '/'){
-    header('Location: admin.php');
-}
-
-
-// function to parse the http auth header
-function http_digest_parse($txt)
-{
-    // protect against missing data
-    $needed_parts = array('nonce' => 1, 'nc' => 1, 'cnonce' => 1, 'qop' => 1, 'username' => 1, 'uri' => 1, 'response' => 1);
-    $data = array();
-    $keys = implode('|', array_keys($needed_parts));
-
-    preg_match_all('@(' . $keys . ')=(?:([\'"])([^\2]+?)\2|([^\s,]+))@', $txt, $matches, PREG_SET_ORDER);
-
-    foreach ($matches as $m) {
-        $data[$m[1]] = $m[3] ? $m[3] : $m[4];
-        unset($needed_parts[$m[1]]);
+if (isset($data) && isset($data['username'])) {
+    $realm = 'Restricted area';
+    $conn = new mysqli(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+    if (!$conn) {
+        echo "Error: Unable to connect to MySQL." . PHP_EOL;
+        echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+        echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
     }
+    $sql = "Select `username`, `pasword` from user where username = '" . $data['username'] . "'";
+    $result = $conn->query($sql)->fetch_all();
+    $users = array();
 
-    return $needed_parts ? false : $data;
+    foreach ($result as $row) {
+        $users[$row[0]] = secureDecryption($row[1], GlobalsArk::$encryption_key, GlobalsArk::$NAAN);
+    }
+    $conn->close();
+
+    // analyze the PHP_AUTH_DIGEST variable
+    if (count($users) == 0 /*|| !isset($users[$data['username']])*/) {
+        header('HTTP/1.1 401 Unauthorized');
+        header('WWW-Authenticate: Digest realm="' . $realm .
+            '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
+
+        echo 'Access denied, your account is not found. <a href="logout.php">Please enter your login credentials to login.</a>';
+        exit();
+    } else {
+        $A1 = md5($data['username'] . ':' . $realm . ':' . $users[$data['username']]);
+        $A2 = md5($_SERVER['REQUEST_METHOD'] . ':' . $data['uri']);
+        $valid_response = md5($A1 . ':' . $data['nonce'] . ':' . $data['nc'] . ':' . $data['cnonce'] . ':' . $data['qop'] . ':' . $A2);
+        if ($data['response'] != $valid_response) {
+
+            echo 'Access denied ! Your login credential is matched. <a href="logout.php">Please enter your login credentials to
+                login.</a>';
+            exit();
+        }
+        else {
+            if ($_SERVER['REQUEST_URI'] === "index.php" || $_SERVER['REQUEST_URI'] === '/' || $_SERVER['REQUEST_URI'] === "/index.php") {
+                header('Location: admin.php');
+            }
+        }
+
+    }
 }
+
+
+ob_flush();

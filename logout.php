@@ -1,4 +1,5 @@
 <?php
+require_once "functions.php";
 
 $realm = "Restricted area";
 header('HTTP/1.1 401 Unauthorized');
