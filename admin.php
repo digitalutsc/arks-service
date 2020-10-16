@@ -21,11 +21,17 @@ use Noid\Lib\Custom\GlobalsArk;
 use Noid\Lib\Custom\MysqlArkConf;
 use Noid\Lib\Custom\NoidArk;
 
+ob_start();
 // set db type as mysql instead
 GlobalsArk::$db_type = 'ark_mysql';
 define("NAAN_UTSC", 61220);
 $arkdbs = Database::showdatabases();
-ob_start();
+if (count($arkdbs) == 0 || !in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
+    // redirect to install.php
+    header("Location: install.php");
+    print_r($arkdbs);
+    exit;
+}
 ?>
 
     <html>
@@ -573,7 +579,7 @@ ob_start();
                         }
 
                         // List all created databases in the table
-                        if (count($arkdbs) > 0) {
+                        if (count($arkdbs) > 1 && in_array(MysqlArkConf::$mysql_dbname,$arkdbs)) {
                             ?>
                             <div class="row">
                                 <table class="table table-bordered">
@@ -587,25 +593,28 @@ ob_start();
                                     <tbody>
                                     <?php
                                     foreach ($arkdbs as $db) {
-                                        $highlight = "";
-                                        $setActive = '<a href="./admin.php?db=' . $db . '">Select</a>';
-                                        if ((isset($_GET['db']) && $_GET['db'] == $db)) {
-                                            $setActive = "<strong>Selected</srong>";
-                                            $highlight = 'class="table-success"';
-                                        }
-                                        $metadata = json_decode(rest_get("/rest.php?db=" . $db . "&op=dbinfo"));
-                                        $detail = "<p>";
-                                        foreach ((array)$metadata as $key => $value) {
-                                            $detail .= "<strong>$key</strong>: $value <br />";
-                                        }
-                                        $detail .= "</p>";
-                                        print <<<EOS
+                                        if ($db !== MysqlArkConf::$mysql_dbname) {
+                                            $highlight = "";
+                                            $setActive = '<a href="./admin.php?db=' . $db . '">Select</a>';
+                                            if ((isset($_GET['db']) && $_GET['db'] == $db)) {
+                                                $setActive = "<strong>Selected</srong>";
+                                                $highlight = 'class="table-success"';
+                                            }
+                                            $metadata = json_decode(rest_get("/rest.php?db=" . $db . "&op=dbinfo"));
+                                            $detail = "<p>";
+                                            foreach ((array)$metadata as $key => $value) {
+                                                $detail .= "<strong>$key</strong>: $value <br />";
+                                            }
+                                            $detail .= "</p>";
+                                            print <<<EOS
                                                     <tr $highlight>
                                                         <td scope="row">$db</td>
                                                         <td scope="row">$setActive</td>
                                                         <td scope="row">$detail</td>
                                                     </tr>
                                                 EOS;
+                                        }
+
                                     }
                                     ?>
                                     </tbody>
