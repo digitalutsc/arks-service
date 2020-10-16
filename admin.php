@@ -11,14 +11,14 @@ use Noid\Lib\Log;
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
 use Noid\Lib\Custom\MysqlArkConf;
-use Noid\Lib\Custom\NoidArk;
+use Noid\Lib\Custom\NoidArk;;
 
+auth();
 ob_start();
 // set db type as mysql instead
 GlobalsArk::$db_type = 'ark_mysql';
-define("NAAN_UTSC", 61220);
 
-init_system();
+$arkdbs = init_system();
 ?>
 
     <html>

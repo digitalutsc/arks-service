@@ -61,13 +61,3 @@ else {
     print "invalid argument";
 }
 
-function rest_get($req) {
-    $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-    $cURLConnection = curl_init();
-    curl_setopt($cURLConnection, CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'].$req);
-    curl_setopt($cURLConnection, CURLOPT_RETURNTRANSFER, true);
-
-    $result = curl_exec($cURLConnection);
-    curl_close($cURLConnection);
-    return $result;
-}

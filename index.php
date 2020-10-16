@@ -14,26 +14,15 @@ use Noid\Lib\Custom\GlobalsArk;
 use Noid\Lib\Custom\MysqlArkConf;
 use Noid\Lib\Custom\NoidArk;
 
-
+$realm = "Restricted area";
 ob_start();
 init_system();
 
-$realm = "Restricted area";
-
-if (empty($_SERVER['PHP_AUTH_DIGEST'])) {
-    header('HTTP/1.1 401 Unauthorized');
-    header('WWW-Authenticate: Digest realm="' . $realm .
-        '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
-    echo 'Access denied, you must have account to proceed. This site is restricted for University of Toronto Staff only. <a href="logout.php">Please enter your login credentials to login.</a>';
-    exit();
-}
+auth();
 
 $data = http_digest_parse($_SERVER['PHP_AUTH_DIGEST']);
-print_log($data);
-
-
+logging($data);
 if (isset($data) && isset($data['username'])) {
-    $realm = 'Restricted area';
     $conn = new mysqli(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
     if (!$conn) {
         echo "Error: Unable to connect to MySQL." . PHP_EOL;
@@ -55,7 +44,7 @@ if (isset($data) && isset($data['username'])) {
         header('WWW-Authenticate: Digest realm="' . $realm .
             '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
 
-        echo 'Access denied, your account is not found. <a href="logout.php">Please enter your login credentials to login.</a>';
+        echo 'Access denied, your account is not found. <a href="/">Please enter your login credentials to login.</a>';
         exit();
     } else {
         $A1 = md5($data['username'] . ':' . $realm . ':' . $users[$data['username']]);
@@ -63,7 +52,7 @@ if (isset($data) && isset($data['username'])) {
         $valid_response = md5($A1 . ':' . $data['nonce'] . ':' . $data['nc'] . ':' . $data['cnonce'] . ':' . $data['qop'] . ':' . $A2);
         if ($data['response'] != $valid_response) {
 
-            echo 'Access denied ! Your login credential is matched. <a href="logout.php">Please enter your login credentials to
+            echo 'Access denied ! Your login credential is matched. <a href="/">Please enter your login credentials to
                 login.</a>';
             exit();
         }

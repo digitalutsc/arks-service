@@ -26,6 +26,7 @@ function init_system() {
         print_r($arkdbs);
         exit;
     }
+    return $arkdbs;
 }
 
 /**
@@ -129,4 +130,20 @@ function http_digest_parse($txt)
     }
 
     return $needed_parts ? false : $data;
+}
+
+/**
+ *
+ */
+function auth(){
+    $realm = "Restricted area";
+
+    if (empty($_SERVER['PHP_AUTH_DIGEST'])) {
+
+        header('HTTP/1.1 401 Unauthorized');
+        header('WWW-Authenticate: Digest realm="' . $realm .
+            '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
+        echo 'Access denied, you must have account to proceed. This site is restricted for University of Toronto Staff only. <a href="//'.$_SERVER['HTTP_HOST'].'">Please enter your login credentials to login.</a>';
+        die();
+    }
 }
