@@ -138,6 +138,7 @@ if (count($arkdbs) > 0 && in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
             }
 
             $conn->close();
+            header("Location: install.php");
         }
         ?>
     </div>
@@ -237,7 +238,7 @@ if (count($arkdbs) > 0 && in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
         return openssl_decrypt($stringToEncrypt, $ciphering,
             $decryption_key, $options, $decryption_iv);
     }
-
+    ob_flush();
     ?>
 
 </div>
