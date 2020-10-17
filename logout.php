@@ -3,7 +3,6 @@ require_once "functions.php";
 
 $realm = "Restricted area";
 header('HTTP/1.1 401 Unauthorized');
-header('WWW-Authenticate: Digest realm="' . $realm . '",qop="auth",nonce="' . $_SESSION['http_digest_nonce'] . '",opaque="' . md5($realm) . '"');
 ?>
 
 
@@ -23,7 +22,7 @@ header('WWW-Authenticate: Digest realm="' . $realm . '",qop="auth",nonce="' . $_
     <div class="row">
         <div class="col-md-12">
             <div class="alert alert-secondary" role="alert">
-                You have successfully logged out! <a href='/' class='icon-button star'>Login again</button></center></a>
+                You have successfully logged out! <a href='index.php' class='icon-button star'>Login again</button></center></a>
             </div>
 
         </div>
