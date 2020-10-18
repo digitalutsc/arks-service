@@ -1,5 +1,6 @@
 <?php
 require_once "functions.php";
+
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
 use Noid\Lib\Storage\DatabaseInterface;
@@ -11,7 +12,9 @@ use Noid\Lib\Log;
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
 use Noid\Lib\Custom\MysqlArkConf;
-use Noid\Lib\Custom\NoidArk;;
+use Noid\Lib\Custom\NoidArk;
+
+;
 
 auth();
 ob_start();
@@ -116,7 +119,7 @@ $arkdbs = init_system();
                 });
 
 
-                $('#enterToClearIdentifier').on('change', function(e){
+                $('#enterToClearIdentifier').on('change', function (e) {
                     /*//console.log(this.value,
                         this.options[this.selectedIndex].value,
                         $(this).find("option:selected").val());*/
@@ -124,7 +127,7 @@ $arkdbs = init_system();
                     $('#enterKeytoClear').empty();
 
                     jQuery.ajax({
-                        url: "rest.php?db=<?php echo $_GET['db']; ?>&ark_id="+selected+"&op=fields"
+                        url: "rest.php?db=<?php echo $_GET['db']; ?>&ark_id=" + selected + "&op=fields"
                     }).then(function (data) {
                         var objects = JSON.parse(data);
                         //console.log(objects);
@@ -137,7 +140,7 @@ $arkdbs = init_system();
 
                         $('#enterKeytoClear').html(options).selectpicker('refresh');
                     });
-                    
+
                 });
 
 
@@ -153,13 +156,13 @@ $arkdbs = init_system();
                         {data: '_value'},
                     ],
                     columnDefs: [
-                    {
-                        orderable: false,
-                        className: 'select-checkbox',
-                        targets:   0
-                    } ],
+                        {
+                            orderable: false,
+                            className: 'select-checkbox',
+                            targets: 0
+                        }],
                     select: {
-                        style:    'multi',
+                        style: 'multi',
                         selector: 'td:first-child'
                     },
                     buttons: [
@@ -173,7 +176,7 @@ $arkdbs = init_system();
                     ]
                 });
 
-                mintedTable.on("click", "th.select-checkbox", function() {
+                mintedTable.on("click", "th.select-checkbox", function () {
                     if ($("th.select-checkbox").hasClass("selected")) {
                         mintedTable.rows().deselect();
                         $("th.select-checkbox").removeClass("selected");
@@ -181,7 +184,7 @@ $arkdbs = init_system();
                         mintedTable.rows().select();
                         $("th.select-checkbox").addClass("selected");
                     }
-                }).on("select deselect", function() {
+                }).on("select deselect", function () {
                     ("Some selection or deselection going on")
                     if (mintedTable.rows({
                         selected: true
@@ -193,7 +196,6 @@ $arkdbs = init_system();
                 });
 
 
-
                 // Make a Ajax call to Rest api and render data to table
                 let boundTable = jQuery('#bound_table').DataTable({
                     dom: 'lBfrtip',
@@ -201,7 +203,7 @@ $arkdbs = init_system();
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
                         "dataSrc": ""
                     },
-                    "initComplete":function( settings, json){
+                    "initComplete": function (settings, json) {
                         $(".collapse").collapse({
                             toggle: false
                         });
@@ -216,12 +218,12 @@ $arkdbs = init_system();
                         {data: 'ark_url'},
                         {data: 'metadata'},
                     ],
-                    "fnDrawCallback": function( oSettings ) {
+                    "fnDrawCallback": function (oSettings) {
                         //console.log( 'DataTables has redrawn the table' );
                         enableShowHideMetadataColumn();
                     },
                     select: {
-                        style:    'multi',
+                        style: 'multi',
                         selector: 'td:first-child'
                     },
                     buttons: [
@@ -229,7 +231,7 @@ $arkdbs = init_system();
                             extend: 'csv',
                             text: 'Export to CSV',
                             exportOptions: {
-                                columns: [1, 2, 3,4,5]
+                                columns: [1, 2, 3, 4, 5]
                             }
                         },
                     ],
@@ -237,16 +239,15 @@ $arkdbs = init_system();
                         {
                             orderable: false,
                             className: 'select-checkbox',
-                            targets:   0
+                            targets: 0
                         },
                         {
                             "targets": 3,
                             "data": "LOCAL_ID",
                             "render": function (data, type, row) {
-                                if( data ) {
+                                if (data) {
                                     return data;
-                                }
-                                else {
+                                } else {
                                     return " ";
                                 }
 
@@ -263,10 +264,10 @@ $arkdbs = init_system();
                                     }
                                     data = data.split("|").join("<br/>");
                                     data = data.split(":").join(": ");
-                                    data = ' <button type="button" class="btn btn-link metadata-btn" data-toggle="collapse"  aria-expanded="false" aria-controls="'+ now +'" data-target="#'+ now +'">' +
+                                    data = ' <button type="button" class="btn btn-link metadata-btn" data-toggle="collapse"  aria-expanded="false" aria-controls="' + now + '" data-target="#' + now + '">' +
                                         '<span>Show</span>' +
                                         '  </button>' +
-                                        '<div class="collapse" id="'+ now +'">' +
+                                        '<div class="collapse" id="' + now + '">' +
                                         '  <div class="card card-body">' + data + '</div>' +
                                         '</div>';
                                 }
@@ -283,7 +284,7 @@ $arkdbs = init_system();
                     ]
                 });
 
-                boundTable.on("click", "th.select-checkbox", function() {
+                boundTable.on("click", "th.select-checkbox", function () {
                     if ($("th.select-checkbox").hasClass("selected")) {
                         boundTable.rows().deselect();
                         $("th.select-checkbox").removeClass("selected");
@@ -291,7 +292,7 @@ $arkdbs = init_system();
                         boundTable.rows().select();
                         $("th.select-checkbox").addClass("selected");
                     }
-                }).on("select deselect", function() {
+                }).on("select deselect", function () {
                     ("Some selection or deselection going on")
                     if (boundTable.rows({
                         selected: true
@@ -303,12 +304,12 @@ $arkdbs = init_system();
                 });
 
 
-                function enableShowHideMetadataColumn(){
+                function enableShowHideMetadataColumn() {
                     // enable show/hide metadata button after ajax loaded
-                    $('[data-toggle="collapse"]').click(function(e){
+                    $('[data-toggle="collapse"]').click(function (e) {
                         e.preventDefault();
                         var button = $(this);
-                        var target_element= button.attr("data-target");
+                        var target_element = button.attr("data-target");
                         //console.log(target_element);
                         //console.log($(target_element));
                         $(target_element).collapse('toggle');
@@ -566,7 +567,7 @@ $arkdbs = init_system();
                         }
 
                         // List all created databases in the table
-                        if (count($arkdbs) > 1 && in_array(MysqlArkConf::$mysql_dbname,$arkdbs)) {
+                        if (count($arkdbs) > 1 && in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
                             ?>
                             <div class="row">
                                 <table class="table table-bordered">
@@ -722,14 +723,13 @@ $arkdbs = init_system();
                                 if ($status !== false) {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
-                                                                    Ark ID <i>'.$_POST['enterToClearIdentifier'].'</i> - '.$_POST['enterKeytoClear'].' has been cleared
+                                                                    Ark ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' has been cleared
                                                                 </div>
                                                             ';
-                                }
-                                else {
+                                } else {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
-                                                                    Ark ID <i>'.$_POST['enterToClearIdentifier'].'</i> - '.$_POST['enterKeytoClear'].' failed to be cleared
+                                                                    Ark ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' failed to be cleared
                                                                 </div>
                                                             ';
                                 }
@@ -793,7 +793,6 @@ $arkdbs = init_system();
                             </div>
 
 
-
                             <!-- Remove Metadata set -->
                             <button type="button" class="btn btn-secondary" data-toggle="modal"
                                     data-target="#clearbindsetModal">
@@ -820,7 +819,8 @@ $arkdbs = init_system();
                                                             <select id="enterToClearIdentifier"
                                                                     name="enterToClearIdentifier" class="form-control"
                                                                     data-live-search="true">
-                                                                <option value="-1" selected disabled>-- Select --</option>
+                                                                <option value="-1" selected disabled>-- Select --
+                                                                </option>
                                                             </select>
                                                         </div>
 
@@ -828,7 +828,8 @@ $arkdbs = init_system();
                                                             <label for="enterKeytoClear">Name:</label>
                                                             <select id="enterKeytoClear"
                                                                     name="enterKeytoClear" class="form-control">
-                                                                <option value="-1" selected disabled>-- Select --</option>
+                                                                <option value="-1" selected disabled>-- Select --
+                                                                </option>
                                                             </select>
                                                         </div>
 
@@ -863,7 +864,8 @@ $arkdbs = init_system();
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h5 class="modal-title" id="bulkBindModalLabel">Bulk Binding</h5>
-                                            <button id="bulk-binding-dismiss-button" type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <button id="bulk-binding-dismiss-button" type="button" class="close"
+                                                    data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
                                         </div>
@@ -877,7 +879,8 @@ $arkdbs = init_system();
                                                                 follow:</p>
                                                             <ul>
                                                                 <li>Setup a CSV (only file type supported)</li>
-                                                                <li>Make sure your CSV has 3 mandatory columns <strong>(Case insensitive)</strong>:
+                                                                <li>Make sure your CSV has 3 mandatory columns <strong>(Case
+                                                                        insensitive)</strong>:
                                                                     <ul>
                                                                         <li>LOCAL_ID,</li>
                                                                         <li>PID,</li>
@@ -919,9 +922,12 @@ $arkdbs = init_system();
 
                                                         <div class="row">
                                                             <div class="col-sm-12">
-                                                                <input type="submit" name="import" value="Bulk Bind"
+                                                                <input type="submit" id="btn-upload" name="import" value="Upload"
                                                                        class="btn btn-primary"/>
-                                                                <button type="button" id="btn-close-bulkbind" class="btn btn-secondary"
+                                                                <input type="submit" name="btn-process" id="btn-process" value="Start Binding"
+                                                                       class="btn btn-primary"/>
+                                                                <button type="button" id="btn-close-bulkbind"
+                                                                        class="btn btn-secondary"
                                                                         data-dismiss="modal">Close
                                                                 </button>
                                                             </div>
@@ -932,7 +938,11 @@ $arkdbs = init_system();
                                             </div>
                                         </div>
                                         <script>
+                                            // at beginning, hide and disable process button
+                                            $('#btn-process').hide();
+                                            $('#btn-process').prop('disabled', true);
 
+                                            // handle form submission
                                             $('#form-import').on('submit', function (event) {
                                                 event.preventDefault();
 
@@ -941,7 +951,7 @@ $arkdbs = init_system();
 
                                                 // disable close button in bulk bind popup to keep it in focus
                                                 $('#btn-close-bulkbind').prop('disabled', true);
-                                                $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                $('#bulk-binding-dismiss-button').prop('disabled', true);
 
                                                 // read and process CSV file
                                                 var csv = $('#importCSV');
@@ -953,124 +963,183 @@ $arkdbs = init_system();
                                                     $('#message').html('<div class="alert alert-danger">Only accept CSV file</div>');
                                                     return false;
                                                 }
+
                                                 // If uploaded file is CSV, read the file.
                                                 if (csvFile != undefined) {
+
+                                                    // init file reader
                                                     reader = new FileReader();
+
+                                                    // Important: reading the CSV file.
+                                                    reader.readAsText(csvFile);
+
+                                                    // handle when reading file completed.
                                                     reader.onload = function (e) {
                                                         // split all lines
-                                                        csvResult = e.target.result.split(/\n/);
+                                                        var csvResult = e.target.result.split(/\n/);
 
-                                                        // get total number of lines in CSV
-                                                        var total_data = csvResult.length;
+                                                        // store all read data from CSV in Local storage.
+                                                        localStorage.setItem("importCSV", JSON.stringify(csvResult));
 
-                                                        // if the CSV file has data, show progress bar
-                                                        if (total_data > 1) {
-                                                            $('#process').css('display', 'block');
-                                                        }
+                                                        //hide upload button
+                                                        $('#btn-upload').hide();
 
-                                                        // get headers
-                                                        var keys = csvResult[0].split(',').map(function(x){ return x.toUpperCase(); });
+                                                        // display upload complete message
+                                                        $('#message').html('<div class="alert alert-info">' +
+                                                            'Your CSV file has been uploaded successfully. Please click Start Binding button to start the process.'
+                                                            + '</div>');
 
-                                                        // check if the CSV must have 3 mandatory columns
-                                                        if ($.inArray("PID", keys) === -1 ||
-                                                            $.inArray("LOCAL_ID", keys) === -1 ||
-                                                            $.inArray( "URL", keys ) === -1 ) {
+                                                        // show and enable process button
+                                                        $('#btn-process').show();
+                                                        $('#btn-process').prop('disabled', false);
 
-                                                            // show message.
-                                                            $('#message').html('<div class="alert alert-danger">' +
-                                                                ' <li>Make sure your CSV has 3 mandatory columns:\n' +
-                                                                '<ul>\n' +
-                                                                '<li>LOCAL_ID,</li>\n' +
-                                                                '<li>PID.</li>\n' +
-                                                                '<li>URL</li>\n' +
-                                                                '</ul>\n' +
-                                                                '</li>'
+                                                        // handle process button clicked
+                                                        $('#btn-process').click(function() {
+
+                                                            // display the message of ongoing binding process.
+                                                            $('#message').html('<div class="alert alert-info">' +
+                                                                'The Binding process has been ongoing. Please do not close this page until the process is completed.'
                                                                 + '</div>');
 
-                                                            // disable message shown
-                                                            $('#process').css('display', 'none');
-                                                            $('#btn-close-bulkbind').prop('disabled', false);
-                                                            $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                            // get total number of lines in CSV
+                                                            var total_data = csvResult.length;
 
-                                                            return false;
-                                                        } else {
+                                                            // if the CSV file has data, adjust UI
+                                                            if (total_data > 1) {
+                                                                //show progress bar
+                                                                $('#process').css('display', 'block');
 
-                                                            // loop through row 2 till end of CSV file
-                                                            $.each(csvResult, function (index, item) {
-                                                                if (index > 0 && (item !== "")) {
-                                                                    var values = item.split(',')
-                                                                    var pdata = {};
-                                                                    for (var i = 0; i < values.length; i++) {
-                                                                        // enforce csv must follow sequence LocalID, PID, URL,
-                                                                        if (keys[i] !== undefined) {
-                                                                            pdata[keys[i].toUpperCase()] = values[i];
-                                                                        }
-                                                                    }
+                                                                // disable process button.
+                                                                $('#btn-process').prop('disabled', true);
+                                                            }
 
-                                                                    // send POST request for each line of read CSV file
-                                                                    $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata})
-                                                                        .done(function (data) {
-                                                                            // get result form POST request from REST api
-                                                                            var result = JSON.parse(data);
-
-                                                                            // if success
-                                                                            if (result.success === 1) {
-
-                                                                                // display total lines have to import
-                                                                                $('#total_data').text(total_data);
-
-                                                                                // calculate percentage of ongoing process.
-                                                                                var width = Math.round(((index+1) / total_data) * 100);
-
-                                                                                // update the progress bar.
-                                                                                $('#process_data').text(index);
-                                                                                $('.progress-bar').css('width', width + '%');
-
-                                                                                // if the process reaches 100%
-                                                                                if (width >= 99) {
-
-                                                                                    // dismiss the progress bar
-                                                                                    $('#process').css('display', 'none');
-
-                                                                                    // reset the input type file
-                                                                                    $('#importCSV').val('');
-
-                                                                                    // display completed message
-                                                                                    $('#message').html('<div class="alert alert-success">Bulk Bind successfully completed.</div>');
-
-                                                                                    // re-enable all buttons
-                                                                                    $('#import').attr('disabled', false);
-                                                                                    $('#import').val('Import');
-                                                                                    $('#btn-close-bulkbind').prop('disabled', false);
-                                                                                    $('#bulk-binding-dismiss-button').prop('disabled', false);
-
-                                                                                    // if click on close button, page will be refresh to update the tables.
-                                                                                    $('#btn-close-bulkbind').click(function() {
-                                                                                        location.reload();
-                                                                                    });
-
-                                                                                }
-                                                                            } else if (result.success == 0) {
-                                                                                // if fail to read a row, display.
-                                                                                $('#message').html('<div class="alert alert-danger">' + result.message + '</div>');
-                                                                                $('#importCSV').attr('disabled', false);
-                                                                                $('#importCSV').val('Import');
-                                                                            }
-                                                                        })
-                                                                        .fail(function () {
-                                                                            $('#message').html('<div class="alert alert-danger">Fail to read the CSV file.</div>');
-                                                                            $('#importCSV').attr('disabled', false);
-                                                                            $('#importCSV').val('Import');
-                                                                        });
-                                                                }
+                                                            // get headers
+                                                            var keys = csvResult[0].split(',').map(function (x) {
+                                                                return x.toUpperCase();
                                                             });
-                                                        }
+                                                            // check if the CSV must have 3 mandatory columns
+                                                            if ($.inArray("PID", keys) === -1 ||
+                                                                $.inArray("LOCAL_ID", keys) === -1 ||
+                                                                $.inArray("URL", keys) === -1) {
+
+                                                                // show message.
+                                                                $('#message').html('<div class="alert alert-danger">' +
+                                                                    ' <li>Make sure your CSV has 3 mandatory columns:\n' +
+                                                                    '<ul>\n' +
+                                                                    '<li>LOCAL_ID,</li>\n' +
+                                                                    '<li>PID.</li>\n' +
+                                                                    '<li>URL</li>\n' +
+                                                                    '</ul>\n' +
+                                                                    '</li>'
+                                                                    + '</div>');
+
+                                                                // disable message shown
+                                                                $('#process').css('display', 'none');
+                                                                $('#btn-close-bulkbind').prop('disabled', false);
+                                                                $('#bulk-binding-dismiss-button').prop('disabled', false);
+
+                                                                return false;
+                                                            } else {
+                                                                // loop through row 2 till end of CSV file
+                                                                var index = 1; // start from 2nd line because 1st one is header/columns
+
+                                                                // send Post request
+                                                                doPost(index, total_data, csvResult);
+                                                            }
+                                                        });
                                                     }
-                                                    // Important: reading the CSV file. 
-                                                    reader.readAsText(csvFile);
                                                 }
                                             });
 
+                                            function doPost(index, total_data, csvResult) {
+                                                // pulll preserve read data from CSV from local storage
+                                                var csvResult = JSON.parse(localStorage.getItem("importCSV"));
+                                                var keys = csvResult[0].split(',').map(function (x) {
+                                                    return x.toUpperCase();
+                                                });
+
+                                                // start binding each line of CSV file
+                                                var item = csvResult[index];
+                                                var values = item.split(',')
+                                                var pdata = {};
+                                                for (var i = 0; i < values.length; i++) {
+                                                    // enforce csv must follow sequence LocalID, PID, URL,
+                                                    if (keys[i] !== undefined) {
+                                                        pdata[keys[i].toUpperCase()] = values[i];
+                                                    }
+                                                }
+
+                                                // send POST request for each line of read CSV file
+                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata})
+                                                    .done(function (data) {
+                                                        processPostSuccess(index, csvResult, data);
+
+                                                        // recursive call post request till end of file
+                                                        index++;
+                                                        if (index < csvResult.length)
+                                                            doPost(index, keys, csvResult);
+
+                                                    })
+                                                    .fail(function () {
+                                                        $('#message').html('<div class="alert alert-danger">Fail to read the CSV file.</div>');
+                                                        $('#importCSV').attr('disabled', false);
+                                                        $('#importCSV').val('Import');
+                                                    });
+                                            }
+
+                                            function processPostSuccess(index, csvResult, data) {
+                                                // get total objects to bind
+                                                var total_data = csvResult.length;
+                                                // get result form POST request from REST api
+                                                var result = JSON.parse(data);
+
+                                                // if success
+                                                if (result.success === 1) {
+
+                                                    // display total lines have to import
+                                                    $('#total_data').text(total_data);
+
+                                                    // calculate percentage of ongoing process.
+                                                    var width = Math.round(((index + 1) / total_data) * 100);
+
+                                                    // update the progress bar.
+                                                    $('#process_data').text(index);
+                                                    $('.progress-bar').css('width', width + '%');
+
+                                                    // if the process reaches 100%
+                                                    if (width >= 99) {
+
+                                                        // dismiss the progress bar
+                                                        $('#process').css('display', 'none');
+
+                                                        // reset the input type file
+                                                        $('#importCSV').val('');
+
+                                                        // display completed message
+                                                        $('#message').html('<div class="alert alert-success">Bulk Bind successfully completed.</div>');
+
+                                                        // re-enable all buttons
+                                                        $('#import').attr('disabled', false);
+                                                        $('#import').val('Import');
+                                                        $('#btn-close-bulkbind').prop('disabled', false);
+                                                        $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                        $('#btn-process').hide();
+
+                                                        // clear read data from CSV from localstorage
+                                                        localStorage.removeItem("importCSV");
+
+                                                        // if click on close button, page will be refresh to update the tables.
+                                                        $('#btn-close-bulkbind').click(function () {
+                                                            location.reload();
+                                                        });
+                                                    }
+                                                } else if (result.success == 0) {
+                                                    // if fail to read a row, display.
+                                                    $('#message').html('<div class="alert alert-danger">' + result.message + '</div>');
+                                                    $('#importCSV').attr('disabled', false);
+                                                    $('#importCSV').val('Import');
+                                                }
+                                            }
                                         </script>
 
                                     </div>
@@ -1085,14 +1154,14 @@ $arkdbs = init_system();
                                 <div class="col-md-12">
                                     <table id="bound_table" class="display" style="width:100%">
                                         <thead>
-                                            <tr>
-                                                <th></th>
-                                                <th>Ark ID</th>
-                                                <th>PID</th>
-                                                <th>LOCAL_ID</th>
-                                                <th>Ark URL</th>
-                                                <th>Metadata</th>
-                                            </tr>
+                                        <tr>
+                                            <th></th>
+                                            <th>Ark ID</th>
+                                            <th>PID</th>
+                                            <th>LOCAL_ID</th>
+                                            <th>Ark URL</th>
+                                            <th>Metadata</th>
+                                        </tr>
                                         </thead>
                                     </table>
                                 </div>
