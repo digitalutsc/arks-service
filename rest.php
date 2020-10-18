@@ -126,6 +126,10 @@ function bulkbind(){
     if (!Database::exist($_GET['db'])) {
         die(json_encode(['success' => 0, 'message' => 'Database not found']));
     }
+    if (empty($_POST['security'])  ||  (Database::isAuth($_POST['security']) === false) ) {
+        die(json_encode(['success' => 401, 'message' => 'Security Credentials is invalid, Please verify it again.']));
+    }
+
     $result = null;
     if (is_array($_POST) && isset($_POST['data'])) {
         $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
@@ -172,6 +176,7 @@ function bulkbind(){
 
 
 }
+
 
 /**
  * Return basic information of database

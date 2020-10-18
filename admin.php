@@ -888,7 +888,14 @@ $arkdbs = init_system();
                                                                 </li>
                                                                 <li>Upload the CSV to start Bulk Bind process.</li>
                                                             </ul>
-
+                                                        </div>
+                                                        <hr/>
+                                                        <div class="form-group">
+                                                            <label for="enterPasswordPostBulkBind"><strong>For security measure, please enter admin password before bulk binding: </strong></label>
+                                                            <input required type="password" class="form-control" id="enterPasswordPostBulkBind" name="enterPasswordPostBulkBind"
+                                                                   placeholder="Password">
+                                                        </div>
+                                                        <div class="form-group">
                                                             <p><strong><label for="importCSV">Upload
                                                                         CSV: </label></strong>
                                                             </p>
@@ -945,6 +952,12 @@ $arkdbs = init_system();
                                             $('#form-import').on('submit', function (event) {
                                                 event.preventDefault();
 
+                                                // check password not empty before bulk binding
+                                                if($.trim($('#enterPasswordPostBulkBind').val()) == ''){
+                                                    $('#message').html('<div class="alert alert-danger">Please enter the administrator password before bulk binding</div>');
+                                                    return false;
+                                                }
+
                                                 // reset message
                                                 $('#message').html('');
 
@@ -966,6 +979,9 @@ $arkdbs = init_system();
                                                 // If uploaded file is CSV, read the file.
                                                 if (csvFile != undefined) {
 
+                                                    // store password to caches
+                                                    localStorage.setItem("syspasswd", JSON.stringify($("#enterPasswordPostBulkBind").val()));
+
                                                     // init file reader
                                                     reader = new FileReader();
 
@@ -985,7 +1001,7 @@ $arkdbs = init_system();
 
                                                         // display upload complete message
                                                         $('#message').html('<div class="alert alert-info">' +
-                                                            'Your CSV file has been uploaded successfully. Please click Start Binding button to start the process.'
+                                                            'Your CSV file has been uploaded successfully. Please click <i>Start Binding</i> button to start the process.'
                                                             + '</div>');
 
                                                         // show and enable process button
@@ -1053,6 +1069,7 @@ $arkdbs = init_system();
                                             function doPost(index, total_data, csvResult) {
                                                 // pulll preserve read data from CSV from local storage
                                                 var csvResult = JSON.parse(localStorage.getItem("importCSV"));
+                                                var password = JSON.parse(localStorage.getItem("syspasswd"));
                                                 var keys = csvResult[0].split(',').map(function (x) {
                                                     return x.toUpperCase();
                                                 });
@@ -1069,14 +1086,31 @@ $arkdbs = init_system();
                                                 }
 
                                                 // send POST request for each line of read CSV file
-                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata})
+                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata, security: password})
                                                     .done(function (data) {
-                                                        processPostSuccess(index, csvResult, data);
+                                                        console.log(JSON.parse(data));
+                                                        var result =  JSON.parse(data);
+                                                        if (result.success == 401) {
 
-                                                        // recursive call post request till end of file
-                                                        index++;
-                                                        if (index < csvResult.length)
-                                                            doPost(index, keys, csvResult);
+                                                            // display unauthrize message
+                                                            $('#message').html('<div class="alert alert-danger">'+result.message+'</div>');
+
+                                                            // re-enable operation button
+                                                            $('#process').css('display', 'none');
+                                                            $('#btn-process').prop('disabled', false);
+                                                            $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                            return;
+                                                        }
+                                                        else {
+                                                            // process result of each process
+                                                            processPostSuccess(index, csvResult, data);
+
+                                                            // recursive call post request till end of file
+                                                            index++;
+                                                            if (index < csvResult.length)
+                                                                doPost(index, keys, csvResult);
+                                                        }
+
 
                                                     })
                                                     .fail(function () {
@@ -1126,6 +1160,7 @@ $arkdbs = init_system();
 
                                                         // clear read data from CSV from localstorage
                                                         localStorage.removeItem("importCSV");
+                                                        localStorage.removeItem("syspasswd");
 
                                                         // if click on close button, page will be refresh to update the tables.
                                                         $('#btn-close-bulkbind').click(function () {

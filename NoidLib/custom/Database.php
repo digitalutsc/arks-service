@@ -80,6 +80,40 @@ class Database
     }
 
     /**
+     * verify authenticated to run POST method
+     * @param String $password
+     * @return bool
+     */
+    public static function isAuth(String $password) {
+        $encryptPasswd = secureEncryption($password, GlobalsArk::$encryption_key, GlobalsArk::$NAAN);
+
+        $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+        if (!$link) {
+            echo "Error: Unable to connect to MySQL." . PHP_EOL;
+            echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+            echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+            exit;
+        }
+        $auth = false;
+        if ($query = mysqli_query($link, "SELECT * FROM `user` WHERE `pasword` = '$encryptPasswd'")) {
+
+            if (!mysqli_query($link, "SET @a:='this will not work'")) {
+                printf("Error: %s\n", mysqli_error($query));
+            }
+            $results = $query->fetch_all();
+
+            if (count($results)) {
+                $auth = true;
+            }
+
+            $query->close();
+        }
+        mysqli_close($link);
+        return $auth;
+    }
+
+    /**
      * Check ark database name is existed/created
      * @param String $dbname
      * @return bool
