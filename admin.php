@@ -533,13 +533,11 @@ $arkdbs = init_system();
                             $ePrefixflag = false;
 
                             foreach ($arkdbs as $db) {
-                                $db = $db[0];
-                                if (!in_array($db[0], ['.', '..', '.gitkeep', 'log'])) {
-                                    $pf = json_decode(rest_get("/rest.php?db=$db[0]&op=prefix"));
+                                $pf = json_decode(rest_get("/rest.php?db=$db&op=prefix"));
 
-                                    if ($pf === $_POST['enterPrefix']) {
-                                        $ePrefixflag = true;
-                                    }
+                                if ($pf === $_POST['enterPrefix']) {
+                                    $ePrefixflag = true;
+                                    break;
                                 }
                             }
                             if ($ePrefixflag === false) {
@@ -554,6 +552,7 @@ $arkdbs = init_system();
                                     trim($_POST['enterRedirect']),
                                     trim($_POST['enterInsitutionName']),
                                 );
+                                header("Location: admin.php");
                             } else {
                                 print '
                                 <div class="alert alert-danger" role="alert">
@@ -562,7 +561,7 @@ $arkdbs = init_system();
                             ';
                             }
 
-                            header("Location: admin.php");
+
 
                         }
 
@@ -997,7 +996,7 @@ $arkdbs = init_system();
                                                         $('#btn-process').click(function() {
 
                                                             // display the message of ongoing binding process.
-                                                            $('#message').html('<div class="alert alert-info">' +
+                                                            $('#message').html('<div class="alert alert-warning">' +
                                                                 'The Binding process has been ongoing. Please do not close this page until the process is completed.'
                                                                 + '</div>');
 
