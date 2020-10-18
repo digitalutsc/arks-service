@@ -490,7 +490,7 @@ $arkdbs = init_system();
                                     <label class="control-label" for="enterDatabaseName">Redirect URL(NAA):</label>
                                     <input type="text" class="form-control" id="enterRedirect" name="enterRedirect"
                                            />
-                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: digital.utsc.utoronto.ca</small>
+                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: collections.digital.utsc.utoronto.ca</small>
                                 </div>
                                 
                                  <div class="form-group">
