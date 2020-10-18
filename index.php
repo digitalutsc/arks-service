@@ -24,7 +24,7 @@ if (empty($_SERVER['PHP_AUTH_DIGEST'])) {
     header('HTTP/1.1 401 Unauthorized');
     header('WWW-Authenticate: Digest realm="' . $realm .
         '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
-    echo 'Access denied, you must have account to proceed. This site is restricted for University of Toronto Staff only. <a href="//'.$_SERVER['HTTP_HOST'].'">Please enter your login credentials to login.</a>';
+    echo 'Access denied, you must have account to proceed. This site is restricted for University of Toronto Staff only. <a href="logout.php">Please enter your login credentials to login.</a>';
     //die('Text to send if user hits Cancel button');
     die();
 }
@@ -56,7 +56,7 @@ if (count($users) == 0 /*|| !isset($users[$data['username']])*/) {
     header('WWW-Authenticate: Digest realm="' . $realm .
         '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
 
-    echo 'Access denied, your account is not found. <a href="/">Please enter your login credentials to login.</a>';
+    echo 'Access denied, your account is not found. <a href="logout.php">Please enter your login credentials to login.</a>';
     exit();
 } else {
     $A1 = md5($data['username'] . ':' . $realm . ':' . $users[$data['username']]);
@@ -64,7 +64,7 @@ if (count($users) == 0 /*|| !isset($users[$data['username']])*/) {
     $valid_response = md5($A1 . ':' . $data['nonce'] . ':' . $data['nc'] . ':' . $data['cnonce'] . ':' . $data['qop'] . ':' . $A2);
     if ($data['response'] != $valid_response) {
 
-        echo 'Access denied ! Your login credential is matched. <a href="/">Please enter your login credentials to
+        echo 'Access denied ! Your login credential is matched. <a href="logout.php">Please enter your login credentials to
             login.</a>';
         exit();
     }

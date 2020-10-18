@@ -934,42 +934,49 @@ $arkdbs = init_system();
                                         <script>
 
                                             $('#form-import').on('submit', function (event) {
-                                                /*$('#bulk-binding-modal').modal({
-                                                    backdrop: 'static',
-                                                    keyboard: false
-                                                })*/
-                                                $('#message').html('');
                                                 event.preventDefault();
+
+                                                // reset message
+                                                $('#message').html('');
 
                                                 // disable close button in bulk bind popup to keep it in focus
                                                 $('#btn-close-bulkbind').prop('disabled', true);
                                                 $('#bulk-binding-dismiss-button').prop('disabled', false);
 
+                                                // read and process CSV file
                                                 var csv = $('#importCSV');
                                                 var csvFile = csv[0].files[0];
                                                 var ext = csv.val().split(".").pop().toLowerCase();
 
+                                                // verify if uploaded file is CSV file.
                                                 if ($.inArray(ext, ["csv"]) === -1) {
                                                     $('#message').html('<div class="alert alert-danger">Only accept CSV file</div>');
                                                     return false;
                                                 }
+                                                // If uploaded file is CSV, read the file.
                                                 if (csvFile != undefined) {
                                                     reader = new FileReader();
                                                     reader.onload = function (e) {
-
-                                                        //csvResult = e.target.result.split(/\r|\n|\r\n/);
+                                                        // split all lines
                                                         csvResult = e.target.result.split(/\n/);
+
+                                                        // get total number of lines in CSV
                                                         var total_data = csvResult.length;
+
+                                                        // if the CSV file has data, show progress bar
                                                         if (total_data > 1) {
                                                             $('#process').css('display', 'block');
                                                         }
+
                                                         // get headers
                                                         var keys = csvResult[0].split(',').map(function(x){ return x.toUpperCase(); });
-                                                        console.log($.inArray("LOCAL_ID", keys));
+
+                                                        // check if the CSV must have 3 mandatory columns
                                                         if ($.inArray("PID", keys) === -1 ||
                                                             $.inArray("LOCAL_ID", keys) === -1 ||
                                                             $.inArray( "URL", keys ) === -1 ) {
 
+                                                            // show message.
                                                             $('#message').html('<div class="alert alert-danger">' +
                                                                 ' <li>Make sure your CSV has 3 mandatory columns:\n' +
                                                                 '<ul>\n' +
@@ -979,11 +986,16 @@ $arkdbs = init_system();
                                                                 '</ul>\n' +
                                                                 '</li>'
                                                                 + '</div>');
+
+                                                            // disable message shown
                                                             $('#process').css('display', 'none');
                                                             $('#btn-close-bulkbind').prop('disabled', false);
                                                             $('#bulk-binding-dismiss-button').prop('disabled', false);
+
                                                             return false;
                                                         } else {
+
+                                                            // loop through row 2 till end of CSV file
                                                             $.each(csvResult, function (index, item) {
                                                                 if (index > 0 && (item !== "")) {
                                                                     var values = item.split(',')
@@ -994,43 +1006,67 @@ $arkdbs = init_system();
                                                                             pdata[keys[i].toUpperCase()] = values[i];
                                                                         }
                                                                     }
+
+                                                                    // send POST request for each line of read CSV file
                                                                     $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata})
                                                                         .done(function (data) {
+                                                                            // get result form POST request from REST api
                                                                             var result = JSON.parse(data);
+
+                                                                            // if success
                                                                             if (result.success === 1) {
+
+                                                                                // display total lines have to import
                                                                                 $('#total_data').text(total_data);
+
+                                                                                // calculate percentage of ongoing process.
                                                                                 var width = Math.round(((index+1) / total_data) * 100);
+
+                                                                                // update the progress bar.
                                                                                 $('#process_data').text(index);
                                                                                 $('.progress-bar').css('width', width + '%');
-                                                                                console.log(width);
+
+                                                                                // if the process reaches 100%
                                                                                 if (width >= 99) {
+
+                                                                                    // dismiss the progress bar
                                                                                     $('#process').css('display', 'none');
+
+                                                                                    // reset the input type file
                                                                                     $('#importCSV').val('');
+
+                                                                                    // display completed message
                                                                                     $('#message').html('<div class="alert alert-success">Bulk Bind successfully completed.</div>');
+
+                                                                                    // re-enable all buttons
                                                                                     $('#import').attr('disabled', false);
                                                                                     $('#import').val('Import');
                                                                                     $('#btn-close-bulkbind').prop('disabled', false);
                                                                                     $('#bulk-binding-dismiss-button').prop('disabled', false);
+
+                                                                                    // if click on close button, page will be refresh to update the tables.
                                                                                     $('#btn-close-bulkbind').click(function() {
                                                                                         location.reload();
                                                                                     });
 
                                                                                 }
                                                                             } else if (result.success == 0) {
+                                                                                // if fail to read a row, display.
                                                                                 $('#message').html('<div class="alert alert-danger">' + result.message + '</div>');
                                                                                 $('#importCSV').attr('disabled', false);
                                                                                 $('#importCSV').val('Import');
                                                                             }
                                                                         })
                                                                         .fail(function () {
-                                                                            console.log("error");
+                                                                            $('#message').html('<div class="alert alert-danger">Fail to read the CSV file.</div>');
+                                                                            $('#importCSV').attr('disabled', false);
+                                                                            $('#importCSV').val('Import');
                                                                         });
                                                                 }
                                                             });
                                                         }
-
-
                                                     }
+                                                    // Important: reading the CSV file. 
                                                     reader.readAsText(csvFile);
                                                 }
                                             });

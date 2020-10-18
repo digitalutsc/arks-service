@@ -117,7 +117,7 @@ function getFields($ark_id) {
 }
 
 /**
- * Handle ajax call for bulk binding import CSV file
+ * Handle ajax call for each row of CSV during bulk binding import
  *
  * @return false|string
  */
