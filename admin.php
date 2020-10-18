@@ -21,7 +21,21 @@ ob_start();
 // set db type as mysql instead
 GlobalsArk::$db_type = 'ark_mysql';
 
+// check if system insalled. If not, rediret to installation page.
 $arkdbs = init_system();
+
+// display registered Org info in header.
+$orgdata = Database::getOrganization();
+$subheader = "<p>";
+foreach($orgdata as $pair) {
+    if ($pair[0] == "Organization Name") {
+        $subheader .= '<h4>'. $pair[1] . '</h4>';
+    }
+    else if ($pair[0] == "Organization Website") {
+        $subheader .= '<a href="'.$pair[1].'" target="_blank">'. $pair[1] . '</a>';
+    }
+}
+$subheader .= "</p>";
 ?>
 
     <html>
@@ -338,7 +352,9 @@ $arkdbs = init_system();
         <div class="row">
             <div class="col-sm text-center">
                 <h1 class="text-center">Ark Service</h1>
-                <a href="/logout.php">Logout</a>
+                <?php echo $subheader; ?>
+                <a style="margin-bottom: 20px" class="btn btn-danger" href="/logout.php">Logout</a>
+
             </div>
         </div>
 
