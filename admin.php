@@ -979,8 +979,7 @@ $arkdbs = init_system();
                                                 // If uploaded file is CSV, read the file.
                                                 if (csvFile != undefined) {
 
-                                                    // store password to caches
-                                                    localStorage.setItem("syspasswd", JSON.stringify($("#enterPasswordPostBulkBind").val()));
+
 
                                                     // init file reader
                                                     reader = new FileReader();
@@ -1010,6 +1009,9 @@ $arkdbs = init_system();
 
                                                         // handle process button clicked
                                                         $('#btn-process').click(function() {
+
+                                                            // store password to caches
+                                                            localStorage.setItem("syspasswd", JSON.stringify($("#enterPasswordPostBulkBind").val()));
 
                                                             // display the message of ongoing binding process.
                                                             $('#message').html('<div class="alert alert-warning">' +
