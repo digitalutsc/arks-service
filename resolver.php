@@ -58,8 +58,8 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         }
 
         if (!empty($url)) {
-            var_dump($url);
-            //header("Location: $url");
+            //var_dump($url);
+            header("Location: $url");
         }
         else {
             print "Ark ID is not found.";
