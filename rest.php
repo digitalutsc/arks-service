@@ -301,7 +301,7 @@ function getURL($arkID) {
         die(json_encode('Database not found'));
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-    $result = Database::$engine->select("_key REGEXP '^$arkID' and _key REGEXP 'URL$'");
+    $result = Database::$engine->select("_key = '$arkID\tURL'");
     Database::dbclose($noid);
     return json_encode($result);
 }
