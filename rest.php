@@ -139,7 +139,7 @@ function bulkbind(){
         if (!empty($_POST['data'][strtoupper('LOCAL_ID')])) {
 
             // TOOD: check if decided unique field exist, to avoid duplication
-            $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['PID']."'");
+            $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['LOCAL_ID']."'");
             if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
                 $identifier = preg_split('/\s+/', $checkExistedLocalID[0]['_key'])[0];
             }
