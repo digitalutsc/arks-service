@@ -17,14 +17,11 @@ use Noid\Lib\Custom\NoidArk;
 ob_start();
 GlobalsArk::$db_type = 'ark_mysql';
 
-$arkdbs = Database::showdatabases();
-if (count($arkdbs) > 0 && in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
+if (Database::isInstalled()) {
     // redirect to install.php
     header("Location: index.php");
     exit;
 }
-
-
 ?>
 
 <html>

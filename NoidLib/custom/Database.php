@@ -49,7 +49,7 @@ class Database
      */
     public static function showDatabases()
     {
-        $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd);
+        $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
         if (!$link) {
             echo "Error: Unable to connect to MySQL." . PHP_EOL;
@@ -58,25 +58,56 @@ class Database
             exit;
         }
 
-        if ($query = mysqli_query($link, "SHOW DATABASES")) {
+
+        if ($query = mysqli_query($link, "SHOW TABLES")) {
 
             if (!mysqli_query($link, "SET @a:='this will not work'")) {
                 printf("Error: %s\n", mysqli_error($query));
             }
             $results = $query->fetch_all();
-
             $arkdbs = [];
             foreach ($results as $db) {
-                if (strpos($db[0], GlobalsArk::$db_prefix) === 0) {
-                    // It starts with 'http'
-                    array_push($arkdbs, $db[0]);
-                }
+                // It starts with 'http'
+                array_push($arkdbs, $db[0]);
             }
-
             $query->close();
         }
         mysqli_close($link);
         return $arkdbs;
+    }
+
+    /**
+     * determine the system is installed
+     * @param string $name
+     */
+    public static function isInstalled()
+    {
+        $install = 0;
+        $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+        $mandatory = ['system', 'user'];
+        if (!$link) {
+            echo "Error: Unable to connect to MySQL." . PHP_EOL;
+            echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+            echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+            exit;
+        }
+        if ($query = mysqli_query($link, "SHOW TABLES")) {
+            if (!mysqli_query($link, "SET @a:='this will not work'")) {
+                printf("Error: %s\n", mysqli_error($query));
+            }
+            $results = $query->fetch_all();
+            if (count($results) >= 2 ) {
+                foreach ($results as $db) {
+                    // It starts with 'http'
+                    if (in_array($db[0], $mandatory)) {
+                        $install ++;
+                    }
+                }
+            }
+            $query->close();
+        }
+        mysqli_close($link);
+        return $install == count($mandatory);
     }
 
     /**

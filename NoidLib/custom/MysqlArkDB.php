@@ -62,7 +62,7 @@ class MysqlArkDB implements DatabaseInterface
 
         if (!is_null($this->handle)) {
             // determine the database name.
-            $database = empty(MysqlArkConf::$mysql_dbname) ? trim(MysqlArkConf::$mysql_dbname) : $this->db_name;
+            $database = MysqlArkConf::$mysql_dbname; //empty(MysqlArkConf::$mysql_dbname) ? trim(MysqlArkConf::$mysql_dbname) : $this->db_name;
 
             // It's time for checking the db existence. If not exists, will create it.
             $this->handle->query("CREATE DATABASE IF NOT EXISTS `" . $database . "`");

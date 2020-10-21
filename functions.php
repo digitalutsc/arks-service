@@ -19,14 +19,11 @@ function init_system() {
     // set db type as mysql instead
     GlobalsArk::$db_type = 'ark_mysql';
     define("NAAN_UTSC", 61220);
-    $arkdbs = Database::showdatabases();
-    if (count($arkdbs) == 0 || !in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
+    if (!Database::isInstalled()) {
         // redirect to install.php
         header("Location: install.php");
-        print_r($arkdbs);
         exit;
     }
-    return $arkdbs;
 }
 
 /**
