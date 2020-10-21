@@ -22,7 +22,10 @@ ob_start();
 GlobalsArk::$db_type = 'ark_mysql';
 
 // check if system insalled. If not, rediret to installation page.
-$arkdbs = init_system();
+ init_system();
+
+// get created database 
+$arkdbs = Database::showDatabases();
 
 // display registered Org info in header.
 $orgdata = Database::getOrganization();
@@ -530,15 +533,12 @@ $subheader .= "</p>";
                     </div>
                     <div class="col-sm-6">
                         <?php
+
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
                             // Repace white space (if there is) with underscore
                             $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
 
-                            // add prefix to database.
-                            $database = GlobalsArk::$db_prefix . $database;
-
                             // create db directory if not exsit
-
                             if (!file_exists(getcwd() . "/db")) {
                                 mkdir(getcwd() . "/db", 0775);
                             }
@@ -573,13 +573,10 @@ $subheader .= "</p>";
                                 </div>
                             ';
                             }
-
-
-
                         }
 
                         // List all created databases in the table
-                        if (count($arkdbs) > 1 && in_array(MysqlArkConf::$mysql_dbname, $arkdbs)) {
+                        if (count($arkdbs) > 2) {
                             ?>
                             <div class="row">
                                 <table class="table table-bordered">
@@ -593,7 +590,7 @@ $subheader .= "</p>";
                                     <tbody>
                                     <?php
                                     foreach ($arkdbs as $db) {
-                                        if ($db !== MysqlArkConf::$mysql_dbname) {
+                                        if (!in_array($db, ['system', 'user'])) {
                                             $highlight = "";
                                             $setActive = '<a href="./admin.php?db=' . $db . '">Select</a>';
                                             if ((isset($_GET['db']) && $_GET['db'] == $db)) {

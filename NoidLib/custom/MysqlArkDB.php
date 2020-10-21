@@ -71,16 +71,16 @@ class MysqlArkDB implements DatabaseInterface
             $this->handle->select_db($database);
 
             // If the table is not exist, create it.
-            $this->handle->query("CREATE TABLE IF NOT EXISTS `" . DatabaseInterface::TABLE_NAME . "` (  `_key` VARCHAR(512) NOT NULL, `_value` VARCHAR(4096) DEFAULT NULL, PRIMARY KEY (`_key`))");
+            $this->handle->query("CREATE TABLE IF NOT EXISTS `" . $this->db_name . "` (  `_key` VARCHAR(512) NOT NULL, `_value` VARCHAR(4096) DEFAULT NULL, PRIMARY KEY (`_key`))");
 
             // when create db
             if (strpos(strtolower($mode), DatabaseInterface::DB_CREATE) !== FALSE) {
                 // if create mode, truncate the table records.
-                $this->handle->query("TRUNCATE TABLE `" . DatabaseInterface::TABLE_NAME . "`");
+                $this->handle->query("TRUNCATE TABLE `" . $this->db_name . "`");
             }
 
             // Optimize the table for better performance.
-            $this->handle->query("OPTIMIZE TABLE `" . DatabaseInterface::TABLE_NAME . "`");
+            $this->handle->query("OPTIMIZE TABLE `" . $this->db_name . "`");
 
             return $this->handle;
         }
@@ -116,7 +116,7 @@ class MysqlArkDB implements DatabaseInterface
 
         $key = htmlspecialchars($key, ENT_QUOTES | ENT_HTML401);
 
-        if ($res = $this->handle->query("SELECT `_value` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` = '{$key}'")) {
+        if ($res = $this->handle->query("SELECT `_value` FROM `" . $this->db_name . "` WHERE `_key` = '{$key}'")) {
             $row = $res->fetch_array(MYSQLI_NUM);
             $ret_val = $row[0];
             $res->free();
@@ -138,7 +138,7 @@ class MysqlArkDB implements DatabaseInterface
             return FALSE;
         }
 
-        if ($res = $this->handle->query("SELECT * FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE " . $where)) {
+        if ($res = $this->handle->query("SELECT * FROM `" . $this->db_name . "` WHERE " . $where)) {
             return $res->fetch_all(MYSQLI_ASSOC);
         }
         return FALSE;
@@ -160,7 +160,7 @@ class MysqlArkDB implements DatabaseInterface
         $key = htmlspecialchars($key, ENT_QUOTES | ENT_HTML401);
         $value = htmlspecialchars($value, ENT_QUOTES | ENT_HTML401);
 
-        $qry = "INSERT INTO `" . DatabaseInterface::TABLE_NAME . "` (`_key`, `_value`) VALUES ('{$key}', '{$value}') ON DUPLICATE KEY UPDATE `_value` = '{$value}'";
+        $qry = "INSERT INTO `" . $this->db_name . "` (`_key`, `_value`) VALUES ('{$key}', '{$value}') ON DUPLICATE KEY UPDATE `_value` = '{$value}'";
         return $this->handle->query($qry);
     }
 
@@ -178,7 +178,7 @@ class MysqlArkDB implements DatabaseInterface
 
         $key = htmlspecialchars($key, ENT_QUOTES | ENT_HTML401);
 
-        return $this->handle->query("DELETE FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` = '{$key}'");
+        return $this->handle->query("DELETE FROM `" . $this->db_name . "` WHERE `_key` = '{$key}'");
     }
 
     /**
@@ -196,7 +196,7 @@ class MysqlArkDB implements DatabaseInterface
         $key = htmlspecialchars($key, ENT_QUOTES | ENT_HTML401);
 
         /** @var mysqli_result $res */
-        if ($res = $this->handle->query("SELECT `_key` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` = '{$key}'")) {
+        if ($res = $this->handle->query("SELECT `_key` FROM `" . $this->db_name . "` WHERE `_key` = '{$key}'")) {
             if ($res->num_rows > 0)
                 return TRUE;
             else
@@ -223,7 +223,7 @@ class MysqlArkDB implements DatabaseInterface
         /** @var mysqli_result $res */
         $pattern = htmlspecialchars($pattern, ENT_QUOTES | ENT_HTML401);
 
-        if ($res = $this->handle->query("SELECT `_key`, `_value` FROM `" . DatabaseInterface::TABLE_NAME . "` WHERE `_key` LIKE '%{$pattern}%'")) {
+        if ($res = $this->handle->query("SELECT `_key`, `_value` FROM `" . $this->db_name . "` WHERE `_key` LIKE '%{$pattern}%'")) {
             while ($row = $res->fetch_array(MYSQLI_NUM)) {
                 $key = htmlspecialchars_decode($row[0], ENT_QUOTES | ENT_HTML401);
                 $value = htmlspecialchars_decode($row[1], ENT_QUOTES | ENT_HTML401);
@@ -256,7 +256,7 @@ class MysqlArkDB implements DatabaseInterface
         }
 
         // 1. erase all data. this step depends on database implementation.
-        $this->handle->query("TRUNCATE TABLE `" . DatabaseInterface::TABLE_NAME . "`");
+        $this->handle->query("TRUNCATE TABLE `" . $this->db_name . "`");
 
         // 2. get data from source database.
         $imported_data = $src_db->get_range('');

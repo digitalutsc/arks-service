@@ -30,11 +30,11 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         // loop through database and find matching one with prefix
         foreach ($arkdbs as $db) {
             try {
+                //direct the look up to a database which have requested ark ID, eg. utsc ...
                 $result = rest_get("/rest.php?db=$db&op=firstpart");
                 $firstpart = json_decode($result);
                 if(strpos($uid, $firstpart) === 0) {
                     // look up into this database
-                    // first url field
                     $results = rest_get("/rest.php?db=$db&op=url&ark_id=$uid");
                     $results = json_decode($results);
                     if (count($results) <= 0) {
