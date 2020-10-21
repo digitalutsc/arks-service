@@ -132,6 +132,16 @@ function http_digest_parse($txt)
     return $needed_parts ? false : $data;
 }
 
+function path(string $dbname = "")
+{
+    return getcwd() . "/db/" . $dbname;
+}
+
+function dbpath(string $dbname = "")
+{
+    return getcwd() . "/db/" . $dbname;
+}
+
 /**
  *
  */

@@ -132,7 +132,7 @@ function bulkbind(){
 
     $result = null;
     if (is_array($_POST) && isset($_POST['data'])) {
-        $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+        $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
         // capture identifier (strictly recommend first column)
         $contact = time();
 

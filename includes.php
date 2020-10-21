@@ -1,6 +1,5 @@
 <?php
 
-require_once "NoidUI.php";
 require_once "NoidLib/lib/Storage/MysqlDB.php";
 require_once 'NoidLib/custom/GlobalsArk.php';
 require_once 'NoidLib/lib/Db.php';

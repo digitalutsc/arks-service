@@ -537,9 +537,6 @@ $subheader .= "</p>";
                             // add prefix to database.
                             $database = GlobalsArk::$db_prefix . $database;
 
-                            // generate an ark service processing object
-                            $noidUI = new NoidUI();
-
                             // create db directory if not exsit
 
                             if (!file_exists(getcwd() . "/db")) {
@@ -655,7 +652,7 @@ $subheader .= "</p>";
                             <?php
                             if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number'])) {
 
-                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
                                 $contact = time();
                                 while ($_POST['mint-number']--) {
                                     $id = NoidArk::mint($noid, $contact);
@@ -700,7 +697,7 @@ $subheader .= "</p>";
                             <?php
                             // handle bind set
                             if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && $_POST['enterIdentifier'] != -1) {
-                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
                                 $contact = time();
 
                                 // check if ark ID exist
@@ -733,7 +730,7 @@ $subheader .= "</p>";
                         <div class="row">
                             <div class="col-sm-12">
                                 <?php
-                                $noid = Database::dbopen($_GET["db"], NoidUI::dbpath(), DatabaseInterface::DB_WRITE);
+                                $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
                                 $status = NoidArk::clearBind($noid, $_POST['enterToClearIdentifier'], $_POST['enterKeytoClear']);
                                 if ($status !== false) {
                                     print '
