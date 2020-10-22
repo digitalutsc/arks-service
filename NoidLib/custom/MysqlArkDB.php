@@ -118,10 +118,14 @@ class MysqlArkDB implements DatabaseInterface
 
         if ($res = $this->handle->query("SELECT `_value` FROM `" . $this->db_name . "` WHERE `_key` = '{$key}'")) {
             $row = $res->fetch_array(MYSQLI_NUM);
-            $ret_val = $row[0];
-            $res->free();
-
-            return htmlspecialchars_decode($ret_val, ENT_QUOTES | ENT_HTML401);
+            if (isset($row)) {
+                $ret_val = $row[0];
+                $res->free();
+                return htmlspecialchars_decode($ret_val, ENT_QUOTES | ENT_HTML401);
+            }
+            else {
+                return FALSE;
+            }
         }
         return FALSE;
     }

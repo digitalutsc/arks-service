@@ -220,26 +220,28 @@ function selectBound()
     $r = [];
     foreach ($rows as $row) {
         $row = (array)$row;
-        $key_data = preg_split('/\s+/', $row['_key']);
-        //print_r($row);
-        if (!isset($currentID) || ($currentID !== $key_data[0])) {
-            $currentID = $key_data[0];
-            if (is_array($r) && count($r) > 0)
-                array_push($result, $r);
-            $r = [];
+        if (isset($row['_key'])) {
+            $key_data = preg_split('/\s+/', $row['_key']);
+            //print_r($row);
+            if (!isset($currentID) || ($currentID !== $key_data[0])) {
+                $currentID = $key_data[0];
+                if (is_array($r) && count($r) > 0)
+                    array_push($result, $r);
+                $r = [];
+            }
+            $r['select'] = " ";
+            $r['id'] = $currentID;
+            if ($key_data[1] == 'PID')
+                $r['PID'] = $row['_value'];
+            if ($key_data[1] == "LOCAL_ID")
+                $r['LOCAL_ID'] = $row['_value'];
+            $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
+
+
+            // establish Ark URL
+            $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
+            $r['ark_url'] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $currentID;
         }
-        $r['select'] = " ";
-        $r['id'] = $currentID;
-        if ($key_data[1] == 'PID')
-            $r['PID'] = $row['_value'];
-        if ($key_data[1] == "LOCAL_ID")
-            $r['LOCAL_ID'] = $row['_value'];
-        $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
-
-
-        // establish Ark URL
-        $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-        $r['ark_url'] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $currentID;
     }
     return json_encode($result);
 }
