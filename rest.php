@@ -237,9 +237,14 @@ function selectBound()
                 $r['LOCAL_ID'] = $row['_value'];
             $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
 
-
+            // check if server have https://, if not, go with http://
+            if (empty($_SERVER['HTTPS'])) {
+                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
+            }
+            else {
+                $protocol = "https://";
+            }
             // establish Ark URL
-            $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
             $r['ark_url'] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $currentID;
         }
     }
