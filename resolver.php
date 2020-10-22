@@ -17,10 +17,9 @@ GlobalsArk::$db_type = 'ark_mysql';
 
 if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
     $uid = str_replace("ark:/", "", $_GET['q']);
-    
+
     // get all database Ark related
     $arkdbs = Database::showArkDatabases();
-    logging($arkdbs);
     // only proceed if already have ark_core db
     if (is_array($arkdbs) && count($arkdbs) > 0) {
         $url  = "";
@@ -28,35 +27,26 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
 
         // loop through database and find matching one with prefix
         foreach ($arkdbs as $db) {
-            logging($db);
             try {
                 $noid = Database::dbopen($db, getcwd() . "/db/", DatabaseInterface::DB_WRITE);
                 $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
 
                 if(strpos($uid, $firstpart) === 0) {
                     // look up into this database
-                    $results = rest_get("/rest.php?db=$db&op=url&ark_id=$uid");
-                    $results = json_decode($results);
-                    if (count($results) <= 0) {
-                        // if url field is empty, go for the PID
-                        $results = rest_get("/rest.php?db=$db&op=pid&ark_id=$uid");
-                        $results = json_decode($results);
-                        $dns = json_decode(rest_get("/rest.php?db=$db&op=naa"));
-                        $url = "https://$dns/islandora/object/". $results[0]->{'_value'};
-                    }
-                    else {
-                        $url = $results[0]->{'_value'};
+                    $url = Database::$engine->get($uid .'\t'. "URL");
+                    if (empty($url)) {
+                        // if URL field is empty, use PID to establish the URL
+                        $pid =  Database::$engine->get($uid .'\t'. "PID");
+                        $dns = Database::$engine->get(Globals::_RR . "/naa");
+                        $url = "https://$dns/islandora/object/". $pid;
                     }
                     break;
                 }
-
             } catch (RequestException $e) {
                 logging($e->getMessage());
                 return null;
             }
-
         }
-
         if (!empty($url)) {
             //var_dump($url);
             header("Location: $url");
@@ -64,7 +54,6 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         else {
             print "Ark ID is not found.";
         }
-
     }
 }
 else {
