@@ -41,7 +41,7 @@ $result = $conn->query($sql)->fetch_all();
 $users = array();
 
 foreach ($result as $row) {
-    $users[$row[0]] = secureDecryption($row[1], GlobalsArk::$encryption_key, GlobalsArk::$NAAN);
+    $users[$row[0]] = secureDecryption($row[1], GlobalsArk::$encryption_key, GlobalsArk::$securekey);
 }
 $conn->close();
 
@@ -69,9 +69,7 @@ if (count($users) == 0 /*|| !isset($users[$data['username']])*/) {
         exit();
     }
     else {
-        if ($_SERVER['REQUEST_URI'] === "index.php" || $_SERVER['REQUEST_URI'] === '/' || $_SERVER['REQUEST_URI'] === "/index.php") {
-            header('Location: admin.php');
-        }
+        header('Location: admin.php');
     }
 
 }

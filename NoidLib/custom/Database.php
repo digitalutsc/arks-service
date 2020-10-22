@@ -177,7 +177,7 @@ class Database
      * @return bool
      */
     public static function isAuth(String $password) {
-        $encryptPasswd = secureEncryption($password, GlobalsArk::$encryption_key, GlobalsArk::$NAAN);
+        $encryptPasswd = secureEncryption($password, GlobalsArk::$encryption_key, GlobalsArk::$securekey);
 
         $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 

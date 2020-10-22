@@ -9,6 +9,7 @@ class GlobalsArk extends Globals{
     static public $db_prefix = "ARK_";
     static public $encryption_key = "61220-digital.utsc.utoronto.ca";
     static public $NAAN = 61220;
+    static public $securekey = 5535396338371489;
 
     const DB_TYPES = [
         'bdb' => 'Noid\Lib\Storage\BerkeleyDB',
