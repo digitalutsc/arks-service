@@ -553,7 +553,6 @@ class Database
         }
 
         $envhome = $dbdir . DIRECTORY_SEPARATOR . $dbname . DIRECTORY_SEPARATOR;
-        error_log(print_r($envhome, true), 0);
         if(!is_dir($envhome) && !mkdir($envhome, 0755, TRUE)){
             $error = error_get_last();
             throw new Exception(sprintf("error: couldn't create database directory %s: %s", $envhome, $error['message']));
