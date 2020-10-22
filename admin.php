@@ -368,7 +368,7 @@ $subheader .= "</p>";
                 print '<h5 class="card-header">Database <i>' . $_GET['db'] . '</i> is selected.</h5>';
             } else {
                 print <<<EOS
-                    <h5 class="card-header">Create Database</h5>
+                    <h5 class="card-header">Create a collection of Arks</h5>
                 EOS;
             }
             ?>
@@ -381,7 +381,7 @@ $subheader .= "</p>";
                             print <<<EOS
                             <form id="form-dbcreate" action="./admin.php" method="post">
                                 <div class="form-group">
-                                    <label for="enterDatabaseName">Database Name:</label>
+                                    <label for="enterDatabaseName">Collection Name:</label>
                                     <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName"
                                            required/>
                                 </div>
@@ -582,9 +582,10 @@ $subheader .= "</p>";
                                 <table class="table table-bordered">
                                     <thead>
                                     <tr>
-                                        <th scope="col">Databases</th>
-                                        <th scope="col">Status</th>
+                                        <th scope="col">Collections</th>
                                         <th scope="col">Basic Info</th>
+                                        <th scope="col">Status</th>
+
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -592,7 +593,7 @@ $subheader .= "</p>";
                                     foreach ($arkdbs as $db) {
                                         if (!in_array($db, ['system', 'user'])) {
                                             $highlight = "";
-                                            $setActive = '<a href="./admin.php?db=' . $db . '">Select</a>';
+                                            $setActive = '<a class="btn btn-success" href="./admin.php?db=' . $db . '">Select</a>';
                                             if ((isset($_GET['db']) && $_GET['db'] == $db)) {
                                                 $setActive = "<strong>Selected</srong>";
                                                 $highlight = 'class="table-success"';
@@ -606,8 +607,9 @@ $subheader .= "</p>";
                                             print <<<EOS
                                                     <tr $highlight>
                                                         <td scope="row">$db</td>
-                                                        <td scope="row">$setActive</td>
                                                         <td scope="row">$detail</td>
+                                                        <td scope="row">$setActive</td>
+                                                        
                                                     </tr>
                                                 EOS;
                                         }
