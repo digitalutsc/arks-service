@@ -38,7 +38,7 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
                         // if URL field is empty, use PID to establish the URL
                         $pid =  Database::$engine->get($uid .'\t'. "PID");
                         $dns = Database::$engine->get(Globals::_RR . "/naa");
-                        $url = "https://$dns/islandora/object/". $pid;
+                        $url = "https://$dns/islandora/object/". urlencode($pid);
                     }
                     break;
                 }
