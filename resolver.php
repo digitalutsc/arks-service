@@ -28,25 +28,22 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         // loop through database and find matching one with prefix
         foreach ($arkdbs as $db) {
             try {
-                // look up ark ID in each database
+                // if ark ID found, look for URL fields first.
                 $results = rest_get("/rest.php?db=$db&op=url&ark_id=$uid");
                 $results = json_decode($results);
-                if (count($results) > 0) {
-                    // if ark ID found, look for URL fields first.
-                    $results = rest_get("/rest.php?db=$db&op=url&ark_id=$uid");
+
+                if(count($results) <= 0 ) {
+                    // if URL field is empty, go with the PID
+                    $results = rest_get("/rest.php?db=$db&op=pid&ark_id=$uid");
                     $results = json_decode($results);
-                    if(count($results) <= 0 ) {
-                        // if URL field is empty, go with the PID
-                        $results = rest_get("/rest.php?db=$db&op=pid&ark_id=$uid");
-                        $results = json_decode($results);
-                        $dns = json_decode(rest_get("/rest.php?db=$db&op=naa"));
-                        $url = "https://$dns/islandora/object/". $results[0]->{'_value'};
-                    }
-                    else {
-                        $url = $results[0]->{'_value'};
-                    }
-                    break;
+
+                    $dns = json_decode(rest_get("/rest.php?db=$db&op=naa"));
+                    $url = "https://$dns/islandora/object/". $results[0]->{'_value'};
                 }
+                else {
+                    $url = $results[0]->{'_value'};
+                }
+                break;
             } catch (RequestException $e) {
                 logging($e->getMessage());
             }
