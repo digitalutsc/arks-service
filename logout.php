@@ -22,7 +22,7 @@ header('HTTP/1.1 401 Unauthorized');
     <div class="row">
         <div class="col-md-12">
             <div class="alert alert-secondary" role="alert">
-                You have successfully logged out! <a href='index.php' class='icon-button star'>Login again</button></center></a>
+                You have successfully logged out! <a href='auth.php' class='icon-button star'>Login again</button></center></a>
             </div>
 
         </div>
