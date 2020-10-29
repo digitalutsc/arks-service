@@ -46,7 +46,8 @@ foreach ($result as $row) {
 $conn->close();
 
 if (!isset($data) || !isset($users[$data['username']])) {
-    die('Wrong Credentials!');
+    die('Wrong Credentials! <a href="logout.php">Please enter your login credentials to
+            login.</a>');
 }
 
 

@@ -14,14 +14,16 @@ use Noid\Lib\Custom\GlobalsArk;
 use Noid\Lib\Custom\MysqlArkConf;
 use Noid\Lib\Custom\NoidArk;
 
-;
-
+// check if user logging yet
 auth();
+
+// start buffer for all input for the forms
 ob_start();
+
 // set db type as mysql instead
 GlobalsArk::$db_type = 'ark_mysql';
 
-// check if system insalled. If not, rediret to installation page.
+// check if system installed. If not, rediret to installation page.
  init_system();
 
 // get created database 
@@ -226,12 +228,47 @@ $subheader .= "</p>";
                         });
                         // enable show/hide metadata button after ajax loaded
                         enableShowHideMetadataColumn();
+
+                        this.api().columns().every(function () {
+                            var column = this;
+                            if ($(column.header()).text() == 'Collection') {
+
+                                var select = $('<select><option value="0">' + $(column.header()).text() + '</option></select>')
+                                    .appendTo($(column.header()).empty())
+                                    .on('change', function () {
+                                        var val = $.fn.dataTable.util.escapeRegex(
+                                            $(this).val()
+                                        );
+
+                                        if (val == 0) {
+                                            column.search('').draw();
+                                        }
+                                        else if (val == "" || val == " ") {
+                                            column.search('').draw();
+                                        }
+                                        else {
+                                            column.search(val ? '^' + val + '$' : '', true, false).draw();
+                                        }
+
+                                    });
+
+                                column.data().unique().sort().each(function (d, j) {
+                                    if (d !== '' && d != 'Collection') {
+                                        select.append('<option value="' + d + '">' + d + '</option>')
+                                    }
+
+                                });
+                            }
+
+                        });
+
                     },
                     columns: [
                         {data: 'select'},
                         {data: 'id'},
                         {data: 'PID'},
                         {data: 'LOCAL_ID'},
+                        {data: 'COLLECTION'},
                         {data: 'ark_url'},
                         {data: 'metadata'},
                     ],
@@ -259,6 +296,10 @@ $subheader .= "</p>";
                             targets: 0
                         },
                         {
+                            orderable: false,
+                            targets: 4
+                        },
+                        {
                             "targets": 3,
                             "data": "LOCAL_ID",
                             "render": function (data, type, row) {
@@ -271,7 +312,18 @@ $subheader .= "</p>";
                             }
                         },
                         {
-                            "targets": 5,
+                            "targets": 4,
+                            "data": "COLLECTION",
+                            "render": function (data, type, row) {
+                                if (data) {
+                                    return data;
+                                } else {
+                                    return " ";
+                                }
+                            }
+                        },
+                        {
+                            "targets": 6,
                             "data": "metadata",
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
@@ -292,7 +344,7 @@ $subheader .= "</p>";
                             }
                         },
                         {
-                            "targets": 4,
+                            "targets": 5,
                             "data": "ark_url",
                             "render": function (data, type, row) {
                                 return '<a target="_blank" href="' + data + '">' + data + '</a>';
@@ -889,15 +941,16 @@ $subheader .= "</p>";
                                                             <p><strong><u>Note:</u></strong> For this section, please
                                                                 follow:</p>
                                                             <ul>
-                                                                <li>Setup a CSV (only file type supported)</li>
-                                                                <li>Make sure your CSV has 3 mandatory columns <strong>(Case
-                                                                        insensitive)</strong>:
+                                                                <li>Download this <a href="template.csv" download>template.csv</a> file</li>
+                                                                <li>Fill out 4 mandatory columns <strong>(Case insensitive)</strong>:
                                                                     <ul>
                                                                         <li>LOCAL_ID,</li>
                                                                         <li>PID,</li>
                                                                         <li>URL</li>
+                                                                        <li>Collection</li>
                                                                     </ul>
                                                                 </li>
+                                                                <li>Add more column for other metadata (if needed)</li>
                                                                 <li>Upload the CSV to start Bulk Bind process.</li>
                                                             </ul>
                                                         </div>
@@ -1207,10 +1260,23 @@ $subheader .= "</p>";
                                             <th>Ark ID</th>
                                             <th>PID</th>
                                             <th>LOCAL_ID</th>
+                                            <th>Collection</th>
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
                                         </tr>
                                         </thead>
+
+                                        <tfoot>
+                                        <tr>
+                                            <th></th>
+                                            <th>Ark ID</th>
+                                            <th>PID</th>
+                                            <th>LOCAL_ID</th>
+                                            <th>Collection</th>
+                                            <th>Ark URL</th>
+                                            <th>Metadata</th>
+                                        </tr>
+                                        </tfoot>
                                     </table>
                                 </div>
 

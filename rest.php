@@ -137,13 +137,48 @@ function bulkbind(){
         $contact = time();
 
         if (!empty($_POST['data'][strtoupper('LOCAL_ID')])) {
-
-            // TOOD: check if decided unique field exist, to avoid duplication
+            // if Local_ID valid, check if Local_ID existed.
             $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['LOCAL_ID']."'");
+
+            // if Local_id existed, get Ark ID from LocalID
             if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
                 $identifier = preg_split('/\s+/', $checkExistedLocalID[0]['_key'])[0];
             }
+            else { // if Local_ID is not existed, Look for Ark ID, this is for ingesting to update existing Ark
+
+                // if Ark ID not in CSV, minting new Ark ID
+                if (empty($_POST['data'][strtoupper('Ark ID')] )) {
+                    // mint a new ark id
+                    $identifier = NoidArk::mint($noid, $contact);
+                }
+                else {
+                    // obtain Ark ID to do update
+                    $identifier = $_POST['data'][strtoupper('Ark ID')];
+                }
+            }
+        }
+        else {
+            // TODO: if Local ID is empty, go for PID as unique check
+            if (!empty($_POST['data'][strtoupper('PID')])) {
+                $checkExistedPID = Database::$engine->select("_value = '".$_POST['data']['PID']."'");
+
+                // if Local_id existed, get Ark ID from LocalID
+                if (is_array($checkExistedPID) && count($checkExistedPID) > 0) {
+                    $identifier = preg_split('/\s+/', $checkExistedPID[0]['_key'])[0];
+                }else {
+                    // if Ark ID not in CSV, minting new Ark ID
+                    if (empty($_POST['data'][strtoupper('Ark ID')] )) {
+                        // mint a new ark id
+                        $identifier = NoidArk::mint($noid, $contact);
+                    }
+                    else {
+                        // obtain Ark ID to do update
+                        $identifier = $_POST['data'][strtoupper('Ark ID')];
+                    }
+                }
+            }
             else {
+                // from PID not find the Ark ID, mint it
                 if (empty($_POST['data'][strtoupper('Ark ID')] )) {
                     // mint a new ark id
                     $identifier = NoidArk::mint($noid, $contact);
@@ -152,15 +187,7 @@ function bulkbind(){
                     $identifier = $_POST['data'][strtoupper('Ark ID')];
                 }
             }
-        }
-        else {
-            if (empty($_POST['data'][strtoupper('Ark ID')] )) {
-                // mint a new ark id
-                $identifier = NoidArk::mint($noid, $contact);
-            }
-            else {
-                $identifier = $_POST['data'][strtoupper('Ark ID')];
-            }
+
         }
 
         foreach ($_POST['data'] as $key => $pair) {
@@ -232,9 +259,11 @@ function selectBound()
             $r['select'] = " ";
             $r['id'] = $currentID;
             if ($key_data[1] == 'PID')
-                $r['PID'] = $row['_value'];
+                $r['PID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
             if ($key_data[1] == "LOCAL_ID")
-                $r['LOCAL_ID'] = $row['_value'];
+                $r['LOCAL_ID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
+            if ($key_data[1] == "COLLECTION")
+                $r['COLLECTION'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
             $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
 
             // check if server have https://, if not, go with http://
