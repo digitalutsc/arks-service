@@ -317,7 +317,11 @@ $subheader .= "</p>";
                             "render": function (data, type, row) {
                                 if (data) {
                                     return data;
-                                } else {
+                                }
+                                else if (data === undefined){
+                                    return " ";
+                                }
+                                else {
                                     return " ";
                                 }
                             }
@@ -1097,7 +1101,7 @@ $subheader .= "</p>";
 
                                                             // get headers
                                                             var keys = csvResult[0].split(',').map(function (x) {
-                                                                return x.toUpperCase();
+                                                                return x.toUpperCase().replace(/ /g, "_");
                                                             });
                                                             // check if the CSV must have 3 mandatory columns
                                                             if ($.inArray("PID", keys) === -1 ||
