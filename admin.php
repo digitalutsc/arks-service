@@ -229,46 +229,12 @@ $subheader .= "</p>";
                         // enable show/hide metadata button after ajax loaded
                         enableShowHideMetadataColumn();
 
-                        this.api().columns().every(function () {
-                            var column = this;
-                            if ($(column.header()).text() == 'Collection') {
-
-                                var select = $('<select><option value="0">' + $(column.header()).text() + '</option></select>')
-                                    .appendTo($(column.header()).empty())
-                                    .on('change', function () {
-                                        var val = $.fn.dataTable.util.escapeRegex(
-                                            $(this).val()
-                                        );
-
-                                        if (val == 0) {
-                                            column.search('').draw();
-                                        }
-                                        else if (val == "" || val == " ") {
-                                            column.search('').draw();
-                                        }
-                                        else {
-                                            column.search(val ? '^' + val + '$' : '', true, false).draw();
-                                        }
-
-                                    });
-
-                                column.data().unique().sort().each(function (d, j) {
-                                    if (d !== '' && d != 'Collection') {
-                                        select.append('<option value="' + d + '">' + d + '</option>')
-                                    }
-
-                                });
-                            }
-
-                        });
-
                     },
                     columns: [
                         {data: 'select'},
                         {data: 'id'},
                         {data: 'PID'},
                         {data: 'LOCAL_ID'},
-                        {data: 'COLLECTION'},
                         {data: 'ark_url'},
                         {data: 'metadata'},
                     ],
@@ -311,23 +277,9 @@ $subheader .= "</p>";
 
                             }
                         },
+
                         {
-                            "targets": 4,
-                            "data": "COLLECTION",
-                            "render": function (data, type, row) {
-                                if (data) {
-                                    return data;
-                                }
-                                else if (data === undefined){
-                                    return " ";
-                                }
-                                else {
-                                    return " ";
-                                }
-                            }
-                        },
-                        {
-                            "targets": 6,
+                            "targets": 5,
                             "data": "metadata",
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
@@ -348,7 +300,7 @@ $subheader .= "</p>";
                             }
                         },
                         {
-                            "targets": 5,
+                            "targets": 4,
                             "data": "ark_url",
                             "render": function (data, type, row) {
                                 return '<a target="_blank" href="' + data + '">' + data + '</a>';
@@ -1101,7 +1053,7 @@ $subheader .= "</p>";
 
                                                             // get headers
                                                             var keys = csvResult[0].split(',').map(function (x) {
-                                                                return x.toUpperCase().replace(/ /g, "_");
+                                                                return x.toUpperCase().trim().replace(/ /g, "_");
                                                             });
                                                             // check if the CSV must have 3 mandatory columns
                                                             if ($.inArray("PID", keys) === -1 ||
@@ -1264,28 +1216,13 @@ $subheader .= "</p>";
                                             <th>Ark ID</th>
                                             <th>PID</th>
                                             <th>LOCAL_ID</th>
-                                            <th>Collection</th>
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
                                         </tr>
                                         </thead>
-
-                                        <tfoot>
-                                        <tr>
-                                            <th></th>
-                                            <th>Ark ID</th>
-                                            <th>PID</th>
-                                            <th>LOCAL_ID</th>
-                                            <th>Collection</th>
-                                            <th>Ark URL</th>
-                                            <th>Metadata</th>
-                                        </tr>
-                                        </tfoot>
                                     </table>
                                 </div>
-
                             </div>
-
                         </div>
                     </div>
                 </div>

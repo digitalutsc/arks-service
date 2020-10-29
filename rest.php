@@ -262,8 +262,6 @@ function selectBound()
                 $r['PID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
             if ($key_data[1] == "LOCAL_ID")
                 $r['LOCAL_ID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
-            if ($key_data[1] == "COLLECTION")
-                $r['COLLECTION'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
             $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
 
             // check if server have https://, if not, go with http://
