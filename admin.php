@@ -903,7 +903,6 @@ $subheader .= "</p>";
                                                                         <li>LOCAL_ID,</li>
                                                                         <li>PID,</li>
                                                                         <li>URL</li>
-                                                                        <li>Collection</li>
                                                                     </ul>
                                                                 </li>
                                                                 <li>Add more column for other metadata (if needed)</li>
