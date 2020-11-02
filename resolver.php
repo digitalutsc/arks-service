@@ -36,27 +36,27 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
                     // if URL field is empty, go with the PID
                     $results = rest_get("/rest.php?db=$db&op=pid&ark_id=$uid");
                     $results = json_decode($results);
-
-                    $dns = json_decode(rest_get("/rest.php?db=$db&op=naa"));
-                    $url = "https://$dns/islandora/object/". $results[0]->{'_value'};
+                    if (count($results) > 0) {
+                        $dns = json_decode(rest_get("/rest.php?db=$db&op=naa"));
+                        $url = "https://$dns/islandora/object/". $results[0]->{'_value'};
+                        break;
+                    }
+                    else {
+                        $url = "/404.php";
+                    }
                 }
                 else {
                     $url = $results[0]->{'_value'};
+                    break;
                 }
-                break;
+
             } catch (RequestException $e) {
                 logging($e->getMessage());
+                $url = "/404.php";
             }
 
         }
-
-        if (!empty($url)) {
-            header("Location: $url");
-        }
-        else {
-            print "Ark ID is not found.";
-        }
-
+        header("Location: $url");
     }
 }
 else {
