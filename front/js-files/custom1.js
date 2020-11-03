@@ -619,7 +619,7 @@ jQuery(document).ready(function($){
                 post_data = {'user_name':user_name, 'user_email':user_email, 'body': user_body };
 
                 //Ajax post data to server
-                $.post('front/pix_mail/new_contact.php', post_data, function(response){
+                $.post(window.location.hostname + '/front/pix_mail/new_contact.php', post_data, function(response){
                     //load json data from server and output message
                     if(response.type == 'error')
                     {

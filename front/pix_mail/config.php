@@ -5,7 +5,6 @@
     $subject        = 'ARK ID request: '; //Subject line for emails
 
     // your recaptcha secret key
-    //$secret = '6LfJDL4ZAAAAAOyXBhn52zgdzaEWrslQLn8ONYHM';      // Add your reCAPTCHA secret key
     $secret = "";
     //-----------------------------------------------------------------------------------------
 
