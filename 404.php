@@ -1,61 +1,8 @@
-<!DOCTYPE html>
-<!--[if lt IE 7 ]>
-<html class="ie ie6" lang="en"> <![endif]-->
-<!--[if IE 7 ]>
-<html class="ie ie7" lang="en"> <![endif]-->
-<!--[if IE 8 ]>
-<html class="ie ie8" lang="en"> <![endif]-->
-<!--[if (gte IE 9)|!(IE)]><!-->
-<html lang="en"> <!--<![endif]-->
-<head>
-    <!-- Basic Page Needs
-    ================================================== -->
-    <meta charset="utf-8">
-    <title>University of Toronto Scarborough ARK ID Service</title>
-    <meta name="description"
-          content="University of Toronto Scarborough ARK ID Service provided by Digital Scholarship Unit at University of Toronto Scarborough">
-    <meta name="keywords"
-          content="University of Toronto Scarborough ARK ID Service provided by Digital Scholarship Unit at University of Toronto Scarborough">
+<?php
+include "front/header.php";
+ob_start();
+?>
 
-    <script src="https://www.google.com/recaptcha/api.js"></script>
-
-    <meta name="author" content="">
-    <!-- Mobile Specific Metas
-    ================================================== -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <meta http-equiv="x-ua-compatible" content="IE=9">
-    <!-- Font Awesome -->
-    <link href="front/stylesheets/font-awesome.css" rel="stylesheet">
-    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
-    <!--[if lt IE 9]>
-    <script src="js/html5shiv.js"></script>
-    <script src="js/respond.min.js"></script>
-    <![endif]-->
-    <!--headerIncludes-->
-    <!-- CSS
-    ================================================== -->
-    <link rel="stylesheet" href="front/stylesheets/menu.css">
-    <link rel="stylesheet" href="front/stylesheets/flat-ui-slider.css">
-    <link rel="stylesheet" href="front/stylesheets/base.css">
-    <link rel="stylesheet" href="front/stylesheets/skeleton.css">
-    <link rel="stylesheet" href="front/stylesheets/landings.css">
-    <link rel="stylesheet" href="front/stylesheets/main.css">
-    <link rel="stylesheet" href="front/stylesheets/landings_layouts.css">
-    <link rel="stylesheet" href="front/stylesheets/lightbox.css">
-    <link rel="stylesheet" href="front/stylesheets/pixicon.css">
-    <link href="front/assets/css/animations.min.css" rel="stylesheet" type="text/css" media="all"/>
-
-    <!--[if lt IE 9]>
-    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-    <!-- Favicons
-    ================================================== -->
-    <link rel="shortcut icon" href="front/images/favicon.ico">
-    <link rel="apple-touch-icon" href="front/images/apple-touch-icon.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="front/images/apple-touch-icon-72x72.png">
-    <link rel="apple-touch-icon" sizes="114x114" href="front/images/apple-touch-icon-114x114.png">
-
-</head>
 <body>
 
 <div id="page" class="page">
@@ -123,7 +70,7 @@
                         </div>
                         <div class="subtitle_style">
                                 <span class="creative_h_text">
-                                    <span class="editContent" style=""><span class="pix_text">Please contact Digital Scholarship Unit for further information by filling out the form below.</span></span>
+                                    <span class="editContent" style=""><span class="pix_text">Please contact Digital Scholarship Unit for further information by filling out <a style="color:#ffffff" href="/404.php#section_ecourse_2">the form below</a>.</span></span>
                                 </span>
                         </div>
                         <div class="note_st">
@@ -338,16 +285,9 @@
                             <div class="segment pix_builder_bg"></div>
                             <p class="subtext_style editContent">Just contact to get to get started.</p>
                             <div class="contact_st">
-                                <form id="contact_form" pix-confirm="hidden_pix_8">
-                                    <div id="result"></div>
-                                    <input type="text" name="name" id="name" placeholder="Enter Your Full Name"
-                                           class="pix_text">
-                                    <input type="email" name="email" id="email" placeholder="Enter Your Email"
-                                           class="pix_text">
-                                    <button class="subscribe_btn pix_text" id="submit_btn_8">
-                                        <span class="editContent" style="">SEND REQUEST</span>
-                                    </button>
-                                </form>
+                                <?php
+                                include "front/contact-form.php";
+                                ?>
                             </div>
                             <p class="note_st editContent">*Note: Your contact will be varified by UTSC Library</p>
                         </div>
@@ -384,33 +324,14 @@ We will be in touch.</span></span></div>
     </div>
 </div>
 
-<!-- JavaScript
-================================================== -->
-<script src="front/js-files/jquery-3.3.1.min.js" type="text/javascript"></script>
-<script type="text/javascript">
-    jQuery.browser = {};
-    (function () {
-        jQuery.browser.msie = false;
-        jQuery.browser.version = 0;
-        if (navigator.userAgent.match(/MSIE ([0-9]+)./)) {
-            jQuery.browser.msie = true;
-            jQuery.browser.version = RegExp.$1;
-        }
-    })();
-</script>
-<script src="front/js-files/jquery.easing.1.3.js" type="text/javascript"></script>
-<script type="text/javascript" src="front/js-files/jquery.common.min.js"></script>
-<script src="front/js-files/ticker.js" type="text/javascript"></script>
-<script src="front/js-files/custom1.js" type="text/javascript"></script>
-
-<script src="front/assets/js/appear.min.js" type="text/javascript"></script>
-<script src="front/js-files/jquery.ui.touch-punch.min.js"></script>
-<script src="front/js-files/bootstrap.min.js"></script>
-<script src="front/js-files/bootstrap-switch.js"></script>
-<script src="front/js-files/custom3.js" type="text/javascript"></script>
+<?php
+include "front/footer.php";
+?>
 
 
-<script src="front/assets/js/appear.min.js" type="text/javascript"></script>
-<script src="front/assets/js/animations.js" type="text/javascript"></script>
 </body>
 </html>
+
+<?php
+ob_flush();
+?>

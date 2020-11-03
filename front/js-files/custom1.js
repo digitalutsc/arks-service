@@ -169,7 +169,7 @@ jQuery(document).ready(function($){
                 var post_data;
                 var output;
                 //Ajax post data to server
-                $.post('pix_mail/new_contact.php', values, function(response){
+                $.post('front/pix_mail/new_contact.php', values, function(response){
                     //load json data from server and output message
                     if(response.type == 'error')
                     {
@@ -188,6 +188,7 @@ jQuery(document).ready(function($){
                         $(theform).find('textarea').val('');
                     }
                     $(theform).find('#result').hide().html(output).slideDown();
+
                 }, 'json');
 
             }
@@ -585,10 +586,12 @@ jQuery(document).ready(function($){
         //======================================================================================================
         //      Submit (ecourse 8)
         //======================================================================================================
-         $("fieldset #submit_btn_8").click(function() {
+         $("#submit_btn_8").click(function() {
+
             //get input field values
             var user_name       = $('.pixfort_ecourse_8 input[name=name]').val();
             var user_email      = $('.pixfort_ecourse_8 input[name=email]').val();
+            var user_body =  $("textarea[name=body]").val();
 
             //simple validation at client's end
             //we simply change border color to red if empty field using .css()
@@ -602,19 +605,21 @@ jQuery(document).ready(function($){
                 $('.pixfort_ecourse_8 input[name=email]').css('border-color','red');
                 proceed = false;
             }
-           //$.fancybox("#hidden_pix_8");
-
-
-            //everything looks good! proceed...
+             if(user_body==""){
+                 $('.pixfort_ecourse_8 input[name=body]').css('border-color','red');
+                 proceed = false;
+             }
+             //$.fancybox("#hidden_pix_8");
+             //everything looks good! proceed...
             if(proceed)
             {
-
                 //data to be sent to server
                 var post_data;
                 var output;
-                post_data = {'user_name':user_name, 'user_email':user_email };
+                post_data = {'user_name':user_name, 'user_email':user_email, 'body': user_body };
+
                 //Ajax post data to server
-                $.post('pix_mail/contact_me_8.php', post_data, function(response){
+                $.post('front/pix_mail/new_contact.php', post_data, function(response){
                     //load json data from server and output message
                     if(response.type == 'error')
                     {

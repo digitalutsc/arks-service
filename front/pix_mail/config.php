@@ -1,11 +1,12 @@
 <?php
 	$mail_type = 'ce';
 	//-----------------------------------------------------------------------------------------
-    $to_Email       = 'irfan.rahman@utoronto.ca'; //Replace with recipient email address
+    $to_Email       = 'kyle.huynh@utoronto.ca'; //Replace with recipient email address
     $subject        = 'ARK ID request: '; //Subject line for emails
 
     // your recaptcha secret key
-    $secret = '6LfJDL4ZAAAAAOyXBhn52zgdzaEWrslQLn8ONYHM';      // Add your reCAPTCHA secret key
+    //$secret = '6LfJDL4ZAAAAAOyXBhn52zgdzaEWrslQLn8ONYHM';      // Add your reCAPTCHA secret key
+    $secret = "";
     //-----------------------------------------------------------------------------------------
 
     // Language
