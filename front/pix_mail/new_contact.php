@@ -147,7 +147,7 @@ if($_POST)
 
 function pixmail($o_string, $user_Email, $to_Email, $subject, $language, $lang)
 {
-	$final_msg = "\n"."A new subscription,<br>"."\n";
+	$final_msg = "\n"."Get Your ARK ID For FREE!<br>"."\n";
 	$final_msg .= $o_string;
 
 	$to_Email = str_replace(' ', '', $to_Email);

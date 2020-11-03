@@ -616,7 +616,7 @@ jQuery(document).ready(function($){
                 //data to be sent to server
                 var post_data;
                 var output;
-                post_data = {'user_name':user_name, 'user_email':user_email, 'body': user_body };
+                post_data = {'From':user_name, 'Email Address':user_email, 'About Ark Request': user_body };
 
                 //Ajax post data to server
                 $.post(window.location.hostname + '/front/pix_mail/new_contact.php', post_data, function(response){

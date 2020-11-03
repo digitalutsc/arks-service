@@ -2,7 +2,7 @@
 	$mail_type = 'ce';
 	//-----------------------------------------------------------------------------------------
     $to_Email       = 'kyle.huynh@utoronto.ca'; //Replace with recipient email address
-    $subject        = 'ARK ID request: '; //Subject line for emails
+    $subject        = 'ARK ID Request'; //Subject line for emails
 
     // your recaptcha secret key
     $secret = "";
