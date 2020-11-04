@@ -108,12 +108,21 @@ if (Database::isInstalled()) {
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
-
                 $sql = 'INSERT INTO system VALUES ("Organization Name", "' . $_POST['enterOrgName'] . '")';
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
                 $sql = 'INSERT INTO system VALUES ("Organization Website", "' . $_POST['enterOrgWebsite'] . '")';
+                if ($conn->query($sql) === FALSE) {
+                    echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
+                }
+
+                //reCAPTCHA
+                $sql = 'INSERT INTO system VALUES ("reCAPTCHA_sitekey", "' . $_POST['reCAPTCHA_sitekey'] . '")';
+                if ($conn->query($sql) === FALSE) {
+                    echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
+                }
+                $sql = 'INSERT INTO system VALUES ("reCAPTCHA_secretkey", "' . $_POST['reCAPTCHA_secretkey'] . '")';
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
@@ -176,6 +185,20 @@ if (Database::isInstalled()) {
                            name="enterConfirmPassword"
                            placeholder="Confirm Password">
                 </div>
+
+                <!-- Recaptcha configuration-->
+                <div class="form-group">
+                    <h3 class="text-center">reCAPTCHA</h3>
+                </div>
+                <div class="form-group">
+                    <label for="enterFirstname">reCAPTCHA Site Key:</label>
+                    <input required type="text" class="form-control" id="reCAPTCHA_sitekey" name="reCAPTCHA_sitekey">
+                </div>
+                <div class="form-group">
+                    <label for="enterFirstname">reCAPTCHA Secret Key:</label>
+                    <input required type="text" class="form-control" id="reCAPTCHA_secretkey" name="reCAPTCHA_secretkey">
+                </div>
+
                 <button type="submit" name="register-sys-admin-user" class="btn btn-primary">Install</button>
             </form>
         </div>

@@ -17,7 +17,6 @@
     <meta name="keywords"
           content="University of Toronto Scarborough ARK ID Service provided by Digital Scholarship Unit at University of Toronto Scarborough">
 
-    <script src="https://www.google.com/recaptcha/api.js"></script>
 
     <meta name="author" content="">
     <!-- Mobile Specific Metas

@@ -609,6 +609,11 @@ jQuery(document).ready(function($){
                  $('.pixfort_ecourse_8 input[name=body]').css('border-color','red');
                  proceed = false;
              }
+
+             if(grecaptcha === null || grecaptcha.getResponse().length == 0) {
+                 alert("Please verify if you are not a robot");
+                 proceed = false;
+             }
              //$.fancybox("#hidden_pix_8");
              //everything looks good! proceed...
             if(proceed)
@@ -619,7 +624,7 @@ jQuery(document).ready(function($){
                 post_data = {'From':user_name, 'Email Address':user_email, 'About Ark Request': user_body };
 
                 //Ajax post data to server
-                $.post(window.location.hostname + '/front/pix_mail/new_contact.php', post_data, function(response){
+                $.post('/front/pix_mail/new_contact.php', post_data, function(response){
                     //load json data from server and output message
                     if(response.type == 'error')
                     {
