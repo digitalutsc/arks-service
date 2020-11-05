@@ -1,4 +1,9 @@
 <?php
+require_once 'NoidLib/custom/Database.php';
+require_once 'NoidLib/custom/MysqlArkConf.php';
+use Noid\Lib\Custom\MysqlArkConf;
+use Noid\Lib\Custom\Database;
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 error_reporting(E_ALL);
@@ -52,6 +57,10 @@ if($_POST)
 	$has_type = false;
 	$the_type = "";
 	$the_list = "";
+
+
+	$user_Email = Database::getAdminEmail()['_value'];
+
 	foreach ($values as  $value) {
 		foreach ($value as $variable => $v) {
 			if(filter_var($variable, FILTER_SANITIZE_STRING) == 'pixfort_form_type'){

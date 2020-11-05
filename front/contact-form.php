@@ -5,6 +5,7 @@ use Noid\Lib\Custom\MysqlArkConf;
 use Noid\Lib\Custom\Database;
 
 $reCAPTCHA_sitekey = Database::getReCAPTCHA_sitekey()['_value'];
+
 ?>
 
 <script type="text/javascript">

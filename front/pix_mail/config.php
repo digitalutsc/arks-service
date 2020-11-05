@@ -1,13 +1,7 @@
 <?php
-require_once 'NoidLib/custom/Database.php';
-require_once 'NoidLib/custom/MysqlArkConf.php';
-use Noid\Lib\Custom\MysqlArkConf;
-use Noid\Lib\Custom\Database;
-
-    $adminEmail = Database::getAdminEmail()['_value'];
 	$mail_type = 'ce';
 	//-----------------------------------------------------------------------------------------
-    $to_Email       = $adminEmail; //Replace with recipient email address
+    $to_Email       = 'kyle.huynh@utoronto.ca'; //Replace with recipient email address
     $subject        = 'ARK ID Request'; //Subject line for emails
 
     // your recaptcha secret key
