@@ -126,6 +126,10 @@ if (Database::isInstalled()) {
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
+                $sql = 'INSERT INTO system VALUES ("adminEmail", "' . $_POST['adminEmail'] . '")';
+                if ($conn->query($sql) === FALSE) {
+                    echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
+                }
 
                 $sql = 'INSERT INTO user  VALUES (NULL, "' . $_POST["enterUsername"] . '", "' . $_POST["enterUserFirstname"] . '", "' . $_POST["enterUserLastname"] . '", "' . secureEncryption($_POST["enterPassword"], GlobalsArk::$encryption_key, GlobalsArk::$securekey) . '")';
                 if ($conn->query($sql) === FALSE) {
@@ -167,12 +171,10 @@ if (Database::isInstalled()) {
                     <input required type="text" class="form-control" id="enterUserLastname" name="enterUserLastname"
                 </div>
                 <div class="form-group">
-                    <label for="enterEmailAddress">Username</label>
+                    <label for="enterUsername">Username</label>
                     <input required type="text" class="form-control" id="enterUsername" name="enterUsername"
                            aria-describedby="emailHelp"
                            placeholder="Enter Username">
-                    <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone
-                        else.</small>
                 </div>
                 <div class="form-group">
                     <label for="exampleInputPassword1">Password</label>
@@ -189,6 +191,13 @@ if (Database::isInstalled()) {
                 <!-- Recaptcha configuration-->
                 <div class="form-group">
                     <h3 class="text-center">reCAPTCHA</h3>
+                </div>
+                <div class="form-group">
+                    <label for="adminEmail">Admin Email: "</label>
+                    <input required type="text" class="form-control" id="adminEmail" name="adminEmail"
+                           aria-describedby="emailHelp"
+                           placeholder="">
+                    <small id="emailHelp" class="form-text text-muted">This email will receive email from "Get Ark ID for free" </small>
                 </div>
                 <div class="form-group">
                     <label for="enterFirstname">reCAPTCHA Site Key:</label>
