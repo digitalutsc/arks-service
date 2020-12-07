@@ -42,12 +42,31 @@
     <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
-    <!-- Favicons
-    ================================================== -->
+
+    <!-- Favicons OLD
+    ================================================== 
     <link rel="shortcut icon" href="front/images/favicon.ico">
     <link rel="apple-touch-icon" href="front/images/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="72x72" href="front/images/apple-touch-icon-72x72.png">
     <link rel="apple-touch-icon" sizes="114x114" href="front/images/apple-touch-icon-114x114.png">
+    -->
+<link rel="apple-touch-icon" sizes="57x57" href="front/images/dsu-favicon/apple-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="front/images/dsu-favicon/apple-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="front/images/dsu-favicon/apple-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="front/images/dsu-favicon/apple-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="front/images/dsu-favicon/apple-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="front/images/dsu-favicon/apple-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="front/images/dsu-favicon/apple-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="front/images/dsu-favicon/apple-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="front/images/dsu-favicon/apple-icon-180x180.png">
+<link rel="icon" type="image/png" sizes="192x192"  href="front/images/dsu-favicon/android-icon-192x192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="front/images/dsu-favicon/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="front/images/dsu-favicon/favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="16x16" href="front/images/dsu-favicon/favicon-16x16.png">
+<link rel="manifest" href="front/images/dsu-favicon/manifest.json">
+<meta name="msapplication-TileColor" content="#ffffff">
+<meta name="msapplication-TileImage" content="front/images/dsu-favicon/ms-icon-144x144.png">
+<meta name="theme-color" content="#ffffff">
 
 </head>
 <body>
@@ -61,21 +80,8 @@
                     <nav role="navigation" class="navbar navbar-white navbar-embossed navbar-lg pix_nav_1">
                         <div class="containerss">
                             <div class="navbar-header">
-                                <button data-target="#navbar-collapse-02" data-toggle="collapse" class="navbar-toggle" type="button">
-                                    <span class="sr-only">Toggle navigation</span>
-                                </button>
-                                <img src="front/images/uploads/utsc-library-logo.png" class="pix_nav_logo" alt="" style="border-radius: 0px; border-color: rgb(255, 255, 255); border-style: none; border-width: 1px; width: 347px; height: 88px;">                
-                            </div>
-                            
-                            <div id="navbar-collapse-02" class="collapse navbar-collapse">
-                                <ul class="nav navbar-nav navbar-right">
-                                    <li class="active propClone"><a href="#section_header_1_dark" src="front/images/uploads/utsc-library-logo.png" style="color: rgb(204, 204, 204); font-weight: 700; text-transform: none; font-size: 15px;">&nbsp;</a></li>
-                                    <li class="propClone"><a href="#section_normal_4_1" src="front/images/uploads/utsc-library-logo.png" style="color: rgb(204, 204, 204); font-weight: 700; text-transform: none; font-size: 15px;">&nbsp;</a></li>
-                                    <li class="propClone"><a href="#section_features_2_dark" src="front/images/uploads/utsc-library-logo.png" style="color: rgb(204, 204, 204); font-weight: 700; text-transform: none; font-size: 15px;">&nbsp;</a></li>
-                                    <li class="propClone"><a href="#section_ecourse_2" src="front/images/uploads/utsc-library-logo.png" style="color: rgb(204, 204, 204); font-weight: 700; text-transform: none; font-size: 15px;">&nbsp;</a></li>
-                                </ul>
-                            </div><!-- /.navbar-collapse -->
-                            
+                                <img src="front/images/uploads/utsc-library-logo.png" class="pix_nav_logo" alt="" style="border-radius: 0px; border-color: rgb(255, 255, 255); border-style: none; border-width: 1px; width: 347px; height: 88px;">
+                            </div>                            
                         </div><!-- /.container -->
                         
                     </nav>
@@ -87,11 +93,11 @@
         <div class="has-video creative_header">
             <div class="mask"></div>
                 <div class="pix_video_div section_video">
-                    <video autoplay="" poster="front/images/video/video_bg.jpg" class="bgvid" loop="">
-                        <source src="front/images/video/video_bg.webm" type="video/webm">
+                      <video autoplay="" poster="front/images/video/video_bg.jpg" class="bgvid" loop="">
+                   <!--              <source src="front/images/video/video_bg.webm" type="video/webm">
                         <source src="front/images/video/video_bg.mp4" type="video/mp4">
                         <source src="front/images/video/video_bg.ogv" type="video/ogv">
-                    </video>
+                    </video> -->
                 </div>
                 <div class="section_wrapper clearfix">
                     <div class="container">
