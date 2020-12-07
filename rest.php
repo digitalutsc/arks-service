@@ -72,6 +72,10 @@ switch ($_GET['op']) {
         break;
     }
     case 'bulkbind': {
+
+        // backup database before bulk binding
+        Database::backupArkDatabase();
+
         if (isset($_GET['stage']) && $_GET['stage'] == 'upload'){
             echo bulkbind();
         }

@@ -129,11 +129,11 @@ class Database
                 printf("Error: %s\n", mysqli_error($query));
             }
             $results = $query->fetch_all();
-            if (count($results) >= 2 ) {
+            if (count($results) >= 2) {
                 foreach ($results as $db) {
                     // It starts with 'http'
                     if (in_array($db[0], $mandatory)) {
-                        $install ++;
+                        $install++;
                     }
                 }
             }
@@ -146,7 +146,8 @@ class Database
     /**
      * Get Org registered info
      */
-    public static function getReCAPTCHA_sitekey() {
+    public static function getReCAPTCHA_sitekey()
+    {
         $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
         if (!$link) {
@@ -174,7 +175,8 @@ class Database
     /**
      * Get Org registered info
      */
-    public static function getReCAPTCHA_secret() {
+    public static function getReCAPTCHA_secret()
+    {
         $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
         if (!$link) {
@@ -202,7 +204,8 @@ class Database
     /**
      * Get Org registered info
      */
-    public static function getAdminEmail() {
+    public static function getAdminEmail()
+    {
         $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
         if (!$link) {
@@ -227,11 +230,101 @@ class Database
         return false;
     }
 
+    /**
+     * Backup the database before any bulk binding
+     */
+    public static function backupArkDatabase()
+    {
+        if (!file_exists(getcwd() . "/db/backup")) {
+            mkdir(getcwd() . "/db/backup", 0775);
+        }
+        $backup_file = MysqlArkConf::$path_db_backup . 'ark-db-backup-' . time() . '.sql';
+
+        // get backup
+        $mybackup = self::backup_tables(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+        // save to file
+        $handle = fopen($backup_file, 'w+');
+        fwrite($handle, $mybackup);
+        fclose($handle);
+    }
+
+    /**
+     * Back up the database by PHP
+     * https://stackoverflow.com/questions/13659534/backup-mysql-tables-with-php
+     * @param $host
+     * @param $user
+     * @param $pass
+     * @param $name
+     * @param string $tables
+     * @return string
+     */
+    public static function &backup_tables($host, $user, $pass, $name, $tables = '*')
+    {
+        $data = "\n/*---------------------------------------------------------------" .
+            "\n  ARK Services DB BACKUP " . date("d.m.Y H:i") . " " .
+            "\n  HOST: {$host}" .
+            "\n  DATABASE: {$name}" .
+            "\n  TABLES: {$tables}" .
+            "\n  ---------------------------------------------------------------*/\n";
+        $link = mysqli_connect($host, $user, $pass);
+        mysqli_select_db($link, $name);
+        mysqli_query($link, "SET NAMES `utf8` COLLATE `utf8_general_ci`"); // Unicode
+
+        if ($tables == '*') { //get all of the tables
+            $tables = array();
+            $result = mysqli_query($link, "SHOW TABLES");
+            while ($row = mysqli_fetch_row($result)) {
+                $tables[] = $row[0];
+            }
+        } else {
+            $tables = is_array($tables) ? $tables : explode(',', $tables);
+        }
+
+        foreach ($tables as $table) {
+            $data .= "\n/*---------------------------------------------------------------" .
+                "\n  TABLE: `{$table}`" .
+                "\n  ---------------------------------------------------------------*/\n";
+            $data .= "DROP TABLE IF EXISTS `{$table}`;\n";
+            $res = mysqli_query($link, "SHOW CREATE TABLE `{$table}`");
+            $row = mysqli_fetch_row($res);
+            $data .= $row[1] . ";\n";
+
+            $result = mysqli_query($link, "SELECT * FROM `{$table}`");
+            $num_rows = mysqli_num_rows($result);
+
+            if ($num_rows > 0) {
+                $vals = array();
+                $z = 0;
+                for ($i = 0; $i < $num_rows; $i++) {
+                    $items = mysqli_fetch_row($result);
+                    $vals[$z] = "(";
+                    for ($j = 0; $j < count($items); $j++) {
+                        if (isset($items[$j])) {
+                            $vals[$z] .= "'" . mysqli_real_escape_string($link, $items[$j]) . "'";
+                        } else {
+                            $vals[$z] .= "NULL";
+                        }
+                        if ($j < (count($items) - 1)) {
+                            $vals[$z] .= ",";
+                        }
+                    }
+                    $vals[$z] .= ")";
+                    $z++;
+                }
+                $data .= "INSERT INTO `{$table}` VALUES ";
+                $data .= "  " . implode(";\nINSERT INTO `{$table}` VALUES ", $vals) . ";\n";
+            }
+        }
+        mysqli_close($link);
+        return $data;
+    }
 
     /**
      * Get Org registered info
      */
-    public static function getOrganization() {
+    public static function getOrganization()
+    {
         $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
         if (!$link) {
@@ -261,7 +354,8 @@ class Database
      * @param String $password
      * @return bool
      */
-    public static function isAuth(String $password) {
+    public static function isAuth(string $password)
+    {
         $encryptPasswd = secureEncryption($password, GlobalsArk::$encryption_key, GlobalsArk::$securekey);
 
         $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
@@ -295,7 +389,8 @@ class Database
      * @param String $dbname
      * @return bool
      */
-    public function exist(String $dbname) {
+    public function exist(string $dbname)
+    {
         $dbs = self::showDatabases();
         $existed = false;
         foreach ($dbs as $db) {
@@ -306,7 +401,6 @@ class Database
         }
         return $existed;
     }
-
 
 
     /**
@@ -320,14 +414,14 @@ class Database
      * @return string|null
      */
     static public function dbcreate($dbname,
-        $dbdir,
-        $contact,
-        $prefix,
-        $template = NULL,
-        $term = '-',
-        $naan = '',
-        $naa = '',
-        $subnaa = '')
+                                    $dbdir,
+                                    $contact,
+                                    $prefix,
+                                    $template = NULL,
+                                    $term = '-',
+                                    $naan = '',
+                                    $naa = '',
+                                    $subnaa = '')
     {
         NoidArk::init($dbname);
 
@@ -346,7 +440,7 @@ class Database
         }
 
         //$total = Helper::parseTemplate($template, $prefix, $mask, $gen_type, $msg);
-        $total = Helper::parseTemplate($prefix.$template, $prefix, $mask, $gen_type, $msg);
+        $total = Helper::parseTemplate($prefix . $template, $prefix, $mask, $gen_type, $msg);
         if (!$total) {
             Log::addmsg($noid, $msg);
             return NULL;
@@ -610,9 +704,6 @@ class Database
     /**
      * Open a database in the specified mode and returns its full name.
      *
-     * @internal The Perl script returns noid: a listref.
-     * @todo     Berkeley specific environment flags are not supported.
-     *
      * @param string $dbdir
      * @param string $flags
      * Can be DB_RDONLY, DB_CREATE, or DB_WRITE (the default).
@@ -621,13 +712,16 @@ class Database
      *
      * @return string
      * @throws Exception
+     * @internal The Perl script returns noid: a listref.
+     * @todo     Berkeley specific environment flags are not supported.
+     *
      */
     static public function dbopen($dbname, $dbdir, $flags = DatabaseInterface::DB_WRITE)
     {
         NoidArk::init($dbname);
 
         // For compatibility purpose between perl and php.
-        switch($flags){
+        switch ($flags) {
             case DatabaseInterface::DB_CREATE:
             case DatabaseInterface::DB_RDONLY:
             case DatabaseInterface::DB_WRITE:
@@ -638,7 +732,7 @@ class Database
         }
 
         $envhome = $dbdir . DIRECTORY_SEPARATOR . $dbname . DIRECTORY_SEPARATOR;
-        if(!is_dir($envhome) && !mkdir($envhome, 0755, TRUE)){
+        if (!is_dir($envhome) && !mkdir($envhome, 0755, TRUE)) {
             $error = error_get_last();
             throw new Exception(sprintf("error: couldn't create database directory %s: %s", $envhome, $error['message']));
         }
@@ -646,20 +740,20 @@ class Database
         $mode = $flags . self::$_db_lock;
 
         $db = @self::$engine->open($dbdir, $mode);
-        if($db === FALSE){
+        if ($db === FALSE) {
             Log::addmsg(NULL, sprintf('Failed to open database in directory "%s".', $dbdir));
             return NULL;
         }
 
         # yyy to test: can we now open more than one noid at once?
-        if(!is_dir($envhome)){
+        if (!is_dir($envhome)) {
             Log::addmsg(NULL, sprintf('%s not a directory', $envhome));
             return NULL;
         }
 
         # yyy probably these envflags are overkill right now
         $_GLOBAL['envargs'] = array();
-        if($flags == DatabaseInterface::DB_CREATE){
+        if ($flags == DatabaseInterface::DB_CREATE) {
             $_GLOBAL['envargs']['-Home'] = $envhome;
             $_GLOBAL['envargs']['-Verbose'] = 1;
         }
@@ -678,7 +772,7 @@ class Database
         Globals::$open_tab['msg'][$noid] = '';
         Globals::$open_tab['log'][$noid] = $log_opened ? $logfhandle : NULL;
 
-        if(self::$locktest){
+        if (self::$locktest) {
             print sprintf('locktest: holding lock for %s seconds…', self::$locktest) . PHP_EOL;
             sleep(self::$locktest);
         }
@@ -697,12 +791,12 @@ class Database
     static public function dbclose($noid)
     {
         $db = self::getDb($noid);
-        if(is_null($db)){
+        if (is_null($db)) {
             return;
         }
 
         unset(Globals::$open_tab['msg'][$noid]);
-        if(!empty(Globals::$open_tab['log'][$noid])){
+        if (!empty(Globals::$open_tab['log'][$noid])) {
             fclose(Globals::$open_tab['log'][$noid]);
         }
         self::$engine->close();
@@ -729,7 +823,7 @@ class Database
 
         // initialize this database.
         NoidArk::init($dbname);
-        if(!self::$engine->open($dbdir, DatabaseInterface::DB_WRITE))
+        if (!self::$engine->open($dbdir, DatabaseInterface::DB_WRITE))
             throw new Exception('The destination database is not exist.' . PHP_EOL);
 
         // initialize the source db
@@ -738,7 +832,7 @@ class Database
         require_once 'Storage' . DIRECTORY_SEPARATOR . $db_class_file . '.php';
         /** @var DatabaseInterface $src_engine */
         $src_engine = new $db_class();
-        if(!$src_engine->open($dbdir, DatabaseInterface::DB_RDONLY))
+        if (!$src_engine->open($dbdir, DatabaseInterface::DB_RDONLY))
             throw new Exception('The source database is not exist in ' . $dbdir . PHP_EOL);
 
         // do import!
@@ -766,24 +860,24 @@ class Database
         NoidArk::init($dbname);
 
         $db = self::getDb($noid);
-        if(is_null($db)){
+        if (is_null($db)) {
             return 0;
         }
 
-        if($level === 'dump'){
+        if ($level === 'dump') {
             // Re-fetch from the true first key: data are ordered alphabetically
             // and some identifier may be set before the root ":", like numbers.
             $values = self::$engine->get_range('');
-            foreach($values as $key => $value){
+            foreach ($values as $key => $value) {
                 print $key . ': ' . $value . PHP_EOL;
             }
             return 1;
         }
 
         $userValues = self::$engine->get_range(Globals::_RR . "/" . Globals::_RR . "/");
-        if($userValues){
+        if ($userValues) {
             print 'User Assigned Values:' . PHP_EOL;
-            foreach($userValues as $key => $value){
+            foreach ($userValues as $key => $value) {
                 print '  ' . $key . ': ' . $value . PHP_EOL;
             }
             print PHP_EOL;
@@ -791,17 +885,17 @@ class Database
 
         print 'Admin Values:' . PHP_EOL;
         $values = self::$engine->get_range(Globals::_RR . "/");
-        if(is_null($values)){
+        if (is_null($values)) {
             Log::addmsg($noid, sprintf('No values returned by the database.'));
             return 0;
         }
-        foreach($values as $key => $value){
-            if($level === 'full'
+        foreach ($values as $key => $value) {
+            if ($level === 'full'
                 || !preg_match('|^' . preg_quote(Globals::_RR . "/c", '|') . '\d|', $key)
                 && strpos($key, Globals::_RR . "/" . Globals::_RR . "/") !== 0
                 && strpos($key, Globals::_RR . "/saclist") !== 0
                 && strpos($key, Globals::_RR . "/recycle/") !== 0
-            ){
+            ) {
                 print '  ' . $key . ': ' . $value . PHP_EOL;
             }
         }
@@ -820,12 +914,12 @@ class Database
      */
     static public function getDb($noid)
     {
-        if(!isset(Globals::$open_tab['database'][$noid])){
+        if (!isset(Globals::$open_tab['database'][$noid])) {
             Log::addmsg($noid, sprintf('error: Database "%s" is not opened.', $noid));
             return NULL;
         }
         $db = Globals::$open_tab['database'][$noid];
-        if(!is_resource($db) && !is_object($db)){
+        if (!is_resource($db) && !is_object($db)) {
             Log::addmsg($noid, sprintf('error: Access to database "%s" failed .', $noid));
             return NULL;
         }
@@ -835,8 +929,8 @@ class Database
     /**
      * BerkeleyDB features.  For now, lock before tie(), unlock after untie().
      *
-     * @todo eventually we would like to do fancy fine-grained locking with
      * @return int 1.
+     * @todo eventually we would like to do fancy fine-grained locking with
      */
     static public function _dblock()
     {
@@ -847,8 +941,8 @@ class Database
     /**
      * BerkeleyDB features.  For now, lock before tie(), unlock after untie().
      *
-     * @todo eventually we would like to do fancy fine-grained locking with
      * @return int 1.
+     * @todo eventually we would like to do fancy fine-grained locking with
      */
     static public function _dbunlock()
     {
@@ -885,7 +979,7 @@ class Database
     static public function _init_counters($noid)
     {
         $db = self::getDb($noid);
-        if(is_null($db)){
+        if (is_null($db)) {
             return;
         }
 
@@ -919,7 +1013,7 @@ class Database
         $t = $total;
         $pctr = self::$engine->get(Globals::_RR . "/percounter");
         $saclist = '';
-        while($t > 0){
+        while ($t > 0) {
             self::$engine->set(Globals::_RR . "/c$n/top", $t >= $pctr ? $pctr : $t);
             self::$engine->set(Globals::_RR . "/c$n/value", 0);       # yyy or 1?
             $saclist .= "c$n ";
@@ -937,7 +1031,7 @@ class Database
      * Generate a sample id for testing purposes.
      *
      * @param string $noid
-     * @param int    $num
+     * @param int $num
      *
      * @return string
      * @throws Exception
@@ -945,14 +1039,14 @@ class Database
     static public function sample($noid, $num = NULL)
     {
         $db = self::getDb($noid);
-        if(is_null($db)){
+        if (is_null($db)) {
             return NULL;
         }
 
         $upper = NULL;
-        if(is_null($num)){
+        if (is_null($num)) {
             $upper = self::$engine->get(Globals::_RR . "/total");
-            if($upper == Globals::NOLIMIT){
+            if ($upper == Globals::NOLIMIT) {
                 $upper = 100000;
             }
             $num = rand(0, $upper - 1);
@@ -961,7 +1055,7 @@ class Database
         $firstpart = self::$engine->get(Globals::_RR . "/firstpart");
         $result = $firstpart . Generator::n2xdig($num, $mask);
 
-        if(self::$engine->get(Globals::_RR . "/addcheckchar")){
+        if (self::$engine->get(Globals::_RR . "/addcheckchar")) {
             $template = self::$engine->get(Globals::_RR . "/template");
             $repertoire = Helper::getAlphabet($template);
             return Helper::checkChar($result, $repertoire);
@@ -983,18 +1077,18 @@ class Database
         NoidArk::init($dbname);
 
         $db = self::getDb($noid);
-        if(is_null($db)){
+        if (is_null($db)) {
             return 0;
         }
 
         $template = self::$engine->get(Globals::_RR . "/template");
-        if(!$template){
+        if (!$template) {
             print 'This minter does not generate identifiers, but it does accept user-defined identifier and element bindings.' . PHP_EOL;
         }
         $total = self::$engine->get(Globals::_RR . "/total");
         $totalstr = Helper::formatNumber($total);
-        $naan = self::$engine->get(Globals::_RR . "/naan") ? : '';
-        if($naan){
+        $naan = self::$engine->get(Globals::_RR . "/naan") ?: '';
+        if ($naan) {
             $naan .= '/';
         }
 
@@ -1008,35 +1102,35 @@ class Database
 
         # See if we need to compute a check character.
         $results = array(0 => NULL, 1 => NULL, 2 => NULL, $tminus1 => NULL);
-        if(28 < $total - 1){
+        if (28 < $total - 1) {
             $results[28] = NULL;
         }
-        if(29 < $total - 1){
+        if (29 < $total - 1) {
             $results[29] = NULL;
         }
-        foreach($results as $n => &$xdig){
+        foreach ($results as $n => &$xdig) {
             $xdig = $naan . Generator::n2xdig($n, $mask);
-            if(self::$engine->get(Globals::_RR . "/addcheckchar")){
+            if (self::$engine->get(Globals::_RR . "/addcheckchar")) {
                 $xdig = Helper::checkChar($xdig, $prefix . '.' . $mask);
             }
         }
         unset($xdig);
 
         print 'in the range ' . $results[0] . ', ' . $results[1] . ', ' . $results[2];
-        if(28 < $total - 1){
+        if (28 < $total - 1) {
             print ', …, ' . $results[28];
         }
-        if(29 < $total - 1){
+        if (29 < $total - 1) {
             print ', ' . $results[29];
         }
         print ', … up to ' . $results[$tminus1]
             . ($total < 0 ? ' and beyond.' : '.')
             . PHP_EOL;
-        if(substr($mask, 0, 1) !== 'r'){
+        if (substr($mask, 0, 1) !== 'r') {
             return 1;
         }
         print 'A sampling of random values (may already be in use): ';
-        for($i = 0; $i < 5; $i++){
+        for ($i = 0; $i < 5; $i++) {
             print self::sample($noid) . ' ';
         }
         print PHP_EOL;

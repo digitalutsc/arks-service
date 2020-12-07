@@ -41,6 +41,7 @@ foreach($orgdata as $pair) {
     }
 }
 $subheader .= "</p>";
+
 ?>
 
     <html>
@@ -550,6 +551,7 @@ $subheader .= "</p>";
                             if (!file_exists(getcwd() . "/db")) {
                                 mkdir(getcwd() . "/db", 0775);
                             }
+
                             // TODO : CHECK entered prefix exist or not
                             $ePrefixflag = false;
 
@@ -659,6 +661,9 @@ $subheader .= "</p>";
                             <?php
                             if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number'])) {
 
+                                // backup database before bulk binding
+                                Database::backupArkDatabase();
+
                                 $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
                                 $contact = time();
                                 while ($_POST['mint-number']--) {
@@ -704,6 +709,10 @@ $subheader .= "</p>";
                             <?php
                             // handle bind set
                             if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['bindset']) && $_POST['enterIdentifier'] != -1) {
+
+                                // backup database before bulk binding
+                                Database::backupArkDatabase();
+
                                 $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
                                 $contact = time();
 
