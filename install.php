@@ -117,20 +117,6 @@ if (Database::isInstalled()) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
 
-                //reCAPTCHA
-                $sql = 'INSERT INTO system VALUES ("reCAPTCHA_sitekey", "' . $_POST['reCAPTCHA_sitekey'] . '")';
-                if ($conn->query($sql) === FALSE) {
-                    echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
-                }
-                $sql = 'INSERT INTO system VALUES ("reCAPTCHA_secretkey", "' . $_POST['reCAPTCHA_secretkey'] . '")';
-                if ($conn->query($sql) === FALSE) {
-                    echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
-                }
-                $sql = 'INSERT INTO system VALUES ("adminEmail", "' . $_POST['adminEmail'] . '")';
-                if ($conn->query($sql) === FALSE) {
-                    echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
-                }
-
                 $sql = 'INSERT INTO user  VALUES (NULL, "' . $_POST["enterUsername"] . '", "' . $_POST["enterUserFirstname"] . '", "' . $_POST["enterUserLastname"] . '", "' . secureEncryption($_POST["enterPassword"], GlobalsArk::$encryption_key, GlobalsArk::$securekey) . '")';
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
@@ -188,25 +174,7 @@ if (Database::isInstalled()) {
                            placeholder="Confirm Password">
                 </div>
 
-                <!-- Recaptcha configuration-->
-                <div class="form-group">
-                    <h3 class="text-center">reCAPTCHA</h3>
-                </div>
-                <div class="form-group">
-                    <label for="adminEmail">Admin Email: "</label>
-                    <input required type="text" class="form-control" id="adminEmail" name="adminEmail"
-                           aria-describedby="emailHelp"
-                           placeholder="">
-                    <small id="emailHelp" class="form-text text-muted">This email will receive email from "Get Ark ID for free" </small>
-                </div>
-                <div class="form-group">
-                    <label for="enterFirstname">reCAPTCHA Site Key:</label>
-                    <input required type="text" class="form-control" id="reCAPTCHA_sitekey" name="reCAPTCHA_sitekey">
-                </div>
-                <div class="form-group">
-                    <label for="enterFirstname">reCAPTCHA Secret Key:</label>
-                    <input required type="text" class="form-control" id="reCAPTCHA_secretkey" name="reCAPTCHA_secretkey">
-                </div>
+
 
                 <button type="submit" name="register-sys-admin-user" class="btn btn-primary">Install</button>
             </form>
