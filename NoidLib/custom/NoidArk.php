@@ -7,15 +7,12 @@ require_once 'NoidLib/lib/Globals.php';
 require_once 'NoidLib/lib/Helper.php';
 require_once 'NoidLib/lib/Generator.php';
 require_once 'NoidLib/lib/Log.php';
+require_once 'NoidLib/lib/Noid.php';
 require_once 'NoidLib/lib/Perl_Random.php';
 
 use Noid\Lib\Noid;
-use Noid\Lib\Custom\GlobalsArk;
-use Noid\Lib\Custom\GeneratorArk;
-use Noid\Lib\Custom\Database;
 use Noid\Lib\Globals;
 use Noid\Lib\Helper;
-use Noid\Lib\Generator;
 use Noid\Lib\Perl_Random;
 use Noid\Lib\Log;
 

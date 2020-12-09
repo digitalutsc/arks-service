@@ -116,31 +116,38 @@ class Database
     public static function isInstalled()
     {
         $install = 0;
-        $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
-        $mandatory = ['system', 'user'];
-        if (!$link) {
-            echo "Error: Unable to connect to MySQL." . PHP_EOL;
-            echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
-            echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
-            exit;
-        }
-        if ($query = mysqli_query($link, "SHOW TABLES")) {
-            if (!mysqli_query($link, "SET @a:='this will not work'")) {
-                printf("Error: %s\n", mysqli_error($query));
+        try {
+            $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+            $mandatory = ['system', 'user'];
+            if (!$link) {
+                if (mysqli_connect_errno() === 1049) {
+                    echo "<p><strong>Error: " . mysqli_connect_error() . PHP_EOL . ". Please create the database <i>". MysqlArkConf::$mysql_dbname."</i> before proceeding.</p>";
+                    exit;
+                }
+
             }
-            $results = $query->fetch_all();
-            if (count($results) >= 2) {
-                foreach ($results as $db) {
-                    // It starts with 'http'
-                    if (in_array($db[0], $mandatory)) {
-                        $install++;
+            if ($query = mysqli_query($link, "SHOW TABLES")) {
+                if (!mysqli_query($link, "SET @a:='this will not work'")) {
+                    printf("Error: %s\n", mysqli_error($query));
+                    return false;
+                }
+                $results = $query->fetch_all();
+                if (count($results) >= 2) {
+                    foreach ($results as $db) {
+                        // It starts with 'http'
+                        if (in_array($db[0], $mandatory)) {
+                            $install++;
+                        }
                     }
                 }
+                $query->close();
             }
-            $query->close();
+            mysqli_close($link);
+            return $install == count($mandatory);
         }
-        mysqli_close($link);
-        return $install == count($mandatory);
+        catch(\Exception $ex) {
+            return false;
+        }
     }
 
     /**

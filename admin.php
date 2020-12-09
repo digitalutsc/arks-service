@@ -363,7 +363,6 @@ $subheader .= "</p>";
 
         <div class="row">
             <div class="col-sm text-center">
-                <h1 class="text-center">Ark Service</h1>
                 <?php echo $subheader; ?>
                 <a style="margin-bottom: 20px" class="btn btn-danger" href="/logout.php">Logout</a>
 

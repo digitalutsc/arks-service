@@ -174,8 +174,6 @@ if (Database::isInstalled()) {
                            placeholder="Confirm Password">
                 </div>
 
-
-
                 <button type="submit" name="register-sys-admin-user" class="btn btn-primary">Install</button>
             </form>
         </div>

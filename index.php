@@ -1,3 +1,11 @@
+<?php
+
+require_once "functions.php";
+
+// check if system installed. If not, redirect to installation page.
+init_system();
+?>
+
 <!DOCTYPE html>
 <!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
 <!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
