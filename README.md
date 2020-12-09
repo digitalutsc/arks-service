@@ -1,5 +1,5 @@
 # Ark Services
-## Introduction 
+##Introduction 
 Provide a user interface to mint, (bulk) bind [ARK Identifiers](https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ), and resolver for Ark URLs.
 
 ##Requirement
@@ -8,7 +8,7 @@ This application required following either one of the below environment to be se
 * OR [LAMP stack](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04) to be installed
 
 ##Installation
-### In Virtual Machine 
+###In Virtual Machine 
 1. Download VM from: https://github.com/geerlingguy/drupal-vm.
 2. Open terminal, and change to the drupal-vm directory `cd DIR/drupal-vm` and run `vagrant up` to have VM running.    
 3. Remote access to VM by running `vagrant ssh`
@@ -61,7 +61,7 @@ class MysqlArkConf
 
 ````
 11. Reload Apache by running `sudo systemctl reload apache2`
-12. Go to http://ark.drupal.test to setup the system
+12. Go to http://ark.drupalvm.test to setup the system
 13. Fill out the form to setup the system. 
 14. Visit the http://ark.drupalvm.test/admin.php and login with the account which has been created in the previous step.
 
