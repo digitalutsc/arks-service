@@ -1,0 +1,631 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <title>ARK Identifiers</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <style>
+        body {
+            font: 80% Verdana, Tahoma, Arial, sans-serif;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: "Trebuchet MS", Georgia, "Times New Roman", serif;
+        }
+
+        ul.toc {
+            padding: 4px;
+            margin-left: 0;
+        }
+
+        ul.toc li {
+            list-style-type: none;
+        }
+
+        ul.toc li.heading2 {
+            margin-left: 1em;
+        }
+
+        ul.toc li.heading3 {
+            margin-left: 2em;
+        }
+
+        a.wiki-anchor {
+            display: none;
+            margin-left: 6px;
+            text-decoration: none;
+        }
+
+        a.wiki-anchor:hover {
+            color: #aaa !important;
+            text-decoration: none;
+        }
+
+        h1:hover a.wiki-anchor, h2:hover a.wiki-anchor, h3:hover a.wiki-anchor {
+            display: inline;
+            color: #ddd;
+        }
+    </style>
+</head>
+<body>
+<a name="ARK-Identifiers"></a>
+<h1>ARK Identifiers<a href="#ARK-Identifiers" class="wiki-anchor">&para;</a></h1>
+
+
+<ul class="toc right">
+    <li><strong>Table of contents</strong></li>
+    <li><a href="#ARK-Identifiers">ARK Identifiers</a>
+        <ul>
+            <li><a href="#About">About</a></li>
+            <li><a href="#Base-Projects">Base Projects:</a></li>
+            <li><a href="#DSU-Implementation-of-ARKs">DSU Implementation of ARKs</a>
+                <ul>
+                    <li><a href="#Github-Repo">Github Repo:</a></li>
+                </ul>
+            </li>
+            <li><a href="#Deployment">Deployment:</a>
+                <ul>
+                    <li><a href="#In-Islandora-8-VM">In Islandora 8 VM:</a></li>
+                    <li><a href="#For-arkdigitalutscutorontoca">For ark.digital.utsc.utoronto.ca:</a></li>
+                    <li><a href="#Installation">Installation</a></li>
+                    <li><a href="#To-Reset-and-Install-again">To Reset and Install again</a></li>
+                    <li><a href="#To-update-reCAPTCHA-settings">To update reCAPTCHA settings</a></li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+    <li><a href="#Setting-up-Ark-creationbinding">Setting up Ark creation/binding</a>
+        <ul>
+            <li><a href="#Create-a-collection-of-Arks">Create a collection of Arks</a></li>
+            <li><a href="#Select-a-Template">Select a Template:</a></li>
+            <li><a href="#Ark-URL-structure">Ark URL structure:</a></li>
+            <li><a href="#Delete-a-collection-of-Arks">Delete a collection of Arks</a></li>
+            <li><a href="#Minting">Minting</a></li>
+            <li><a href="#Bind-Set">Bind Set</a></li>
+            <li><a href="#Bulk-Bind">Bulk Bind</a>
+                <ul>
+                    <li><a href="#Ingest-new-Ark">Ingest new Ark</a></li>
+                    <li><a href="#Update-existing-Arks">Update existing Arks</a></li>
+                </ul>
+            </li>
+            <li><a href="#Generate-reports">Generate reports</a></li>
+        </ul>
+    </li>
+    <li><a href="#Rest-API">Rest API</a></li>
+    <li><a href="#Resolver">Resolver</a></li>
+    <li><a href="#Maintenance">Maintenance</a>
+        <ul>
+            <li><a href="#Database-backup">Database backup</a></li>
+        </ul>
+    </li>
+</ul>
+
+
+<a name="About"></a>
+<h2>About<a href="#About" class="wiki-anchor">&para;</a></h2>
+
+
+<p>Provide a user interface to mint, (bulk) bind <a class="external"
+                                                    href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ">ARK
+    Identifiers</a>, and resolver for Ark URLs.
+
+</p>
+
+
+<a name="Base-Projects"></a>
+<h2>Base Projects:<a href="#Base-Projects" class="wiki-anchor">&para;</a></h2>
+
+
+<p><a class="external" href="https://github.com/Daniel-KM/Noid4Php">https://github.com/Daniel-KM/Noid4Php</a><br/><a
+        class="external" href="https://github.com/AkioUnity/Noid4Php">https://github.com/AkioUnity/Noid4Php</a></p>
+
+
+<a name="DSU-Implementation-of-ARKs"></a>
+<h2>DSU Implementation of ARKs<a href="#DSU-Implementation-of-ARKs" class="wiki-anchor">&para;</a></h2>
+
+
+<a name="Github-Repo"></a>
+<h3>Github Repo:<a href="#Github-Repo" class="wiki-anchor">&para;</a></h3>
+
+
+<ul>
+    <li><a class="external" href="https://github.com/digitalutsc/dsu_noid4php">https://github.com/digitalutsc/dsu_noid4php</a>
+    </li>
+</ul>
+
+
+<hr/>
+
+
+<a name="Deployment"></a>
+<h2>Deployment:<a href="#Deployment" class="wiki-anchor">&para;</a></h2>
+
+
+<a name="In-Islandora-8-VM"></a>
+<h3>In Islandora 8 VM:<a href="#In-Islandora-8-VM" class="wiki-anchor">&para;</a></h3>
+
+
+<ul>
+    <li>coming soon.</li>
+</ul>
+
+
+<hr/>
+
+
+<a name="For-arkdigitalutscutorontoca"></a>
+<h3>For ark.digital.utsc.utoronto.ca:<a href="#For-arkdigitalutscutorontoca" class="wiki-anchor">&para;</a></h3>
+
+
+<ol>
+    <li>Clone this repo to the root directory as <a class="external" href="https://ark.digital.utsc.utoronto.ca/">https://ark.digital.utsc.utoronto.ca/</a>
+        <strong>(make sure the .htaccess stay as root directory)</strong></li>
+    <li>In the NoidLib/custom, create a new PHP file name <strong>MysqlArkConf.php</strong> and paste the following code
+        in to the file: <br/>
+        <pre>
+<code class="php syntaxhl"><span class="CodeRay"><span class="inline-delimiter">&lt;?php</span>
+
+<span class="keyword">namespace</span> <span class="constant">Noid</span>\<span class="constant">Lib</span>\<span
+            class="constant">Custom</span>;
+
+<span class="keyword">class</span> <span class="class">MysqlArkConf</span>
+{
+    <span class="keyword">static</span> <span class="keyword">public</span> <span
+            class="local-variable">$mysql_host</span> = <span class="string"><span class="delimiter">'</span><span
+            class="delimiter">'</span></span>;
+    <span class="keyword">static</span> <span class="keyword">public</span> <span
+            class="local-variable">$mysql_user</span> = <span class="string"><span class="delimiter">'</span><span
+            class="delimiter">'</span></span>;
+    <span class="keyword">static</span> <span class="keyword">public</span> <span
+            class="local-variable">$mysql_passwd</span> = <span class="string"><span class="delimiter">'</span><span
+            class="delimiter">'</span></span>;
+    <span class="keyword">static</span> <span class="keyword">public</span> <span
+            class="local-variable">$mysql_dbname</span> = <span class="string"><span class="delimiter">'</span><span
+            class="delimiter">'</span></span>;
+    <span class="keyword">static</span> <span class="keyword">public</span> <span
+            class="local-variable">$mysql_port</span> = <span class="integer">3306</span>;
+}
+</span></code><br/></pre>
+    </li>
+    <li>Fill out your server's MYSQL account credentials
+        <ins>(please make sure the MYSQL's account's privilege are similar to screenshot)</ins>
+        at NoidLib/custom/MysqlArkConf.php.
+        <ul>
+            <li><img src="images/Screen%20Shot%202020-10-22%20at%2012.42.35%20PM.png" style="width:30%;" alt=""/></li>
+        </ul>
+    </li>
+    <li>Create a database which's name must be the same as the variable
+        <ins><strong>mysql_dbname</strong></ins>
+        as above (can be in phpMyAdmin or mysql command).
+        <ul>
+            <li>
+                <ins><strong>Note:</strong></ins>
+                <span style="background:yellow;">If the database need to be changed in the future, please change in MYSQL and MysqlArkConf file. Otherwise, the error "Database not found" will occur</span>.
+            </li>
+        </ul>
+    </li>
+</ol>
+
+
+<hr/>
+
+
+<a name="Installation"></a>
+<h3>Installation<a href="#Installation" class="wiki-anchor">&para;</a></h3>
+
+
+<ul>
+    <li>After place the code in the server, please visit: <a class="external"
+                                                             href="https://ark.digital.utsc.utoronto.ca">https://ark.digital.utsc.utoronto.ca</a>
+        (for the first time, it will redirect to <a class="external"
+                                                    href="https://ark.digital.utsc.utoronto.ca/install.php">https://ark.digital.utsc.utoronto.ca/install.php</a>).
+    </li>
+    <li>Fill out Organization information.</li>
+    <li>Enter System Administrator login credentials (Password will be encrypted and saved in MYSQL database).</li>
+</ul>
+
+
+<p><img src="images/Screen%20Shot%202020-11-05%20at%201.56.51%20PM.png" style="width:50%;" alt=""/></p>
+
+
+<hr/>
+
+
+<a name="To-Reset-and-Install-again"></a>
+<h3>To Reset and Install again<a href="#To-Reset-and-Install-again" class="wiki-anchor">&para;</a></h3>
+
+
+<ul>
+    <li>Access to Ark database in PHPMyAdmin, and drop only two table <strong>"system"</strong> and
+        <strong>"user"</strong>, then refresh page <a class="external"
+                                                      href="https://ark.digital.utsc.utoronto.ca/admin.php">https://ark.digital.utsc.utoronto.ca/admin.php</a>,
+        the installation step above will be repeated.
+        <ul>
+            <li><strong>
+                <ins>Note</ins>
+            </strong>: the minted Ark IDs won't be effected
+            </li>
+        </ul>
+    </li>
+</ul>
+
+
+<a name="To-update-reCAPTCHA-settings"></a>
+<h3>To update reCAPTCHA settings<a href="#To-update-reCAPTCHA-settings" class="wiki-anchor">&para;</a></h3>
+
+
+<ul>
+    <li>Access to Ark database in PHPMyAdmin, then table "system", then change value of
+        <strong>reCAPTCHA_secretkey</strong> and <strong>reCAPTCHA_sitekey</strong></li>
+</ul>
+
+
+<p><img src="images/Screen%20Shot%202020-11-05%20at%2011.22.25%20AM.png" style="width:75%;" alt=""/></p>
+
+
+<hr/>
+
+
+<a name="Setting-up-Ark-creationbinding"></a>
+<h1>Setting up Ark creation/binding<a href="#Setting-up-Ark-creationbinding" class="wiki-anchor">&para;</a></h1>
+
+
+<a name="Create-a-collection-of-Arks"></a>
+<h2>Create a collection of Arks<a href="#Create-a-collection-of-Arks" class="wiki-anchor">&para;</a></h2>
+
+
+<ul>
+    <li>Visit: <a class="external" href="https://ark.digital.utsc.utoronto.ca/admin.php">https://ark.digital.utsc.utoronto.ca/admin.php</a>
+    </li>
+    <li>Fill out the "Create Database" form, then click Create.
+        <ul>
+            <li>
+                <ins><strong>Note:</strong></ins>
+                <span style="background:yellow;"> To ensure the sufficient of the Ark ID lookup for redirection, the prefix must be unique (already enforced) among multiple databases</span>.
+            </li>
+        </ul>
+    </li>
+</ul>
+
+
+<p><img src="images/Screen%20Shot%202020-10-22%20at%203.12.29%20PM.png" style="width:50%;" alt=""/></p>
+
+
+<a name="Select-a-Template"></a>
+<h2>Select a Template:<a href="#Select-a-Template" class="wiki-anchor">&para;</a></h2>
+
+
+<ul>
+    <li><strong>.rddd</strong>: to mint random 3-digit numbers, stopping after 1000th</li>
+    <li><strong>.sdddddd</strong>: to mint sequential 6-digit numbers, stopping after millionth</li>
+    <li><strong>.zd</strong>: sequential numbers without limit, adding new digits as needed</li>
+    <li><strong>bc.rdddd</strong>: random 4-digit numbers with constant prefix bc</li>
+    <li><strong>8rf.sdd</strong>: sequential 2-digit numbers with constant prefix 8rf</li>
+    <li><strong>.se</strong>: sequential extended-digits (from 0123456789bcdfghjkmnpqrstvwxz)</li>
+    <li><strong>h9.reee</strong>: random 3-extended-digit numbers with constant prefix h9</li>
+    <li><strong>.zeee</strong>: unlimited sequential numbers with at least 3 extended-digits</li>
+    <li><strong>.rdedeedd</strong> : random 7-char numbers, extended-digits at chars 2, 4, and 5</li>
+    <li><strong>.zededede</strong>: unlimited mixed digits, adding new extended-digits as needed</li>
+    <li><strong>sdd.sdede</strong> : sequential 4-mixed-digit numbers with constant prefix sdd</li>
+    <li><strong>.rdedk</strong> : random 3 mixed digits plus final (4th) computed check character</li>
+    <li><strong>.sdeeedk</strong> : 5 sequential mixed digits plus final extended-digit check char</li>
+    <li><strong>.zdeek</strong> : sequential digits plus check char, new digits added as needed</li>
+    <li><strong>63q.redek</strong> : prefix plus random 4 mixed digits, one of them a check char</li>
+</ul>
+
+
+<a name="Ark-URL-structure"></a>
+<h2>Ark URL structure:<a href="#Ark-URL-structure" class="wiki-anchor">&para;</a></h2>
+
+
+<p><a class="external" href="https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ">https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ</a>
+</p>
+
+
+<hr/>
+
+
+<a name="Delete-a-collection-of-Arks"></a>
+<h2>Delete a collection of Arks<a href="#Delete-a-collection-of-Arks" class="wiki-anchor">&para;</a></h2>
+
+
+<ol>
+    <li>Go in phpMyadmin, then database name which was set at
+        <ins><strong>$mysql_dbname</strong></ins>
+        above
+    </li>
+    <li>Drop the table which enter in the previous step.</li>
+    <li>Back to <a class="external" href="https://ark.digital.utsc.utoronto.ca/admin.php">https://ark.digital.utsc.utoronto.ca/admin.php</a>,
+        refresh the page
+        <ul>
+            <li>
+                <ins><strong>Note:</strong></ins>
+                <span style="background:yellow;">Please avoid remove the system and user tables, otherwise, the current configuration will be lost, the installation step will be repeated</span>.
+            </li>
+        </ul>
+    </li>
+</ol>
+
+
+<hr/>
+
+
+<a name="Minting"></a>
+<h2>Minting<a href="#Minting" class="wiki-anchor">&para;</a></h2>
+
+
+<p><img src="images/Screen%20Shot%202020-10-19%20at%209.15.44%20AM.png" style="width:40%;" alt=""/></p>
+
+
+<hr/>
+
+
+<a name="Bind-Set"></a>
+<h2>Bind Set<a href="#Bind-Set" class="wiki-anchor">&para;</a></h2>
+
+
+<p><img src="images/Screen%20Shot%202020-10-19%20at%209.27.49%20AM.png" style="width:35%;" alt=""/> <img
+        src="images/1054/Screen%20Shot%202020-10-19%20at%209.29.21%20AM.png" style="width:35%;" alt=""/></p>
+
+
+<hr/>
+
+
+<a name="Bulk-Bind"></a>
+<h2><strong>Bulk Bind</strong><a href="#Bulk-Bind" class="wiki-anchor">&para;</a></h2>
+
+
+<p><strong>Imported File format</strong>: CSV only.<br/><strong>Requirement</strong>: must have 3 mandatory columns:
+    <ins>PID, URL, LOCAL_ID</ins>
+    (already had CSV validation check in place)
+</p>
+
+
+Brenda Beck's data in CSVs:
+<ul>
+    <li>Sample for testing: <a class="external"
+                               href="https://redmine.digital.utsc.utoronto.ca/attachments/1056/Brenda%20Beck%20Metadata%20-%20Non%20Media%20small.csv">https://redmine.digital.utsc.utoronto.ca/attachments/1056/Brenda%20Beck%20Metadata%20-%20Non%20Media%20small.csv</a>
+    </li>
+    <li>Final Deployment: <a class="external"
+                             href="https://redmine.digital.utsc.utoronto.ca/attachments/1057/Brenda%20Beck%20Metadata%20-%20Non%20Media%20full.csv">https://redmine.digital.utsc.utoronto.ca/attachments/1057/Brenda%20Beck%20Metadata%20-%20Non%20Media%20full.csv</a>
+    </li>
+</ul>
+
+
+<p><strong>Background: send sequences of POST request to a REST API which do the binding, that's why the Password fields
+    in place for enhancing some security check.</strong></p>
+
+
+<p><img src="images/Screen%20Shot%202020-10-30%20at%2010.11.20%20AM.png" style="width:30%;" alt=""/> <img
+        src="images/1078/Screen%20Shot%202020-10-30%20at%2010.13.00%20AM.png" style="width:30%;" alt=""/></p>
+
+
+<a name="Ingest-new-Ark"></a>
+<h3>Ingest new Ark<a href="#Ingest-new-Ark" class="wiki-anchor">&para;</a></h3>
+
+
+<ul>
+    <li>Download this template <a class="external" href="http://ark.digital.utsc.utoronto.ca/template.csv">http://ark.digital.utsc.utoronto.ca/template.csv</a>
+    </li>
+    <li>Fill out 3 mandatory columns (Case insensitive), If this condition is not satisfied, the system won't proceed
+        with uploading CSV
+        <ul>
+            <li>LOCAL_ID,</li>
+            <li>PID,</li>
+            <li>URL</li>
+        </ul>
+    </li>
+    <li>Add more column for other metadata (if needed)</li>
+    <li>Follow Bulk Bind steps above</li>
+</ul>
+
+
+<a name="Update-existing-Arks"></a>
+<h3>Update existing Arks<a href="#Update-existing-Arks" class="wiki-anchor">&para;</a></h3>
+
+
+<ul>
+    <li>Download this template <a class="external" href="http://ark.digital.utsc.utoronto.ca/template.csv">http://ark.digital.utsc.utoronto.ca/template.csv</a>
+    </li>
+    <li>Fill out 3 mandatory columns (Case insensitive), If this condition is not satisfied, the system won't proceed
+        with uploading CSV
+        <ul>
+            <li>LOCAL_ID,</li>
+            <li>PID,</li>
+            <li>URL</li>
+        </ul>
+    </li>
+    <li>Add Ark_ID column <strong>
+        <ins>(<span
+                style="background:yellow;"> Note: make sure they are existed or minted before preparing the CSV</span>)
+        </ins>
+    </strong></li>
+    <li>Add more column for other metadata (if needed)</li>
+    <li>Follow Bulk Bind steps above</li>
+</ul>
+
+
+<hr/>
+
+
+<a name="Generate-reports"></a>
+<h2>Generate reports<a href="#Generate-reports" class="wiki-anchor">&para;</a></h2>
+
+
+<p><img src="images/Screen%20Shot%202020-10-22%20at%203.53.37%20PM.png" style="width:50%;" alt=""/></p>
+
+
+<hr/>
+
+
+<a name="Rest-API"></a>
+<h1>Rest API<a href="#Rest-API" class="wiki-anchor">&para;</a></h1>
+
+
+<p>Structure: <a class="external" href="https://ark.digital.utsc.utoronto.ca/rest.php?db=">https://ark.digital.utsc.utoronto.ca/rest.php?db=</a>{{
+    database name }}&#38;op={{ operation name }} (optional: &#38;ark_ID={{Ark ID}})</p>
+
+
+<p>Example:<br/>GET all minted Ark IDs: <a class="external"
+                                           href="https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;op=minted">https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;op=minted</a><br/>GET
+    all fileds bound to an Ark ID <a class="external"
+                                     href="https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc1&#38;op=fields">https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc1&#38;op=fields</a><br/>GET
+    Prefix of a collection: <a class="external"
+                               href="https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc1&#38;op=firstpart">https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc1&#38;op=firstpart</a>
+    <br/>GET all bound Ark objects: <a class="external"
+                                       href="https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc1&#38;op=bound">https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc1&#38;op=bound</a><br/>GET
+    PID of an Ark object: <a class="external"
+                             href="https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc1&#38;op=pid">https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc1&#38;op=pid</a><br/>GET
+    MODS Url: <a class="external"
+                 href="https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc10&#38;op=url">https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc10&#38;op=url</a><br/>GET
+    NAA of a collection: <a class="external"
+                            href="https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc10&#38;op=naa">https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc10&#38;op=naa</a><br/>GET
+    basic info of a collection: <a class="external"
+                                   href="https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc10&#38;op=dbinfo">https://ark.digital.utsc.utoronto.ca/rest.php?db=dsu_ark&#38;ark_id=61220/utsc10&#38;op=dbinfo</a>
+</p>
+
+
+<p>POST for Bulk Bind: <br/>
+<pre>
+<code class="javascript syntaxhl"><span class="CodeRay"><span class="predefined">$</span>.post(<span
+        class="string"><span class="delimiter">&quot;</span><span class="content">https://ark.digital.utsc.utoronto.ca/rest.php?db={{ ENTER DB NAME }}&#38;op=bulkbind&#38;stage=upload</span><span
+        class="delimiter">&quot;</span></span>, {<span class="key">data</span>: pdata, <span class="key">security</span>: password})
+.done(<span class="keyword">function</span> (data) {
+    <span class="keyword">var</span> result =  JSON.parse(data);
+    <span class="keyword">if</span> (result.success == <span class="integer">401</span>) {
+          <span class="comment">// add a UI handle when REST return unauthorized (code:401), it happens when System Admin's password above are not matched</span>
+    }
+    <span class="keyword">else</span> {
+        <span class="comment">// add a UI handle when REST return success (code: 1)</span>
+    }
+
+})
+.fail(<span class="keyword">function</span> () {
+    <span class="comment">// add a UI handle when POST request failed</span>
+});
+</span></code><br/></pre>
+</p>
+
+
+<hr/>
+
+
+<a name="Resolver"></a>
+<h1>Resolver<a href="#Resolver" class="wiki-anchor">&para;</a></h1>
+
+
+<p><strong>Step 1</strong>. Catch coming traffic and detect Ark URL. In <strong>.htaccess</strong> at the root
+    directory, obtain Ark ID information and redirect to resolver.php:</p>
+
+
+<pre>
+RewriteEngine On
+RewriteCond %{REQUEST_URI}  ^/ark:/.*$
+#RewriteRule ^(.*)$ /dsu_noid4php/$1 [L]
+RewriteRule ^(.*)$ /resolver.php?q=$1 [L]
+</pre>
+
+<p><strong>Step 2</strong>. Captured Ark ID from URL. ie. <a class="external"
+                                                             href="https://ark.digital.utsc.utoronto.ca/ark:/61220/utsc6">https://ark.digital.utsc.utoronto.ca/ark:/61220/utsc6</a>
+    (which is 61220/utsc6)<br/><strong>Step 3</strong>, Get prefix ('utsc' from example above), from this prefix,
+    identify which database to lookup the object bound to this ARK ID (This is why the prefix need to be
+    unique)<br/><strong>Step 4</strong>. Look for field URL first, if URL is valid, redirect to that URL<br/><strong>Step
+        5</strong>. If field URL is not available, use PID instead, establishing the URL by combine <strong>https + NAA
+        + PID</strong></p>
+
+
+<p><strong>resolver.php:</strong> <br/>
+<pre>
+<code class="php syntaxhl"><span class="CodeRay">  <span class="local-variable">$uid</span> = <span class="predefined">str_replace</span>(<span
+        class="string"><span class="delimiter">&quot;</span><span class="content">ark:/</span><span class="delimiter">&quot;</span></span>, <span
+        class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span>, <span
+        class="predefined">$_GET</span>[<span class="string"><span class="delimiter">'</span><span
+        class="content">q</span><span class="delimiter">'</span></span>]);
+
+    <span class="comment">// get all database Ark related</span>
+    <span class="local-variable">$arkdbs</span> = <span class="constant">Database</span>::showArkDatabases();
+    <span class="comment">// only proceed if already have ark_core db</span>
+    <span class="keyword">if</span> (<span class="predefined">is_array</span>(<span
+            class="local-variable">$arkdbs</span>) &#38;&#38; <span class="predefined">count</span>(<span
+            class="local-variable">$arkdbs</span>) &gt; <span class="integer">0</span>) {
+        <span class="local-variable">$url</span>  = <span class="string"><span class="delimiter">&quot;</span><span
+            class="delimiter">&quot;</span></span>;
+        <span class="constant">GlobalsArk</span>::<span class="local-variable">$db_type</span> = <span
+            class="string"><span class="delimiter">'</span><span class="content">ark_mysql</span><span
+            class="delimiter">'</span></span>;
+
+        <span class="comment">// loop through database and find matching one with prefix</span>
+        <span class="keyword">foreach</span> (<span class="local-variable">$arkdbs</span> <span
+            class="keyword">as</span> <span class="local-variable">$db</span>) {
+            <span class="keyword">try</span> {
+                <span class="comment">// if ark ID found, look for URL fields first.</span>
+                <span class="local-variable">$results</span> = rest_get(<span class="string"><span class="delimiter">&quot;</span><span
+            class="content">/rest.php?db=</span><span class="local-variable">$dbx</span><span class="content">%x%op=url&#38;ark_id=</span><span
+            class="local-variable">$uid</span><span class="delimiter">&quot;</span></span>);
+                <span class="local-variable">$results</span> = json_decode(<span class="local-variable">$results</span>);
+
+                <span class="keyword">if</span>(<span class="predefined">count</span>(<span class="local-variable">$results</span>) &lt;= <span
+            class="integer">0</span> ) {
+                    <span class="comment">// if URL field is empty, go with the PID</span>
+                    <span class="local-variable">$results</span> = rest_get(<span class="string"><span
+            class="delimiter">&quot;</span><span class="content">/rest.php?db=</span><span
+            class="local-variable">$dbx</span><span class="content">%x%op=pid&#38;ark_id=</span><span
+            class="local-variable">$uid</span><span class="delimiter">&quot;</span></span>);
+                    <span class="local-variable">$results</span> = json_decode(<span
+            class="local-variable">$results</span>);
+                    <span class="keyword">if</span> (<span class="predefined">count</span>(<span class="local-variable">$results</span>) &gt; <span
+            class="integer">0</span>) {
+                        <span class="local-variable">$dns</span> = json_decode(rest_get(<span class="string"><span
+            class="delimiter">&quot;</span><span class="content">/rest.php?db=</span><span
+            class="local-variable">$dbx</span><span class="content">%x%op=naa</span><span
+            class="delimiter">&quot;</span></span>));
+                        <span class="local-variable">$url</span> = <span class="string"><span
+            class="delimiter">&quot;</span><span class="content">https://</span><span class="local-variable">$dns</span><span
+            class="content">/islandora/object/</span><span class="delimiter">&quot;</span></span>. <span
+            class="local-variable">$results</span>[<span class="integer">0</span>]-&gt;{<span class="string"><span
+            class="delimiter">'</span><span class="content">_value</span><span class="delimiter">'</span></span>};
+                        <span class="keyword">break</span>;
+                    }
+                    <span class="keyword">else</span> {
+                        <span class="local-variable">$url</span> = <span class="string"><span
+            class="delimiter">&quot;</span><span class="content">/404.php</span><span
+            class="delimiter">&quot;</span></span>;
+                    }
+                }
+                <span class="keyword">else</span> {
+                    <span class="local-variable">$url</span> = <span class="local-variable">$results</span>[<span
+            class="integer">0</span>]-&gt;{<span class="string"><span class="delimiter">'</span><span class="content">_value</span><span
+            class="delimiter">'</span></span>};
+                    <span class="keyword">break</span>;
+                }
+
+            } <span class="keyword">catch</span> (<span class="constant">RequestException</span> <span
+            class="local-variable">$e</span>) {
+                logging(<span class="local-variable">$e</span>-&gt;getMessage());
+                <span class="local-variable">$url</span> = <span class="string"><span
+            class="delimiter">&quot;</span><span class="content">/404.php</span><span
+            class="delimiter">&quot;</span></span>;
+            }
+
+        }
+        <span class="predefined">header</span>(<span class="string"><span class="delimiter">&quot;</span><span
+            class="content">Location: </span><span class="local-variable">$url</span><span
+            class="delimiter">&quot;</span></span>);
+    }
+</span></code><br/></pre>
+</p>
+
+
+<hr/>
+
+
+<a name="Maintenance"></a>
+<h1>Maintenance<a href="#Maintenance" class="wiki-anchor">&para;</a></h1>
+
+
+<a name="Database-backup"></a>
+<h2>Database backup<a href="#Database-backup" class="wiki-anchor">&para;</a></h2>
+
+
+<p>coming soon.</p>
+</body>
+</html>
