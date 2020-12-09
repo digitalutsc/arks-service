@@ -155,7 +155,7 @@
 
 
 <ol>
-    <li>Clone this repo to the root directory as <a class="external" href="https://ark.digital.utsc.utoronto.ca/">https://ark.digital.utsc.utoronto.ca/</a>
+    <li>Clone this repo to the root directory as <a class="external" href="http://{{ DOMAIN }}/">http://{{ DOMAIN }}/</a>
         <strong>(make sure the .htaccess stay as root directory)</strong></li>
     <li>In the NoidLib/custom, create a new PHP file name <strong>MysqlArkConf.php</strong> and paste the following code
         in to the file: <br/>
@@ -213,9 +213,9 @@
 
 <ul>
     <li>After place the code in the server, please visit: <a class="external"
-                                                             href="https://ark.digital.utsc.utoronto.ca">https://ark.digital.utsc.utoronto.ca</a>
+                                                             href="http://{{ DOMAIN }}">http://{{ DOMAIN }}</a>
         (for the first time, it will redirect to <a class="external"
-                                                    href="https://ark.digital.utsc.utoronto.ca/install.php">https://ark.digital.utsc.utoronto.ca/install.php</a>).
+                                                    href="http://{{ DOMAIN }}/install.php">http://{{ DOMAIN }}/install.php</a>).
     </li>
     <li>Fill out Organization information.</li>
     <li>Enter System Administrator login credentials (Password will be encrypted and saved in MYSQL database).</li>
@@ -235,7 +235,7 @@
 <ul>
     <li>Access to Ark database in PHPMyAdmin, and drop only two table <strong>"system"</strong> and
         <strong>"user"</strong>, then refresh page <a class="external"
-                                                      href="https://ark.digital.utsc.utoronto.ca/admin.php">https://ark.digital.utsc.utoronto.ca/admin.php</a>,
+                                                      href="http://{{ DOMAIN }}/admin.php">http://{{ DOMAIN }}/admin.php</a>,
         the installation step above will be repeated.
         <ul>
             <li><strong>
@@ -262,7 +262,7 @@
 
 
 <ul>
-    <li>Visit: <a class="external" href="https://ark.digital.utsc.utoronto.ca/admin.php">https://ark.digital.utsc.utoronto.ca/admin.php</a>
+    <li>Visit: <a class="external" href="http://{{ DOMAIN }}/admin.php">http://{{ DOMAIN }}/admin.php</a>
     </li>
     <li>Fill out the "Create Database" form, then click Create.
         <ul>
@@ -322,7 +322,7 @@
         above
     </li>
     <li>Drop the table which enter in the previous step.</li>
-    <li>Back to <a class="external" href="https://ark.digital.utsc.utoronto.ca/admin.php">https://ark.digital.utsc.utoronto.ca/admin.php</a>,
+    <li>Back to <a class="external" href="http://{{ DOMAIN }}/admin.php">http://{{ DOMAIN }}/admin.php</a>,
         refresh the page
         <ul>
             <li>
@@ -455,7 +455,7 @@ RewriteRule ^(.*)$ /resolver.php?q=$1 [L]
 </pre>
 
 <p><strong>Step 2</strong>. Captured Ark ID from URL. ie. <a class="external"
-                                                             href="https://ark.digital.utsc.utoronto.ca/ark:/61220/utsc6">https://ark.digital.utsc.utoronto.ca/ark:/61220/utsc6</a>
+                                                             href="http://{{ DOMAIN }}/ark:/61220/utsc6">http://{{ DOMAIN }}/ark:/61220/utsc6</a>
     (which is 61220/utsc6)<br/><strong>Step 3</strong>, Get prefix ('utsc' from example above), from this prefix,
     identify which database to lookup the object bound to this ARK ID (This is why the prefix need to be
     unique)<br/><strong>Step 4</strong>. Look for field URL first, if URL is valid, redirect to that URL<br/><strong>Step
