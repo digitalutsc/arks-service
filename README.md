@@ -76,23 +76,11 @@ class MysqlArkConf
     * Then, donwload the source code by running `git clone https://github.com/digitalutsc/ark-services.git` and put it inside the directory `/var/www/ark-services` 
 2. Follow [this guide](https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-phpmyadmin-on-ubuntu-20-04) to install phpMyadmin to your server.
 3. Using phpMyadmin to create a database and assign a user to that database.  
-4. Create Database configuration by running `sudo nano /var/www/ark-services/NoidLib/custom/MysqlArkConf.php`
-5. Paste the following code, and set the name of the database which has been created above to `$mysql_dbname`, then save it.
-````php
-<?php
+4. Follow step 9 in the above section. 
+5. Follow step 10 in the above section.
 
-namespace Noid\Lib\Custom;
+## Usage 
+* Please visit full detail at https://ark.digital.utsc.utoronto.ca/docs/manual.html#Setting-up-Ark-creationbinding
 
-class MysqlArkConf
-{
-    static public $mysql_host = 'localhost';
-    static public $mysql_user = '';
-    static public $mysql_passwd = '';
-    static public $mysql_dbname = ''; // please enter the name of database which you have just created.  
-    static public $mysql_port = 3306;
-    static public $path_db_backup = "/var/www/ark-services/db/backup/";
-}
-````
-##Usage 
 
    
