@@ -80,7 +80,7 @@ class MysqlArkConf
 2. Follow [this guide](https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-phpmyadmin-on-ubuntu-20-04) to install phpMyAdmin to your server.
 3. Using phpMyAdmin to create an user, a database and then assign a user to that database with the following Privileges as screenshot below:
    
-   ![System setup form](http://ark.digital.utsc.utoronto.ca/docs/images//Screen%20Shot%202020-10-22%20at%2012.42.35%20PM.png)
+   ![mysql-account-privillege])
    
 
 4. In terminal, running `sudo nano /var/www/ark-services/NoidLib/custom/MysqlArkConf.php`, and paste the following code, and set the name of variables by which you created in the previous step, then save it.
