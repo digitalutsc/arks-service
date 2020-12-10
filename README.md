@@ -10,7 +10,7 @@ Base Projects:
 
 ## Requirement
 
-This application required following either one of the below environment to be setup: 
+This application required one of the following environments to be setup: 
 * a plain [Virtual machine](https://phoenixnap.com/kb/how-to-install-vagrant-on-ubuntu) OR [Drupal VM](https://github.com/geerlingguy/drupal-vm) to be installed.
 * OR [LAMP stack](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04) to be installed
 
@@ -78,13 +78,13 @@ class MysqlArkConf
 12. Visit the http://ark.drupalvm.test/admin.php and login with the account which has been created in the previous step to get started.
 
 ----------------------------------
-### In an Apache server
+### In an Apache server (for production's deployment)
 1. Follow [this guide](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04) to install the LAMP stack to your server. **Please note:**
     * In **STEP 4**, follow exactly this step with **ark-services** instead of **your_domain**
     * Then, open the terminal, change the current directory by running `cd /var/www`,
     * then download the source code by running `git clone https://github.com/digitalutsc/ark-services.git` 
 2. Follow [this guide](https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-phpmyadmin-on-ubuntu-20-04) to install phpMyAdmin to your server.
-3. Using phpMyAdmin to create an user, a database and then assign a user to that database with the following Privileges as screenshot below:
+3. Using phpMyAdmin to create an user, a database and then assign that user to the database with the following Privileges as screenshot below:
    
    ![mysql-account-privillege](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-10-22%20at%2012.42.35%20PM.png)
    
