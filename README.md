@@ -70,7 +70,8 @@ class MysqlArkConf
 ````
 11. Reload Apache by running `sudo systemctl reload apache2`
 12. Go to http://ark.drupalvm.test to setup the system
-13. Fill out the form to setup the system.
+13. Fill out the form in screenshot as below to setup the system.
+![System setup form](http://ark.digital.utsc.utoronto.ca/docs/images/Screen%20Shot%202020-12-09%20at%208.33.09%20AM.png)
 14. Change the permission of the directory `db` by runnning `sudo chmod -Rf 777 /var/www/ark-services/db`
 15. Visit the http://ark.drupalvm.test/admin.php and login with the account which has been created in the previous step.
 
