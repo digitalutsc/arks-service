@@ -4,6 +4,10 @@
 
 Provide a user interface to mint, (bulk) bind [ARK Identifiers](https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ), and resolver for Ark URLs.
 
+Base Projects:
+* https://github.com/Daniel-KM/Noid4Php
+* https://github.com/AkioUnity/Noid4Php
+
 ## Requirement
 
 This application required following either one of the below environment to be setup: 
@@ -75,7 +79,7 @@ class MysqlArkConf
 
 ----------------------------------
 ### In an Apache server
-1. Follow [this guide](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04) to install the LAMP stack to your server. 
+1. Follow [this guide](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04) to install the LAMP stack to your server. **Please note:**
     * In **STEP 4**, follow exactly this step with **ark-services** instead of **your_domain**
     * Then, open the terminal, change the current directory by running `cd /var/www`,
     * then download the source code by running `git clone https://github.com/digitalutsc/ark-services.git` 
@@ -110,7 +114,7 @@ class MysqlArkConf
 
 ----------------------------------
 
-## Usage 
+## Minting, (bulk) binding Ark IDs: 
 * Please visit full detail at https://ark.digital.utsc.utoronto.ca/docs/manual.html#Setting-up-Ark-creationbinding
 
 
