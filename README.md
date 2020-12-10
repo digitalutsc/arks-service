@@ -65,13 +65,15 @@ class MysqlArkConf
 }
 
 ````
-10. [Step 10](#step10). Change the permission of the directory `db` by runnning `sudo chmod 777 /var/www/ark-services/db`
-11. [Step 11](#step11). Go to http://ark.drupalvm.test and fill out the form in screenshot as below for initially set the system up.
+10. Change the permission of the directory `db` by runnning `sudo chmod 777 /var/www/ark-services/db`
+11. Go to http://ark.drupalvm.test and fill out the form in screenshot as below for initially set the system up.
 
 ![System setup form](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-12-09%20at%208.33.09%20AM.png) 
+<center>Figure 1</center>
 
-12. [Step 12](#step12). Visit the http://ark.drupalvm.test/admin.php and login with the account which has been created in the previous step to get started.
+12. Visit the http://ark.drupalvm.test/admin.php and login with the account which has been created in the previous step to get started.
 
+----------------------------------
 ### In an Apache server
 1. Follow [this guide](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04) to install the LAMP stack to your server. 
     * In **STEP 4**, follow exactly this step with **ark-services** instead of **your_domain**
@@ -102,7 +104,11 @@ class MysqlArkConf
 
 ````
 
-5. Follow exactly [step 10](https://github.com/digitalutsc/ark-services#step10), [step 11](https://github.com/digitalutsc/ark-services#step11), [step 12](https://github.com/digitalutsc/ark-services#step12) in the above section. 
+5. Change the permission of the directory `db` by runnning `sudo chmod 777 /var/www/ark-services/db`
+6. Go to **https://{{ Your Domain }}** and fill out the form in screenshot (Figure 1) above for initially set the system up.
+7. Visit the **https://{{ Your Domain }}/admin.php** and login with the account which has been created in the previous step to get started.
+
+----------------------------------
 
 ## Usage 
 * Please visit full detail at https://ark.digital.utsc.utoronto.ca/docs/manual.html#Setting-up-Ark-creationbinding
