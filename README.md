@@ -68,7 +68,7 @@ class MysqlArkConf
 10. Change the permission of the directory `db` by runnning `sudo chmod 777 /var/www/ark-services/db`
 11. Go to http://ark.drupalvm.test and fill out the form in screenshot as below for initially set the system up.
 
-![System setup form](http://ark.digital.utsc.utoronto.ca/docs/images/Screen%20Shot%202020-12-09%20at%208.33.09%20AM.png) 
+![System setup form](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-12-09%20at%208.33.09%20AM.png) 
 
 12. Visit the http://ark.drupalvm.test/admin.php and login with the account which has been created in the previous step to get started.
 
@@ -80,7 +80,7 @@ class MysqlArkConf
 2. Follow [this guide](https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-phpmyadmin-on-ubuntu-20-04) to install phpMyAdmin to your server.
 3. Using phpMyAdmin to create an user, a database and then assign a user to that database with the following Privileges as screenshot below:
    
-   ![mysql-account-privillege])
+   ![mysql-account-privillege](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-10-22%20at%2012.42.35%20PM.png)
    
 
 4. In terminal, running `sudo nano /var/www/ark-services/NoidLib/custom/MysqlArkConf.php`, and paste the following code, and set the name of variables by which you created in the previous step, then save it.
