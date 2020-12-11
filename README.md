@@ -72,7 +72,8 @@ class MysqlArkConf
 10. Change the permission of the directory `db` by runnning `sudo chmod 777 /var/www/ark-services/db`
 11. Go to http://ark.drupalvm.test and fill out the form in screenshot as below for initially set the system up.
 
-![Figure 1](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-12-09%20at%208.33.09%20AM.png) 
+![Screenshot of inital system setup](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-12-09%20at%208.33.09%20AM.png "Figure 1") 
+>>>>> <div align="center">Figure 1</div>
 
 
 12. Visit the http://ark.drupalvm.test/admin.php and login with the account which has been created in the previous step to get started.
