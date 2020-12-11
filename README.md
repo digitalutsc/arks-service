@@ -11,7 +11,7 @@ Base Projects:
 ## Requirement
 
 This application required one of the following environments to be setup: 
-* a plain [Virtual machine](https://phoenixnap.com/kb/how-to-install-vagrant-on-ubuntu) OR [Drupal VM](https://github.com/geerlingguy/drupal-vm) to be installed.
+* [Drupal VM](https://github.com/geerlingguy/drupal-vm) to be installed.
 * OR [LAMP stack](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04) to be installed
 
 ## Installation
@@ -72,8 +72,8 @@ class MysqlArkConf
 10. Change the permission of the directory `db` by runnning `sudo chmod 777 /var/www/ark-services/db`
 11. Go to http://ark.drupalvm.test and fill out the form in screenshot as below for initially set the system up.
 
-![System setup form](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-12-09%20at%208.33.09%20AM.png) 
-<center>Figure 1</center>
+![Figure 1](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-12-09%20at%208.33.09%20AM.png) 
+
 
 12. Visit the http://ark.drupalvm.test/admin.php and login with the account which has been created in the previous step to get started.
 
