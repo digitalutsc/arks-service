@@ -41,7 +41,7 @@ $result = $conn->query($sql)->fetch_all();
 $users = array();
 
 foreach ($result as $row) {
-    $users[$row[0]] = secureDecryption($row[1], GlobalsArk::$encryption_key, GlobalsArk::$securekey);
+    $users[$row[0]] = secureDecryption($row[1], MysqlArkConf::$encryption_key, MysqlArkConf::$securekey);
 }
 $conn->close();
 
