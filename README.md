@@ -52,7 +52,7 @@ Password:root
 Database: Leave empty	
 ````
 8. After logging successfully, create a database for the Ark Identifiers.
-9. In terminal, running `sudo nano /var/www/ark-services/NoidLib/custom/MysqlArkConf.php`, and paste the following code, and set the name of the database which has been created above to `$mysql_dbname`, then save it. 
+9. In terminal, running `sudo nano /var/www/ark-services/NoidLib/custom/MysqlArkConf.php`, and paste the following code, and set the name of the database which has been created above to `$mysql_dbname`, and set `$encryption_key` and `securekey` for encyrption of Admin account's password, then save it. 
 ````php
 <?php
 
@@ -66,6 +66,11 @@ class MysqlArkConf
     static public $mysql_dbname = ''; // please enter the name of database which you have just created.  
     static public $mysql_port = 3306;
     static public $path_db_backup = "/var/www/ark-services/db/backup/";
+    
+    // for Admin account's password encryption/decryption
+    static public $encryption_key = ""; // enter a random and complicated string 
+    static public $securekey = 0; // change 0 to a different and long number 
+    
 }
 
 ````
@@ -90,7 +95,7 @@ class MysqlArkConf
    ![mysql-account-privillege](https://raw.githubusercontent.com/digitalutsc/ark-services/master/docs/images/Screen%20Shot%202020-10-22%20at%2012.42.35%20PM.png)
    
 
-4. In terminal, running `sudo nano /var/www/ark-services/NoidLib/custom/MysqlArkConf.php`, and paste the following code, and set the name of variables by which you created in the previous step, then save it.
+4. In terminal, running `sudo nano /var/www/ark-services/NoidLib/custom/MysqlArkConf.php`, and paste the following code, and set the name of variables by which you created in the previous step, and set `$encryption_key` and `securekey` for encyrption of Admin account's password, then save it.
 
 ````php
 <?php
@@ -105,6 +110,10 @@ class MysqlArkConf
     static public $mysql_dbname = ''; // please enter the name of database which you have just created.  
     static public $mysql_port = 3306;
     static public $path_db_backup = "/var/www/ark-services/db/backup/"; // backup directory for database snapshot
+    
+    // for Account password encryption/decryption
+    static public $encryption_key = ""; // enter a random and complicated string 
+    static public $securekey = 0; // change 0 to a different and long number 
 }
 
 ````
