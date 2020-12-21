@@ -904,18 +904,15 @@ $subheader .= "</p>";
                                                         <div class="form-group">
                                                             <p><strong><u>Note:</u></strong> For this section, please
                                                                 follow:</p>
-                                                            <ul>
-                                                                <li>Download this <a href="template.csv" download>template.csv</a> file</li>
-                                                                <li>Fill out 4 mandatory columns <strong>(Case insensitive)</strong>:
+                                                            <ol>
+                                                                <li><strong>Download one of the below:</strong>:
                                                                     <ul>
-                                                                        <li>LOCAL_ID,</li>
-                                                                        <li>PID,</li>
-                                                                        <li>URL</li>
+                                                                        <li><a href="template_new.csv" download>template_new.csv</a> for <u>creating & binding</u> new Ark IDs </li>
+                                                                        <li><a href="template_update.csv" download>template_update.csv</a> for <u>updating</u> existing Ark IDs </li>
                                                                     </ul>
-                                                                </li>
-                                                                <li>Add more column for other metadata (if needed)</li>
-                                                                <li>Upload the CSV to start Bulk Bind process.</li>
-                                                            </ul>
+                                                                <li><strong>Please make sure to always keep those essential columns which are included in the template CSVs above</strong> and add more column(s) if needed for other metadata.</li>
+                                                                <li>Upload the CSV to start the process.</li>
+                                                            </ol>
                                                         </div>
                                                         <hr/>
                                                         <div class="form-group">
