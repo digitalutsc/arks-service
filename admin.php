@@ -1007,8 +1007,6 @@ $subheader .= "</p>";
                                                 // If uploaded file is CSV, read the file.
                                                 if (csvFile != undefined) {
 
-
-
                                                     // init file reader
                                                     reader = new FileReader();
 
@@ -1088,8 +1086,22 @@ $subheader .= "</p>";
                                                                 // loop through row 2 till end of CSV file
                                                                 var index = 1; // start from 2nd line because 1st one is header/columns
 
-                                                                // send Post request
-                                                                doPost(index, total_data, csvResult);
+                                                                // TODO: send post request to backup database, if success, proceed with the post request below:
+                                                                var password = JSON.parse(localStorage.getItem("syspasswd"));
+                                                                // send POST request for each line of read CSV file
+                                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=backupdb", {security: password})
+                                                                    .done(function (data) {
+                                                                        // send Post request
+                                                                        doPost(index, total_data, csvResult);
+                                                                    })
+                                                                    .fail(function () {
+                                                                        $('#message').html('<div class="alert alert-danger">Fail to run backup the database before bulk binding.</div>');
+                                                                        $('#importCSV').attr('disabled', false);
+                                                                        $('#importCSV').val('Import');
+                                                                    });
+
+
+
                                                             }
                                                         });
                                                     }
@@ -1118,7 +1130,6 @@ $subheader .= "</p>";
                                                 // send POST request for each line of read CSV file
                                                 $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata, security: password})
                                                     .done(function (data) {
-                                                        console.log(JSON.parse(data));
                                                         var result =  JSON.parse(data);
                                                         if (result.success == 401) {
 

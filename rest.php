@@ -71,19 +71,20 @@ switch ($_GET['op']) {
         echo getDbInfo();
         break;
     }
-    case 'bulkbind': {
+    case 'backupdb': {
+        if (empty($_POST['security'])  ||  (Database::isAuth($_POST['security']) === false) ) {
+            die(json_encode(['success' => 401, 'message' => 'Security Credentials is invalid, Please verify it again.']));
+        }
 
         // backup database before bulk binding
-        //Database::backupArkDatabase();
+        Database::backupArkDatabase();
+        return json_encode(['success' => 1]);
+    }
+    case 'bulkbind': {
 
         if (isset($_GET['stage']) && $_GET['stage'] == 'upload'){
+            // return result status
             echo bulkbind();
-        }
-        else if (isset($_GET['stage']) && $_GET['stage'] == 'import'){
-            echo bulkbind_import();
-        }
-        else if (isset($_GET['stage']) && $_GET['stage'] == 'processing') {
-            echo bulkbind_processing();
         }
         else {
             echo  json_encode("Invalid stage");
@@ -151,13 +152,13 @@ function bulkbind(){
             else { // if Local_ID is not existed, Look for Ark ID, this is for ingesting to update existing Ark
 
                 // if Ark ID not in CSV, minting new Ark ID
-                if (empty($_POST['data'][strtoupper('Ark ID')] )) {
+                if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
                     // mint a new ark id
                     $identifier = NoidArk::mint($noid, $contact);
                 }
                 else {
                     // obtain Ark ID to do update
-                    $identifier = $_POST['data'][strtoupper('Ark ID')];
+                    $identifier = $_POST['data'][strtoupper('Ark_ID')];
                 }
             }
         }
@@ -171,31 +172,31 @@ function bulkbind(){
                     $identifier = preg_split('/\s+/', $checkExistedPID[0]['_key'])[0];
                 }else {
                     // if Ark ID not in CSV, minting new Ark ID
-                    if (empty($_POST['data'][strtoupper('Ark ID')] )) {
+                    if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
                         // mint a new ark id
                         $identifier = NoidArk::mint($noid, $contact);
                     }
                     else {
                         // obtain Ark ID to do update
-                        $identifier = $_POST['data'][strtoupper('Ark ID')];
+                        $identifier = $_POST['data'][strtoupper('Ark_ID')];
                     }
                 }
             }
             else {
                 // from PID not find the Ark ID, mint it
-                if (empty($_POST['data'][strtoupper('Ark ID')] )) {
+                if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
                     // mint a new ark id
                     $identifier = NoidArk::mint($noid, $contact);
                 }
                 else {
-                    $identifier = $_POST['data'][strtoupper('Ark ID')];
+                    $identifier = $_POST['data'][strtoupper('Ark_ID')];
                 }
             }
 
         }
 
         foreach ($_POST['data'] as $key => $pair) {
-            if ($key !== strtoupper('Ark ID')) {
+            if ($key !== strtoupper('Ark_ID')) {
                 // check if ark ID exist
                 NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($key), $pair);
             }
