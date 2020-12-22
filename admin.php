@@ -887,7 +887,7 @@ $subheader .= "</p>";
                             <div class="modal fade" id="bulkBindModal" tabindex="-1"
                                  aria-labelledby="bulkBindModalLabel"
                                  aria-hidden="true" data-backdrop="static" data-keyboard="false">
-                                <div id="bulk-binding-modal" class="modal-dialog">
+                                <div id="bulk-binding-modal" class="modal-dialog modal-lg"">
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h5 class="modal-title" id="bulkBindModalLabel">Bulk Binding</h5>
@@ -905,34 +905,42 @@ $subheader .= "</p>";
                                                             <p><strong><u>Note:</u></strong> For this section, please
                                                                 follow:</p>
                                                             <ol>
-                                                                <li><strong>Download one of the below:</strong>:
+                                                                <li><strong>Download one of the below:</strong>
                                                                     <ul>
                                                                         <li><a href="template_new.csv" download>template_new.csv</a> for <u>creating & binding</u> new Ark IDs </li>
                                                                         <li><a href="template_update.csv" download>template_update.csv</a> for <u>updating</u> existing Ark IDs </li>
                                                                     </ul>
-                                                                <li><strong>Please make sure to always keep those essential columns which are included in the template CSVs above</strong> and add more column(s) if needed for other metadata.</li>
-                                                                <li>Upload the CSV to start the process.</li>
+                                                                <li><strong>To avoid any duplication, please make sure to always keep those essential columns (details below) which are included in the template CSVs above</strong> and add more column(s) if needed for other metadata.
+                                                                    <ul>
+                                                                        <li><u>LOCAL_ID</u>: unique ID of the object which is associate with an Ark ID.</li>
+                                                                        <li><u>PID</u>: persistent Identifiers</li>
+                                                                        <li><u>URL</u>: will be redirected to after Ark ID's URL Resolver.</li>
+                                                                        <li><u>Ark_ID</u>: existed or previously minted (for updating) .</li>
+                                                                    </ul>
+                                                                </li>
+                                                                <li><strong>Upload the CSV to start the process.</strong></li>
                                                             </ol>
                                                         </div>
                                                         <hr/>
-                                                        <div class="form-group">
-                                                            <label for="enterPasswordPostBulkBind"><strong>For security measure, please enter admin password before bulk binding: </strong></label>
-                                                            <input required type="password" class="form-control" id="enterPasswordPostBulkBind" name="enterPasswordPostBulkBind"
-                                                                   placeholder="Password">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <p><strong><label for="importCSV">Upload
-                                                                        CSV: </label></strong>
-                                                            </p>
-                                                            <input type="file"
-                                                                   id="importCSV" name="importCSV"
-                                                                   accept=".csv">
-                                                            <small id="emailHelp" class="form-text text-muted">Only
-                                                                accept
-                                                                CSV</small>
+                                                        <div class="container">
+                                                            <div class="form-group">
+                                                                <label for="enterPasswordPostBulkBind"><strong>For security measure, please enter admin password before bulk binding: </strong></label>
+                                                                <input required type="password" class="form-control" id="enterPasswordPostBulkBind" name="enterPasswordPostBulkBind"
+                                                                       placeholder="Password">
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <p><strong><label for="importCSV">Upload
+                                                                            CSV: </label></strong>
+                                                                </p>
+                                                                <input type="file"
+                                                                       id="importCSV" name="importCSV"
+                                                                       accept=".csv">
+                                                                <small id="emailHelp" class="form-text text-muted">Only
+                                                                    accept
+                                                                    CSV</small>
 
+                                                            </div>
                                                         </div>
-
                                                         <div class="row">
                                                             <div class="col-sm-12">
                                                                 <span id="message"></span>
@@ -1115,12 +1123,13 @@ $subheader .= "</p>";
 
                                                 // start binding each line of CSV file
                                                 var item = csvResult[index];
-                                                var values = item.split(',')
+                                                var values = item.split(',');
+
                                                 var pdata = {};
                                                 for (var i = 0; i < values.length; i++) {
                                                     // enforce csv must follow sequence LocalID, PID, URL,
                                                     if (keys[i] !== undefined) {
-                                                        pdata[keys[i].toUpperCase()] = values[i];
+                                                        pdata[keys[i].toUpperCase()] = values[i].trim().replace(/ /g, "_");;
                                                     }
                                                 }
 
