@@ -2,7 +2,7 @@
 
 ## Introduction 
 
-Provide a user interface to mint, (bulk) bind [ARK Identifiers](https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ), and resolver for Ark URLs.
+This standalone application provides a user interface to mint, (bulk) bind [ARK Identifiers](https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ), and resolver for Ark URLs.
 
 Base Projects:
 * https://github.com/Daniel-KM/Noid4Php
@@ -42,6 +42,7 @@ This application required one of the following environments to be setup:
 </VirtualHost>
 ````
 5. Reload Apache by running `sudo systemctl reload apache2`
+6. Open another terminal window, run `sudo nano /etc/hosts`, then add `192.168.88.88  ark.drupalvm.test` at the end of the file and save it. 
 6. To create the database, visit http://adminer.drupalvm.test/index.php.
 7. Login with the following info to login to manage MYSQL.
 ````
