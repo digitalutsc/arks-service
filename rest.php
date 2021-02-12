@@ -297,7 +297,7 @@ function select($where = "")
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
 
-    $result = Database::$engine->select("_key REGEXP '^$firstpart' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key");
+    $result = Database::$engine->select("_key REGEXP '^$firstpart' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key desc");
     //return json_encode($result);
     $json = array();
     foreach ($result as $row) {
