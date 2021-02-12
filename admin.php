@@ -1129,7 +1129,7 @@ $subheader .= "</p>";
                                                 for (var i = 0; i < values.length; i++) {
                                                     // enforce csv must follow sequence LocalID, PID, URL,
                                                     if (keys[i] !== undefined) {
-                                                        pdata[keys[i].toUpperCase()] = values[i].trim().replace(/ /g, "_");;
+                                                        pdata[keys[i].toUpperCase().replace(/(\r\n|\n|\r)/gm,"")] = values[i].trim().replace(/ /g, "_");
                                                     }
                                                 }
 
