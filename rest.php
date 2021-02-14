@@ -381,7 +381,8 @@ function getMinted()
         $urow['_key'] = trim(str_replace(":/c", "", $row['_key']));
 
         $metadata = explode('|', $row['_value']);
-        $urow['_value'] = date("F j, Y, g:i a", $metadata[2]);
+        //$urow['_value'] = date("F j, Y, g:i a", $metadata[2]);
+        $urow['_value'] = date("F j, Y", $metadata[2]);
         array_push($json, (object)$urow);
     }
     Database::dbclose($noid);
