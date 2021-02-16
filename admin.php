@@ -295,7 +295,9 @@ $subheader .= "</p>";
                             }
                         },
                     ],
+                    "order": [[ 1, "asc" ]],
                     "columnDefs": [
+                        { type: 'natural', targets: "_all" },
                         {
                             orderable: false,
                             className: 'select-checkbox',

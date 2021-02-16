@@ -241,46 +241,70 @@ function getDbInfo() {
  */
 function selectBound()
 {
-    GlobalsArk::$db_type = 'ark_mysql';
-    if (!Database::exist($_GET['db'])) {
-        die(json_encode('Database not found'));
-    }
-    $rows = json_decode(select());
-    array_push($rows, (object)[]);
-    $currentID = null;
-    $result = array();
-    $r = [];
-    foreach ($rows as $row) {
-        $row = (array)$row;
-        if (isset($row['_key'])) {
-            $key_data = preg_split('/\s+/', $row['_key']);
-            //print_r($row);
-            if (!isset($currentID) || ($currentID !== $key_data[0])) {
-                $currentID = $key_data[0];
-                if (is_array($r) && count($r) > 0)
-                    array_push($result, $r);
-                $r = [];
-            }
-            $r['select'] = " ";
-            $r['id'] = $currentID;
-            if ($key_data[1] == 'PID')
-                $r['PID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
-            if ($key_data[1] == "LOCAL_ID")
-                $r['LOCAL_ID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
-            $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+    die(json_encode('Database not found'));
+  }
+  $columns = json_decode(select());
+  //array_push($columns, (object)[]);
+  $currentID = null;
+  $result = array();
+  $r = [];
+  $countColumns = count($columns);
+  $index = 1;
 
-            // check if server have https://, if not, go with http://
-            if (empty($_SERVER['HTTPS'])) {
-                $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-            }
-            else {
-                $protocol = "https://";
-            }
-            // establish Ark URL
-            $r['ark_url'] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $currentID;
+  foreach ($columns as $column) {
+    $column = (array)$column;
+
+    if (isset($column['_key'])) {
+      $key_data = preg_split('/\s+/', $column['_key']);
+      //print_r($column);
+      if (!isset($currentID) || ($currentID !== $key_data[0])) {
+        $currentID = $key_data[0];
+        if (is_array($r) && count($r) > 0) {
+          if(!array_key_exists('PID', $r)) {
+            $r['PID'] = " ";
+          }
+          if(!array_key_exists('LOCAL_ID', $r)) {
+            $r['LOCAL_ID'] = " ";
+          }
+          array_push($result, $r);
         }
+
+          $r = [];
+      }
+      $r['select'] = " ";
+      $r['id'] = $currentID;
+      if ($key_data[1] == 'PID')
+        $r['PID'] = (!empty($column['_value'])) ? $column['_value'] : ' ';
+      if ($key_data[1] == "LOCAL_ID")
+        $r['LOCAL_ID'] = (!empty($column['_value'])) ? $column['_value'] : ' ';
+      $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$column['_value'];
+
+      // check if server have https://, if not, go with http://
+      if (empty($_SERVER['HTTPS'])) {
+        $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
+      }
+      else {
+        $protocol = "https://";
+      }
+      // establish Ark URL
+      $r['ark_url'] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $currentID;
     }
-    return json_encode($result);
+
+    // if the loop reach the last pair of elements (for incompleted bind)
+    if ($index === $countColumns) {
+      if(!array_key_exists('PID', $r)) {
+        $r['PID'] = " ";
+      }
+      if(!array_key_exists('LOCAL_ID', $r)) {
+        $r['LOCAL_ID'] = " ";
+      }
+      array_push($result, $r);
+    }
+    $index++;
+  }
+  return json_encode($result);
 }
 
 /**
