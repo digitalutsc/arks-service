@@ -742,7 +742,7 @@ $subheader .= "</p>";
 
             <hr>
             <div class="card">
-                <h5 class="card-header">Arks</h5>
+                <h5 class="card-header">Established Ark IDs</h5>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-sm-12">
