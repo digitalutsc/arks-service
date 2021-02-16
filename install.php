@@ -88,9 +88,9 @@ if (Database::isInstalled()) {
                 $conn->close();
 
                 $conn = new mysqli(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
-                $sql = 'CREATE TABLE IF NOT EXISTS system ( 
-                    `_key` VARCHAR(128) NOT NULL PRIMARY KEY, 
-                    `_value` VARCHAR(128) NOT NULL, 
+                $sql = 'CREATE TABLE IF NOT EXISTS system (
+                    `_key` VARCHAR(128) NOT NULL PRIMARY KEY,
+                    `_value` VARCHAR(128) NOT NULL,
                     UNIQUE (_key)
                 )';
                 if ($conn->query($sql) === FALSE) {
@@ -138,12 +138,12 @@ if (Database::isInstalled()) {
                     <h3 class="text-center">Organization</h3>
                 </div>
                 <div class="form-group">
-                    <label for="enterFirstname">Name:</label>
-                    <input required type="text" class="form-control" id="enterFirstname" name="enterOrgName">
+                    <label for="enterFirstname">Organization's Name:</label>
+                    <input required type="text" class="form-control" id="enterFirstname" name="enterOrgName" placeholder="Enter your organization's name">
                 </div>
                 <div class="form-group">
-                    <label for="enterFirstname">Website:</label>
-                    <input required type="text" class="form-control" id="enterOrgWebsite" name="enterOrgWebsite">
+                    <label for="enterFirstname">Organization's Website:</label>
+                    <input required type="text" class="form-control" id="enterOrgWebsite" name="enterOrgWebsite" placeholder="Enter your organization's website">
                 </div>
                 <div class="form-group">
                     <h3 class="text-center">System Admin User</h3>
