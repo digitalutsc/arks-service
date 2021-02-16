@@ -26,7 +26,7 @@ GlobalsArk::$db_type = 'ark_mysql';
 // check if system installed. If not, rediret to installation page.
  init_system();
 
-// get created database 
+// get created database
 $arkdbs = Database::showDatabases();
 
 // display registered Org info in header.
@@ -75,6 +75,8 @@ $subheader .= "</p>";
                 src="https://cdn.datatables.net/buttons/1.6.4/js/buttons.html5.min.js"></script>
         <script type="text/javascript" language="javascript"
                 src="https://cdn.datatables.net/select/1.3.1/js/dataTables.select.min.js"></script>
+        <script type="text/javascript" language="javascript"
+                src="https://cdn.datatables.net/plug-ins/1.10.22/sorting/natural.js"></script>
 
         <!-- bootstrap select-->
         <link rel="stylesheet"
@@ -176,11 +178,18 @@ $subheader .= "</p>";
                         {data: '_value'},
                     ],
                     columnDefs: [
+                        { type: 'natural', targets: "_all" },
                         {
                             orderable: false,
                             className: 'select-checkbox',
                             targets: 0
-                        }],
+                        },
+                        {
+                          orderable: false,
+                          targets: 2
+                        }
+                    ],
+                    "order": [[ 1, "asc" ]],
                     select: {
                         style: 'multi',
                         selector: 'td:first-child'
@@ -193,7 +202,37 @@ $subheader .= "</p>";
                                 columns: [1]
                             }
                         },
-                    ]
+                    ],
+                    initComplete: function () {
+                      this.api().columns().every(function () {
+                        var column = this;
+                        if ($(column.header()).text() == 'Minted Date') {
+
+                          var select = $('<select><option value="0">Filter by ' + $(column.header()).text() + '</option></select>')
+                            .appendTo($(column.header()).empty())
+                            .on('change', function () {
+                              var val = $.fn.dataTable.util.escapeRegex(
+                                $(this).val()
+                              );
+
+                              if (val == 0) {
+                                column.search('').draw();
+                              } else {
+                                column.search(val ? '^' + val + '$' : '', true, false).draw();
+                              }
+
+                            });
+
+                          column.data().unique().sort().each(function (d, j) {
+                            if (d !== '') {
+                              select.append('<option value="' + d + '">' + d + '</option>')
+                            }
+
+                          });
+                        }
+
+                      });
+                    }
                 });
 
                 mintedTable.on("click", "th.select-checkbox", function () {
@@ -256,7 +295,9 @@ $subheader .= "</p>";
                             }
                         },
                     ],
+                    "order": [[ 1, "asc" ]],
                     "columnDefs": [
+                        { type: 'natural', targets: "_all" },
                         {
                             orderable: false,
                             className: 'select-checkbox',
@@ -394,60 +435,60 @@ $subheader .= "</p>";
                                            required/>
                                 </div>
                                 <p><small id="noidHelp" class="form-text text-muted">For configuration detail, please visit <a target="_blank" href="https://metacpan.org/pod/distribution/Noid/noid">https://metacpan.org/pod/distribution/Noid/noid</a> </small></p>
-                                
-                               
+
+
                                   <script type="text/javascript">
                                     function onChangeTemplate(value)
                                     {
                                         // reset prefix
                                         document.getElementById("enterPrefix").value = "";
                                         document.getElementById('enterPrefix').readOnly = false;
-                                        
-                                        // swich detail explanation 
+
+                                        // swich detail explanation
                                         document.getElementById("templateHelp").innerHTML = "<strong>Template definition: </strong> " + noidTemplates[value] + "</span>" ;
-                                        switch (value) { 
+                                        switch (value) {
                                             case ".rdddd": {
                                                 // set, prefix must be must be to bc
                                                 document.getElementById("enterPrefix").value = "bc";
                                                 document.getElementById("enterPrefix").readOnly = true;
-                                                break; 
+                                                break;
                                             }
-                                            case ".sdd": { 
+                                            case ".sdd": {
                                                 // set, prefix must be must be to 8rf
                                                 document.getElementById("enterPrefix").value = "8rf";
                                                 document.getElementById("enterPrefix").readOnly = true;
-                                                break; 
+                                                break;
                                             }
-                                             case ".reee": { 
+                                             case ".reee": {
                                                 // set, prefix must be must be to h9
                                                 document.getElementById("enterPrefix").value = "h9";
                                                 document.getElementById("enterPrefix").readOnly = true;
-                                                break; 
-                                            }case ".sdede": { 
+                                                break;
+                                            }case ".sdede": {
                                                 // set, prefix must be must be to ssd
                                                 document.getElementById("enterPrefix").value = "ssd";
                                                 document.getElementById("enterPrefix").readOnly = true;
-                                                break; 
-                                            }case ".redek": { 
+                                                break;
+                                            }case ".redek": {
                                                 // set, prefix must be must be to 63q
                                                 document.getElementById("enterPrefix").value = "63q";
                                                 document.getElementById("enterPrefix").readOnly = true;
-                                                break; 
-                                            }case ".reedeedk": { 
+                                                break;
+                                            }case ".reedeedk": {
                                                 // set, prefix must be must be to 63q
                                                 document.getElementById("enterPrefix").value = "f5";
                                                 document.getElementById("enterPrefix").readOnly = true;
-                                                break; 
+                                                break;
                                             }
-                                            default: 
+                                            default:
                                                 break;
                                         }
-                                        
+
                                     }
                                 </script>
                                 <div class="form-group">
                                     <label for="templateHelp">Template:</label>
-                                    
+
                                     <select class="form-control" id="selectTemplate" name="selectTemplate" onchange="onChangeTemplate(this.value);" required>
                                         <option selected disabled value="">Choose...</option>
                                         <option>.rddd</option>
@@ -467,32 +508,32 @@ $subheader .= "</p>";
                                         <option>.reedeedk</option>
                                     </select>
                                     <p id="templateHelp"></p>
-                                    
+
                                 </div>
-                                
+
                                 <div class="form-group">
                                     <label for="enterDatabaseName">Prefix (must be unique):</label>
                                     <input type="text" class="form-control" id="enterPrefix" name="enterPrefix" required/>
-                                </div> 
-                                
+                                </div>
+
                                 <script type="text/javascript">
                                     function onChangeTerms(value)
                                     {
                                         //alert(value);
-                                        switch (value) { 
+                                        switch (value) {
                                             case 'short': {
-                                                break; 
+                                                break;
                                             }
                                             case 'medium': {
-                                                break; 
+                                                break;
                                             }
                                             case 'long': {
                                                 document.getElementById("enterNAAN").required = true;
                                                 document.getElementById("enterInsitutionName").required = true;
                                                 document.getElementById("enterRedirect").required = true;
-                                                break; 
+                                                break;
                                             }
-                                            default: { 
+                                            default: {
                                                 break;
                                             }
                                         }
@@ -507,7 +548,7 @@ $subheader .= "</p>";
                                         <option>long</option>
                                     </select>
                                 </div>
-                                
+
                                 <div class="form-group">
                                     <label class="control-label" for="enterDatabaseName">Name Assigning Authority Number(NAAN):</label>
                                     <input type="text" class="form-control" id="enterNAAN" name="enterNAAN"/>
@@ -519,14 +560,14 @@ $subheader .= "</p>";
                                            />
                                    <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: collections.digital.utsc.utoronto.ca</small>
                                 </div>
-                                
+
                                  <div class="form-group">
                                     <label class="control-label" for="enterDatabaseName">Insitution Name(SubNAA):</label>
                                     <input type="text" class="form-control" id="enterInsitutionName" name="enterInsitutionName"
                                            />
                                    <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: dsu/utsc-library</small>
                                 </div>
-                                
+
                                 <input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>
                             </form>
                             EOS;
@@ -618,7 +659,7 @@ $subheader .= "</p>";
                                                         <td scope="row">$db</td>
                                                         <td scope="row">$detail</td>
                                                         <td scope="row">$setActive</td>
-                                                        
+
                                                     </tr>
                                                 EOS;
                                         }
