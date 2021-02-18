@@ -1,65 +1,141 @@
 <?php
-require_once "functions.php";
 
-
-use Noid\Lib\Helper;
-use Noid\Lib\Noid;
-use Noid\Lib\Storage\DatabaseInterface;
-use Noid\Lib\Storage\MysqlDB;
-use Noid\Lib\Globals;
-use Noid\Lib\Db;
-use Noid\Lib\Log;
-
-use Noid\Lib\Custom\Database;
-use Noid\Lib\Custom\GlobalsArk;
-use Noid\Lib\Custom\NoidArk;
-GlobalsArk::$db_type = 'ark_mysql';
+require_once 'NoidLib/custom/MysqlArkConf.php';
+use Noid\Lib\Custom\MysqlArkConf;
 
 if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
-    $uid = str_replace("ark:/", "", $_GET['q']);
-    
-    // get all database Ark related
-    $arkdbs = Database::showArkDatabases();
-    // only proceed if already have ark_core db
-    if (is_array($arkdbs) && count($arkdbs) > 0) {
-        $url  = "";
-        GlobalsArk::$db_type = 'ark_mysql';
+  $uid = str_replace("ark:/", "", $_GET['q']);
 
-        // loop through database and find matching one with prefix
-        foreach ($arkdbs as $db) {
-            try {
-                // if ark ID found, look for URL fields first.
-                $results = rest_get("/rest.php?db=$db&op=url&ark_id=$uid");
-                $results = json_decode($results);
+  // get all database Ark related
+  $arkdbs = showArkDatabases();
+  // only proceed if already have ark_core db
+  if (is_array($arkdbs) && count($arkdbs) > 0) {
+    $url = "/404.php";
 
-                if(count($results) <= 0 ) {
-                    // if URL field is empty, go with the PID
-                    $results = rest_get("/rest.php?db=$db&op=pid&ark_id=$uid");
-                    $results = json_decode($results);
-                    if (count($results) > 0) {
-                        $dns = json_decode(rest_get("/rest.php?db=$db&op=naa"));
-                        $url = "https://$dns/islandora/object/". $results[0]->{'_value'};
-                        break;
-                    }
-                    else {
-                        $url = "/404.php";
-                    }
-                }
-                else {
-                    $url = $results[0]->{'_value'};
-                    break;
-                }
-
-            } catch (RequestException $e) {
-                logging($e->getMessage());
-                $url = "/404.php";
-            }
-
-        }
-        header("Location: $url");
+    // loop through database and find matching one with prefix
+    foreach ($arkdbs as $db) {
+      // if ark ID found, look for URL fields first.
+      $result = lookup($db, $uid, "URL");
+      if (!empty($result)) {
+        // found URL field bound associated with the ark id
+        $url = $result;
+        break;
+      }
     }
+    // exclusive for UTSC, may removed
+    if ($url === "/404.php") {
+      // not found URL, get PID and established the URL
+      foreach ($arkdbs as $db) {
+        // if ark ID found, look for URL fields first.
+        $pid = lookup($db, $uid, "PID");
+        if (!empty($pid)) {
+          // found URL field bound associated with the ark id
+          $dns = getNAA($db);
+          $url = "https://$dns/islandora/object/" . $pid;
+          break;
+        }
+      }
+    }
+    header("Location: $url");
+  }
+} else {
+  print "invalid argument";
 }
-else {
-    print "invalid argument";
+
+
+/**
+ * Get Org registered info
+ */
+function lookup($db, $ark_id, $field = "")
+{
+  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+  if (!$link) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
+  $where = 'where _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$field.'$"';
+
+  error_log(print_r("SELECT _value FROM `$db` ". $where, true), 0);
+
+  if ($query = mysqli_query($link, "SELECT  _value FROM `$db` ". $where)) {
+
+    if (!mysqli_query($link, "SET @a:='this will not work'")) {
+      printf("Error: %s\n", mysqli_error($query));
+    }
+    $results = $query->fetch_all();
+
+    if (count($results) > 0) {
+      error_log(print_r($results[0][0], true), 0);
+      return $results[0][0];
+    }
+
+    $query->close();
+  }
+  mysqli_close($link);
+  return false;
+}
+
+function getNAA($db) {
+  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+  if (!$link) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
+  $where = "where _key = ':/naa'";
+
+
+  if ($query = mysqli_query($link, "SELECT * FROM `$db` ". $where)) {
+
+    if (!mysqli_query($link, "SET @a:='this will not work'")) {
+      printf("Error: %s\n", mysqli_error($query));
+    }
+    $results = $query->fetch_all();
+    if (count($results) > 0) {
+      return $results[0][1];
+    }
+
+    $query->close();
+  }
+  mysqli_close($link);
+  return false;
+}
+
+/**
+ * list all Arrk database
+ * @param string $name
+ */
+function showArkDatabases()
+{
+  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+  if (!$link) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
+
+  if ($query = mysqli_query($link, "SHOW TABLES")) {
+    if (!mysqli_query($link, "SET @a:='this will not work'")) {
+      printf("Error: %s\n", mysqli_error($query));
+    }
+    $results = $query->fetch_all();
+    $arkdbs = [];
+    foreach ($results as $db) {
+      // It starts with 'http'
+      if (!in_array($db[0], ['system', 'user'])) {
+        array_push($arkdbs, $db[0]);
+      }
+    }
+    $query->close();
+  }
+  mysqli_close($link);
+  return $arkdbs;
 }
 
