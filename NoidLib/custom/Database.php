@@ -356,6 +356,35 @@ class Database
         return false;
     }
 
+  /**
+   * Get Org registered info
+   */
+  public static function getArkURL()
+  {
+    $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+    if (!$link) {
+      echo "Error: Unable to connect to MySQL." . PHP_EOL;
+      echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+      echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+      exit;
+    }
+    if ($query = mysqli_query($link, "SELECT _value FROM `system` where _key= 'Organization Website'")) {
+
+      if (!mysqli_query($link, "SET @a:='this will not work'")) {
+        printf("Error: %s\n", mysqli_error($query));
+      }
+      $results = $query->fetch_all();
+      if (count($results) > 0) {
+        return $results[0][0];
+      }
+
+      $query->close();
+    }
+    mysqli_close($link);
+    return false;
+  }
+
     /**
      * verify authenticated to run POST method
      * @param String $password

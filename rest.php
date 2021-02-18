@@ -288,8 +288,15 @@ function selectBound()
       else {
         $protocol = "https://";
       }
+
+      // check if Ark URL existed from install.php, otherwise set current URL
+      $arkURL = Database::getArkURL();
+      if (!isset($arkURL) || empty($arkURL)) {
+        $arkURL = $protocol . $_SERVER['HTTP_HOST'];
+      }
+
       // establish Ark URL
-      $r['ark_url'] = $protocol . $_SERVER['HTTP_HOST'] . "/ark:/" . $currentID;
+      $r['ark_url'] = rtrim($arkURL,"/") . "/ark:/" . $currentID;
     }
 
     // if the loop reach the last pair of elements (for incompleted bind)
