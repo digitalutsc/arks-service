@@ -59,8 +59,6 @@ function lookup($db, $ark_id, $field = "")
   }
   $where = 'where _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$field.'$"';
 
-  error_log(print_r("SELECT _value FROM `$db` ". $where, true), 0);
-
   if ($query = mysqli_query($link, "SELECT  _value FROM `$db` ". $where)) {
 
     if (!mysqli_query($link, "SET @a:='this will not work'")) {
@@ -69,7 +67,6 @@ function lookup($db, $ark_id, $field = "")
     $results = $query->fetch_all();
 
     if (count($results) > 0) {
-      error_log(print_r($results[0][0], true), 0);
       return $results[0][0];
     }
 
