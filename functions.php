@@ -151,7 +151,7 @@ function dbpath(string $dbname = "")
 }
 
 /**
- *
+ * authentication function
  */
 function auth(){
     $realm = "Restricted area";
@@ -165,3 +165,20 @@ function auth(){
         die();
     }
 }
+
+
+/**
+ * Get NAA
+ * @return false|string
+ */
+function getNAA($db) {
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($db)) {
+    die(json_encode('Database not found'));
+  }
+  $noid = Database::dbopen($db, getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  $naa = Database::$engine->get(Globals::_RR . "/naa");
+  Database::dbclose($noid);
+  return json_encode($naa);
+}
+

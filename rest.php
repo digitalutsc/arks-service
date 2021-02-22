@@ -60,7 +60,7 @@ switch ($_GET['op']) {
         break;
     }
     case 'naa': {
-        echo getNAA();
+        echo getNAA($_GET['db']);
         break;
     }
     case 'prefix': {
@@ -374,21 +374,6 @@ function getURL($arkID) {
     $result = Database::$engine->select("_key = '$arkID\tURL'");
     Database::dbclose($noid);
     return json_encode($result);
-}
-
-/**
- * Get NAA
- * @return false|string
- */
-function getNAA() {
-    GlobalsArk::$db_type = 'ark_mysql';
-    if (!Database::exist($_GET['db'])) {
-        die(json_encode('Database not found'));
-    }
-    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-    $naa = Database::$engine->get(Globals::_RR . "/naa");
-    Database::dbclose($noid);
-    return json_encode($naa);
 }
 
 /**
