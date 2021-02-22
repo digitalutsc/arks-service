@@ -1,11 +1,3 @@
-<?php
-
-require_once "functions.php";
-
-// check if system installed. If not, redirect to installation page.
-init_system();
-?>
-
 <!DOCTYPE html>
 <!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
 <!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
@@ -52,7 +44,7 @@ init_system();
     <![endif]-->
 
     <!-- Favicons OLD
-    ================================================== 
+    ==================================================
     <link rel="shortcut icon" href="front/images/favicon.ico">
     <link rel="apple-touch-icon" href="front/images/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="72x72" href="front/images/apple-touch-icon-72x72.png">
@@ -79,8 +71,8 @@ init_system();
 </head>
 <body>
 
-<div id="page" class="page">    
-    
+<div id="page" class="page">
+
 <div class="pixfort_normal_1" id="section_header_1_dark">
           <div class="header_style header_nav_1 dark pix_builder_bg">
             <div class="container">
@@ -89,9 +81,9 @@ init_system();
                         <div class="containerss">
                             <div class="navbar-header">
                                 <img src="front/images/uploads/utsc-library-logo.png" class="pix_nav_logo" alt="" style="border-radius: 0px; border-color: rgb(255, 255, 255); border-style: none; border-width: 1px; width: 347px; height: 88px;">
-                            </div>                            
+                            </div>
                         </div><!-- /.container -->
-                        
+
                     </nav>
                 </div>
             </div><!-- container -->
@@ -118,8 +110,8 @@ init_system();
                                     <span class="editContent" style=""><span class="pix_text">You have landed on the home page for UTSC Library's ARK ID resolver</span></span>
                                 </span>
                            <a href="https://collections.digital.utsc.utoronto.ca" class="pix_button btn_normal bold_text red_bg " name="fff" data-selector=".pix_button" style="">
-                            <span data-selector="Footers" style="">Visit Digital Scholarship Collections</span></a> 
-                           
+                            <span data-selector="Footers" style="">Visit Digital Scholarship Collections</span></a>
+
                             </div>
                     </div>
                 </div><!-- container -->
@@ -127,7 +119,7 @@ init_system();
         </div>
     </div>
 
-    <div class="section_pointer" pix-name="video"></div><div class="dark" id="section_features_2_dark">  
+    <div class="section_pointer" pix-name="video"></div><div class="dark" id="section_features_2_dark">
         <div class="big_padding pix_builder_bg" style="outline-offset: -3px;">
             <div class="container">
                 <div class="sixteen columns">
@@ -182,7 +174,7 @@ init_system();
     </div>
 
 	<div class="normal_padding pix_builder_bg dark event_bg" id="section_normal_4_1" style="outline-offset: -3px;">
-		<div class="container ">       
+		<div class="container ">
 	            <div class="sixteen columns">
 	            	<div class="intro_div">
 	                	<p class="editContent" style="outline: none; cursor: default;">The University of Toronto Scarborough Library's Digital Scholarship Unit (DSU) provides UTSC-specific support for digital scholarship in the areas of data, the digital humanities, digital collections building, digital archiving, and scholarly communications.</p>

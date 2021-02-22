@@ -3,13 +3,14 @@
 namespace Noid\Lib\Custom;
 require_once 'NoidLib/lib/Storage/DatabaseInterface.php';
 require_once 'NoidLib/lib/Storage/MysqlDB.php';
-require_once 'NoidLib/custom/MysqlArkConf.php';
+require_once '../config/MysqlArkConf.php';
 
 use Noid\Lib\Storage\DatabaseInterface;
 use Noid\Lib\Storage\Database;
 use Noid\Lib\Custom\Noid\Lib\Custom;
 use \mysqli;
 use \mysqli_result;
+use Noid\Config\MysqlArkConf;
 
 
 class MysqlArkDB implements DatabaseInterface
@@ -129,7 +130,7 @@ class MysqlArkDB implements DatabaseInterface
         }
         return FALSE;
     }
-    
+
     /**
      * Query ark data with any general where clause
      * @param $where

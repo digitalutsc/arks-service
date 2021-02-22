@@ -1,15 +1,13 @@
 <?php
-require_once "functions.php";
+require_once 'config/MysqlArkConf.php';
 
-require_once 'NoidLib/custom/MysqlArkConf.php';
-use Noid\Lib\Custom\MysqlArkConf;
-use Noid\Lib\Custom\Database;
+use Noid\Config\MysqlArkConf;
 
 if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
   $uid = str_replace("ark:/", "", $_GET['q']);
 
   // get all database Ark related
-  $arkdbs = Database::showArkDatabases();
+  $arkdbs = showArkDatabases();
   // only proceed if already have ark_core db
   if (is_array($arkdbs) && count($arkdbs) > 0) {
     $url = "/404.php";
@@ -32,7 +30,7 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         $pid = lookup($db, $uid, "PID");
         if (!empty($pid)) {
           // found URL field bound associated with the ark id
-          $dns = trim(getNAA($db), '"');
+          $dns = getNAA($db);
           $url = "https://$dns/islandora/object/" . $pid;
           break;
         }
@@ -43,6 +41,7 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
 } else {
   print "invalid argument";
 }
+
 
 /**
  * Get Org registered info
@@ -76,3 +75,63 @@ function lookup($db, $ark_id, $field = "")
   return false;
 }
 
+function getNAA($db) {
+  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+  if (!$link) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
+  $where = "where _key = ':/naa'";
+
+
+  if ($query = mysqli_query($link, "SELECT * FROM `$db` ". $where)) {
+
+    if (!mysqli_query($link, "SET @a:='this will not work'")) {
+      printf("Error: %s\n", mysqli_error($query));
+    }
+    $results = $query->fetch_all();
+    if (count($results) > 0) {
+      return $results[0][1];
+    }
+
+    $query->close();
+  }
+  mysqli_close($link);
+  return false;
+}
+
+/**
+ * list all Arrk database
+ * @param string $name
+ */
+function showArkDatabases()
+{
+  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+  if (!$link) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
+
+  if ($query = mysqli_query($link, "SHOW TABLES")) {
+    if (!mysqli_query($link, "SET @a:='this will not work'")) {
+      printf("Error: %s\n", mysqli_error($query));
+    }
+    $results = $query->fetch_all();
+    $arkdbs = [];
+    foreach ($results as $db) {
+      // It starts with 'http'
+      if (!in_array($db[0], ['system', 'user'])) {
+        array_push($arkdbs, $db[0]);
+      }
+    }
+    $query->close();
+  }
+  mysqli_close($link);
+  return $arkdbs;
+}

@@ -1,25 +1,17 @@
 <?php
 
 require_once "functions.php";
-use Noid\Lib\Helper;
-use Noid\Lib\Noid;
-use Noid\Lib\Storage\DatabaseInterface;
-use Noid\Lib\Storage\MysqlDB;
-use Noid\Lib\Globals;
-use Noid\Lib\Db;
-use Noid\Lib\Log;
 
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
-use Noid\Lib\Custom\MysqlArkConf;
-use Noid\Lib\Custom\NoidArk;
+use Noid\Config\MysqlArkConf;
 
 ob_start();
 GlobalsArk::$db_type = 'ark_mysql';
 
 if (Database::isInstalled()) {
     // redirect to install.php
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit;
 }
 ?>
@@ -143,7 +135,7 @@ if (Database::isInstalled()) {
                 </div>
                 <div class="form-group">
                     <label for="enterFirstname">Ark ID's URL:</label>
-                    <input required type="text" class="form-control" id="enterOrgWebsite" name="enterOrgWebsite" placeholder="Enter your organization's website">
+                    <input type="text" class="form-control" id="enterOrgWebsite" name="enterOrgWebsite" placeholder="Enter your organization's website">
                     <p><strong>Note:</strong> If the Ark IDs resolver is located separatedly in a different site, please enter the domain name in this field. Otherwise your Ark URL will be: <br /> http://<?php echo $_SERVER['HTTP_HOST']; ?> </p>
                 </div>
                 <div class="form-group">

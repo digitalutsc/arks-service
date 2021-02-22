@@ -10,15 +10,13 @@ require_once 'NoidLib/lib/Globals.php';
 require_once 'NoidLib/lib/Noid.php';
 require_once 'NoidLib/lib/Storage/DatabaseInterface.php';
 
-use Noid\Lib\Db;
 use Noid\Lib\Generator;
 use Noid\Lib\Globals;
 use Noid\Lib\Helper;
 use Noid\Lib\Log;
-use Noid\Lib\Custom\NoidArk;
-use Noid\Lib\Custom\GlobalsArk;
 use \Exception;
 use Noid\Lib\Storage\DatabaseInterface;
+use Noid\Config\MysqlArkConf;
 
 class Database
 {

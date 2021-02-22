@@ -2,17 +2,11 @@
 require_once "functions.php";
 
 use Noid\Lib\Custom\NoidArk;
-use Noid\Lib\Helper;
-use Noid\Lib\Noid;
 use Noid\Lib\Storage\DatabaseInterface;
-use Noid\Lib\Storage\MysqlDB;
 use Noid\Lib\Globals;
-use Noid\Lib\Db;
-use Noid\Lib\Log;
 
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
-use Noid\Lib\Custom\MysqlArkConf;
 
 /**
  * Must pass database when call each request

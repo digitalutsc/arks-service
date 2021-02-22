@@ -648,7 +648,7 @@ $subheader .= "</p>";
                                                 $setActive = "<strong>Selected</srong>";
                                                 $highlight = 'class="table-success"';
                                             }
-                                            $metadata = json_decode(rest_get("/rest.php?db=" . $db . "&op=dbinfo"));
+                                            $metadata = json_decode(rest_get("/admin/rest.php?db=" . $db . "&op=dbinfo"));
                                             $detail = "<p>";
                                             foreach ((array)$metadata as $key => $value) {
                                                 $detail .= "<strong>$key</strong>: $value <br />";
