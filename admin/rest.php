@@ -137,7 +137,7 @@ function bulkbind(){
 
         if (!empty($_POST['data'][strtoupper('LOCAL_ID')])) {
             // if Local_ID valid, check if Local_ID existed.
-            $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['LOCAL_ID']."'");
+            $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['LOCAL_ID']."' and _value = '" . $_POST['data']['PID'] .'"' );
 
             // if Local_id existed, get Ark ID from LocalID
             if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
