@@ -1,5 +1,5 @@
-NoidLib/custom/MysqlArkConf.php
-db/*
+config/MysqlArkConf.php
+admin/db/*
 
 # exception to the rule
-!db/.gitkeep
+!admin/db/.gitkeep

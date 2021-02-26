@@ -1,6 +1,6 @@
 <?php
 
-require_once "includes.php";
+require_once "../includes.php";
 
 use Noid\Lib\Helper;
 use Noid\Lib\Noid;
@@ -97,7 +97,7 @@ function secureDecryption($stringToEncrypt, $decryption_key, $decryption_iv)
 function rest_get($req)
 {
     $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-
+    print_log(CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'] . $req);
     try {
       $cURLConnection = curl_init();
       curl_setopt($cURLConnection, CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'] . $req);
