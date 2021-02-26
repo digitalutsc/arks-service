@@ -405,7 +405,7 @@ $subheader .= "</p>";
         <div class="row">
             <div class="col-sm text-center">
                 <?php echo $subheader; ?>
-                <a style="margin-bottom: 20px" class="btn btn-danger" href="/logout.php">Logout</a>
+                <a style="margin-bottom: 20px" class="btn btn-danger" href="/admin/logout.php">Logout</a>
 
             </div>
         </div>
