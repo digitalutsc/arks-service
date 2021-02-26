@@ -116,90 +116,129 @@ function getFields($ark_id) {
 }
 
 /**
- * Handle ajax call for each row of CSV during bulk binding import
+ *  Handle ajax call for each row of CSV during bulk binding import
  *
  * @return false|string
  */
 function bulkbind(){
-    GlobalsArk::$db_type = 'ark_mysql';
-    if (!Database::exist($_GET['db'])) {
-        die(json_encode(['success' => 0, 'message' => 'Database not found']));
-    }
-    if (empty($_POST['security'])  ||  (Database::isAuth($_POST['security']) === false) ) {
-        die(json_encode(['success' => 401, 'message' => 'Security Credentials is invalid, Please verify it again.']));
-    }
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+    die(json_encode(['success' => 0, 'message' => 'Database not found']));
+  }
+  if (empty($_POST['security'])  ||  (Database::isAuth($_POST['security']) === false) ) {
+    die(json_encode(['success' => 401, 'message' => 'Security Credentials is invalid, Please verify it again.']));
+  }
 
-    $result = null;
-    if (is_array($_POST) && isset($_POST['data'])) {
-        $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
-        // capture identifier (strictly recommend first column)
-        $contact = time();
+  $result = null;
+  if (is_array($_POST) && isset($_POST['data'])) {
+    $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
+    // capture identifier (strictly recommend first column)
+    $contact = time();
 
-        if (!empty($_POST['data'][strtoupper('LOCAL_ID')])) {
-            // if Local_ID valid, check if Local_ID existed.
-            $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['LOCAL_ID']."' and _value = '" . $_POST['data']['PID'] .'"' );
-
-            // if Local_id existed, get Ark ID from LocalID
-            if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
-                $identifier = preg_split('/\s+/', $checkExistedLocalID[0]['_key'])[0];
-            }
-            else { // if Local_ID is not existed, Look for Ark ID, this is for ingesting to update existing Ark
-
-                // if Ark ID not in CSV, minting new Ark ID
-                if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
-                    // mint a new ark id
-                    $identifier = NoidArk::mint($noid, $contact);
-                }
-                else {
-                    // obtain Ark ID to do update
-                    $identifier = $_POST['data'][strtoupper('Ark_ID')];
-                }
-            }
-        }
-        else {
-            // TODO: if Local ID is empty, go for PID as unique check
-            if (!empty($_POST['data'][strtoupper('PID')])) {
-                $checkExistedPID = Database::$engine->select("_value = '".$_POST['data']['PID']."'");
-
-                // if Local_id existed, get Ark ID from LocalID
-                if (is_array($checkExistedPID) && count($checkExistedPID) > 0) {
-                    $identifier = preg_split('/\s+/', $checkExistedPID[0]['_key'])[0];
-                }else {
-                    // if Ark ID not in CSV, minting new Ark ID
-                    if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
-                        // mint a new ark id
-                        $identifier = NoidArk::mint($noid, $contact);
-                    }
-                    else {
-                        // obtain Ark ID to do update
-                        $identifier = $_POST['data'][strtoupper('Ark_ID')];
-                    }
-                }
-            }
-            else {
-                // from PID not find the Ark ID, mint it
-                if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
-                    // mint a new ark id
-                    $identifier = NoidArk::mint($noid, $contact);
-                }
-                else {
-                    $identifier = $_POST['data'][strtoupper('Ark_ID')];
-                }
-            }
-
-        }
-
+    if (!empty($_POST['data'][strtoupper('Ark_ID')])) { // any pending data must has Ark_ID column
+        // check if the ARK ID has been bound before
         foreach ($_POST['data'] as $key => $pair) {
-            if ($key !== strtoupper('Ark_ID')) {
-                // check if ark ID exist
-                NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($key), $pair);
-            }
+          if ($key !== strtoupper('Ark_ID')) {
+            // check if ark ID exist
+            $identifier = $_POST['data'][strtoupper('Ark_ID')];
+            NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($key), $pair);
+          }
         }
         Database::dbclose($noid);
         return json_encode(['success' => 1]);
     }
-    return json_encode(['success' => 0, 'message' => 'Invalid data imported']);
+    else {
+      // todo: flag error of missing Ark ID column
+      return json_encode(['success' => 0]);
+    }
+  }
+}
 
+/**
+ * (Old, unused) This function can handle bulk bind without mint first
+ * But disabled because the duplication check with unique Local ID not valid anymore
+ *
+ * @return false|string
+ */
+function free_bulkbind(){
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+    die(json_encode(['success' => 0, 'message' => 'Database not found']));
+  }
+  if (empty($_POST['security'])  ||  (Database::isAuth($_POST['security']) === false) ) {
+    die(json_encode(['success' => 401, 'message' => 'Security Credentials is invalid, Please verify it again.']));
+  }
+
+  $result = null;
+  if (is_array($_POST) && isset($_POST['data'])) {
+    $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
+    // capture identifier (strictly recommend first column)
+    $contact = time();
+
+    if (!empty($_POST['data'][strtoupper('LOCAL_ID')])) {
+      // if Local_ID valid, check if Local_ID existed.
+      $checkExistedLocalID = Database::$engine->select("_value = '".$_POST['data']['LOCAL_ID']."'");
+
+      // if Local_id existed, get Ark ID from LocalID
+      if (is_array($checkExistedLocalID) && count($checkExistedLocalID) > 0) {
+        $identifier = preg_split('/\s+/', $checkExistedLocalID[0]['_key'])[0];
+      }
+      else { // if Local_ID is not existed, Look for Ark ID, this is for ingesting to update existing Ark
+
+        // if Ark ID not in CSV, minting new Ark ID
+        if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
+          // mint a new ark id
+          $identifier = NoidArk::mint($noid, $contact);
+        }
+        else {
+          // obtain Ark ID to do update
+          $identifier = $_POST['data'][strtoupper('Ark_ID')];
+        }
+      }
+    }
+    else {
+      // TODO: if Local ID is empty, go for PID as unique check
+      if (!empty($_POST['data'][strtoupper('PID')])) {
+        $checkExistedPID = Database::$engine->select("_value = '".$_POST['data']['PID']."'");
+
+        // if Local_id existed, get Ark ID from LocalID
+        if (is_array($checkExistedPID) && count($checkExistedPID) > 0) {
+          $identifier = preg_split('/\s+/', $checkExistedPID[0]['_key'])[0];
+        }else {
+          // if Ark ID not in CSV, minting new Ark ID
+          if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
+            // mint a new ark id
+            $identifier = NoidArk::mint($noid, $contact);
+          }
+          else {
+            // obtain Ark ID to do update
+            $identifier = $_POST['data'][strtoupper('Ark_ID')];
+          }
+        }
+      }
+      else {
+        // from PID not find the Ark ID, mint it
+        if (empty($_POST['data'][strtoupper('Ark_ID')] )) {
+          // mint a new ark id
+          $identifier = NoidArk::mint($noid, $contact);
+        }
+        else {
+          $identifier = $_POST['data'][strtoupper('Ark_ID')];
+        }
+      }
+
+    }
+
+    foreach ($_POST['data'] as $key => $pair) {
+      if ($key !== strtoupper('Ark_ID')) {
+        // check if ark ID exist
+        NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($key), $pair);
+      }
+    }
+    Database::dbclose($noid);
+    return json_encode(['success' => 1]);
+  }
+  return json_encode(['success' => 0, 'message' => 'Invalid data imported']);
 
 }
 

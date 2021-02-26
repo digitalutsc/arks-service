@@ -928,7 +928,7 @@ $subheader .= "</p>";
                             <div class="modal fade" id="bulkBindModal" tabindex="-1"
                                  aria-labelledby="bulkBindModalLabel"
                                  aria-hidden="true" data-backdrop="static" data-keyboard="false">
-                                <div id="bulk-binding-modal" class="modal-dialog modal-lg"">
+                                <div id="bulk-binding-modal" class="modal-dialog modal-lg">
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h5 class="modal-title" id="bulkBindModalLabel">Bulk Binding</h5>
@@ -946,20 +946,18 @@ $subheader .= "</p>";
                                                             <p><strong><u>Note:</u></strong> For this section, please
                                                                 follow:</p>
                                                             <ol>
-                                                                <li><strong>Download one of the below:</strong>
-                                                                    <ul>
-                                                                        <li><a href="template_new.csv" download>template_new.csv</a> for <u>creating & binding</u> new Ark IDs </li>
-                                                                        <li><a href="template_update.csv" download>template_update.csv</a> for <u>updating</u> existing Ark IDs </li>
-                                                                    </ul>
-                                                                <li><strong>To avoid any duplication, please make sure to always keep those essential columns (details below) which are included in the template CSVs above</strong> and add more column(s) if needed for other metadata.
-                                                                    <ul>
-                                                                        <li><u>LOCAL_ID</u>: unique ID of the object which is associate with an Ark ID.</li>
-                                                                        <li><u>PID</u>: persistent Identifiers</li>
-                                                                        <li><u>URL</u>: will be redirected to after Ark ID's URL Resolver.</li>
-                                                                        <li><u>Ark_ID</u>: existed or previously minted (for updating) .</li>
-                                                                    </ul>
-                                                                </li>
-                                                                <li><strong>Upload the CSV to start the process.</strong></li>
+                                                              <li>Mint Ark ID(s)</li>
+                                                              <li>Download <a href="template.csv" download>template.csv</a>, place the above minted Ark IDs into the ARK_ID column.</li>
+                                                              <li><strong>There no limitation of data field(s) to be bound with an Ark ID. For UTSC only, highly recommend to have the below essential columns which are already included in the template CSVs above</strong> and add more column(s) if needed for other metadata.
+                                                                <ul>
+                                                                  <li><u>Ark_ID</u>: MANDATORY for binding.</li>
+                                                                  <li><u>LOCAL_ID</u>: Object's unique ID in the repository.</li>
+                                                                  <li><u>PID</u>: persistent Identifiers</li>
+                                                                  <li><u>URL</u>: will be redirected to after Ark ID's URL Resolver.</li>
+                                                                  <li><u>COLLECTION</u>(Optional): to assist on searching in the table.</li>
+                                                                </ul>
+                                                              </li>
+                                                              <li><strong>Upload the CSV to start the process.</strong></li>
                                                             </ol>
                                                         </div>
                                                         <hr/>
@@ -1106,20 +1104,12 @@ $subheader .= "</p>";
                                                             var keys = csvResult[0].split(',').map(function (x) {
                                                                 return x.toUpperCase().trim().replace(/ /g, "_");
                                                             });
+                                                            console.log(keys);
                                                             // check if the CSV must have 3 mandatory columns
-                                                            if ($.inArray("PID", keys) === -1 ||
-                                                                $.inArray("LOCAL_ID", keys) === -1 ||
-                                                                $.inArray("URL", keys) === -1) {
-
+                                                            if ($.inArray("ARK_ID", keys) === -1) {
                                                                 // show message.
                                                                 $('#message').html('<div class="alert alert-danger">' +
-                                                                    ' <li>Make sure your CSV has 3 mandatory columns:\n' +
-                                                                    '<ul>\n' +
-                                                                    '<li>LOCAL_ID,</li>\n' +
-                                                                    '<li>PID.</li>\n' +
-                                                                    '<li>URL</li>\n' +
-                                                                    '</ul>\n' +
-                                                                    '</li>'
+                                                                    ' <p>Make sure your CSV has the mandatory columns: Ark_ID </p>'
                                                                     + '</div>');
 
                                                                 // disable message shown
@@ -1177,7 +1167,9 @@ $subheader .= "</p>";
                                                 // send POST request for each line of read CSV file
                                                 $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata, security: password})
                                                     .done(function (data) {
-                                                        var result =  JSON.parse(data);
+                                                      console.log(data);
+
+                                                      var result =  JSON.parse(data);
                                                         if (result.success == 401) {
 
                                                             // display unauthrize message
