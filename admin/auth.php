@@ -11,7 +11,7 @@ use Noid\Lib\Log;
 
 use Noid\Lib\Custom\Database;
 use Noid\Lib\Custom\GlobalsArk;
-use Noid\Lib\Custom\MysqlArkConf;
+use Noid\Config\MysqlArkConf;
 use Noid\Lib\Custom\NoidArk;
 
 ob_start();
