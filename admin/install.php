@@ -109,7 +109,7 @@ if (Database::isInstalled()) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
 
-                $sql = 'INSERT INTO user  VALUES (NULL, "' . $_POST["enterUsername"] . '", "' . $_POST["enterUserFirstname"] . '", "' . $_POST["enterUserLastname"] . '", "' . secureEncryption($_POST["enterPassword"], MysqlArkConf::$encryption_key, MysqlArkConf::$securekey) . '")';
+                $sql = 'INSERT INTO user  VALUES (NULL, "' . $_POST["enterUsername"] . '", "' . $_POST["enterUserFirstname"] . '", "' . $_POST["enterUserLastname"] . '", "' . secureEncryption($_POST["enterPassword"], "VUQY%IdGWlBT!83YCM6TtY5X-uIYv)i1AEyk67VpusyCDXZW0", 2734025702752005) . '")';
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }

@@ -390,7 +390,7 @@ class Database
      */
     public static function isAuth(string $password)
     {
-        $encryptPasswd = secureEncryption($password, MysqlArkConf::$encryption_key, MysqlArkConf::$securekey);
+        $encryptPasswd = secureEncryption($password, "VUQY%IdGWlBT!83YCM6TtY5X-uIYv)i1AEyk67VpusyCDXZW0", 2734025702752005);
 
         $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
