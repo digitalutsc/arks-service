@@ -118,7 +118,7 @@ class MysqlArkConf
 ----------------------------------
 
 ## Minting, (bulk) binding Ark IDs: 
-* Please visit full detail at https://ark.digital.utsc.utoronto.ca/admin/docs/manual.html#Setting-up-Ark-creationbinding
+* Please visit full detail at https://github.com/digitalutsc/ark-services/wiki/About-ARK-Identifiers-Services#setting-up-ark-creationbinding
 
 ## Contact
 * Kyle Huynh (kyle.huynh@utoronto.ca)
