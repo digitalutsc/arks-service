@@ -142,9 +142,7 @@ $subheader .= "</p>";
 
 
                 $('#enterToClearIdentifier').on('change', function (e) {
-                    /*//console.log(this.value,
-                        this.options[this.selectedIndex].value,
-                        $(this).find("option:selected").val());*/
+
                     var selected = this.value;
                     $('#enterKeytoClear').empty();
 
@@ -786,8 +784,21 @@ $subheader .= "</p>";
                         <div class="row">
                             <div class="col-sm-12">
                                 <?php
+                                // todo: if "all field" is checked, delete all fields bound instead
                                 $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
-                                $status = NoidArk::clearBind($noid, $_POST['enterToClearIdentifier'], $_POST['enterKeytoClear']);
+                                if (isset($_POST['AllFieldcheckbox']) && $_POST['AllFieldcheckbox'] === "all-fields") {
+                                  $where = "_key REGEXP '^" . $_POST['enterToClearIdentifier'] ."\t' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+                                  $result = Database::$engine->select($where);
+
+                                  $json = array();
+                                  foreach ($result as $row) {
+                                    $status = NoidArk::clearBind($noid, $_POST['enterToClearIdentifier'], trim(str_replace($_POST['enterToClearIdentifier'],"", $row['_key'])));
+                                  }
+                                }
+                                else {
+                                  $status = NoidArk::clearBind($noid, $_POST['enterToClearIdentifier'], $_POST['enterKeytoClear']);
+                                }
+
                                 if ($status !== false) {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
@@ -815,14 +826,14 @@ $subheader .= "</p>";
                         <div class="col-sm-12">
                             <button type="button" class="btn btn-primary" data-toggle="modal"
                                     data-target="#bindsetModal">
-                                Single Bind Set
+                                Binding
                             </button>
                             <div class="modal fade" id="bindsetModal" tabindex="-1" aria-labelledby="bindsetModalLabel"
                                  aria-hidden="true">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="bindsetModalLabel">Bind Set</h5>
+                                            <h5 class="modal-title" id="bindsetModalLabel">Binding an Ark ID</h5>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -864,7 +875,7 @@ $subheader .= "</p>";
                             <!-- Remove Metadata set -->
                             <button type="button" class="btn btn-secondary" data-toggle="modal"
                                     data-target="#clearbindsetModal">
-                                Remove Metadata
+                                Unbinding
                             </button>
                             <div class="modal fade" id="clearbindsetModal" tabindex="-1"
                                  aria-labelledby="clearbindsetModalLabel"
@@ -872,7 +883,7 @@ $subheader .= "</p>";
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="clearbindsetModalLabel">Remove Metadata</h5>
+                                            <h5 class="modal-title" id="clearbindsetModalLabel">Unbinding an Ark ID</h5>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -892,8 +903,8 @@ $subheader .= "</p>";
                                                             </select>
                                                         </div>
 
-                                                        <div class="form-group">
-                                                            <label for="enterKeytoClear">Name:</label>
+                                                        <div class="form-group" id="group-unbind-fields">
+                                                            <label for="enterKeytoClear">Field:</label>
                                                             <select id="enterKeytoClear"
                                                                     name="enterKeytoClear" class="form-control">
                                                                 <option value="-1" selected disabled>-- Select --
@@ -901,16 +912,22 @@ $subheader .= "</p>";
                                                             </select>
                                                         </div>
 
-                                                        <!--<div class="form-group">
-                                                            <label for="enterKey">Key:</label>
-                                                            <input type="text" class="form-control" id="enterKey"
-                                                                   name="enterKey" required>
-                                                        </div>-->
-                                                        <input type="submit" name="clear-bindset" value="Clear"
-                                                               class="btn btn-primary"/>
-                                                        <button type="button" class="btn btn-secondary"
-                                                                data-dismiss="modal">
-                                                            Close
+                                                        <div class="form-check" style="padding-bottom: 25px;">
+                                                          <input class="form-check-input" type="checkbox" value="all-fields" id="AllFieldcheckbox" name="AllFieldcheckbox">
+                                                          <label class="form-check-label" for="AllFieldcheckbox">
+                                                            All fields
+                                                          </label>
+                                                        </div>
+
+                                                        <div class="modal-footer">
+                                                          <input type="submit" name="clear-bindset" value="Unbind"
+                                                                 class="btn btn-primary"/>
+
+                                                          <button type="button" class="btn btn-secondary"
+                                                                  data-dismiss="modal">
+                                                              Close
+                                                          </button>
+                                                        </div>
                                                     </form>
                                                 </div>
                                             </div>
@@ -1020,6 +1037,15 @@ $subheader .= "</p>";
                                             $('#btn-process').hide();
                                             $('#btn-process').prop('disabled', true);
 
+                                            $("#AllFieldcheckbox").click(function(){
+                                              if($(this).prop("checked") == true){
+                                                $("#group-unbind-fields").hide();
+                                              }
+                                              else if($(this).prop("checked") == false){
+                                                $("#group-unbind-fields").show();
+                                              }
+                                            });
+
                                             // handle form submission
                                             $('#form-import').on('submit', function (event) {
                                                 event.preventDefault();
@@ -1104,7 +1130,6 @@ $subheader .= "</p>";
                                                             var keys = csvResult[0].split(',').map(function (x) {
                                                                 return x.toUpperCase().trim().replace(/ /g, "_");
                                                             });
-                                                            console.log(keys);
                                                             // check if the CSV must have 3 mandatory columns
                                                             if ($.inArray("ARK_ID", keys) === -1) {
                                                                 // show message.
@@ -1261,7 +1286,7 @@ $subheader .= "</p>";
                             </div>
                         </div>
                     </div>
-                    <div class="row">
+                    <div class="row" style="margin-top:20px;">
                         <div class="col-sm-12">
 
                             <div class="row">
