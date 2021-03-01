@@ -67,11 +67,6 @@ class MysqlArkConf
     static public $mysql_dbname = ''; // please enter the name of database which you have just created.  
     static public $mysql_port = 3306;
     static public $path_db_backup = "/var/www/ark-services/db/backup/";
-    
-    // for Admin account's password encryption/decryption
-   static public $encryption_key = "VUQY%IdGWlBT!83YCM6TtY5X-uIYv)i1AEyk67VpusyCDXZW0";
-    static public $securekey = 2734025702752005;
-    
 }
 
 ````
@@ -112,9 +107,6 @@ class MysqlArkConf
     static public $mysql_port = 3306;
     static public $path_db_backup = "/var/www/ark-services/db/backup/"; // backup directory for database snapshot
     
-    // for Account password encryption/decryption
-    static public $encryption_key = "VUQY%IdGWlBT!83YCM6TtY5X-uIYv)i1AEyk67VpusyCDXZW0";
-    static public $securekey = 2734025702752005;  
 }
 
 ````
