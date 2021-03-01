@@ -323,11 +323,12 @@ function selectBound()
       }
 
       // check if Ark URL existed from install.php, otherwise set current URL
-      $arkURL = Database::getArkURL();
+      /*$arkURL = Database::getArkURL();
       if (!isset($arkURL) || empty($arkURL)) {
         $arkURL = $protocol . $_SERVER['HTTP_HOST'];
-      }
+      }*/
 
+      $arkURL = $protocol . $_SERVER['HTTP_HOST'];
       // establish Ark URL
       $r['ark_url'] = rtrim($arkURL,"/") . "/ark:/" . $currentID;
     }

@@ -323,7 +323,7 @@ $subheader .= "</p>";
                             "data": "metadata",
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
-                                    var now = row.LOCAL_ID;
+                                    var now = row.id;
                                     if (now !== undefined) {
                                         now = now.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '');
                                     }

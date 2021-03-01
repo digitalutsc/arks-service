@@ -134,9 +134,9 @@ if (Database::isInstalled()) {
                     <input required type="text" class="form-control" id="enterFirstname" name="enterOrgName" placeholder="Enter your organization's name">
                 </div>
                 <div class="form-group">
-                    <label for="enterFirstname">Ark ID's URL:</label>
+                    <label for="enterFirstname">Organization's URL:</label>
                     <input type="text" class="form-control" id="enterOrgWebsite" name="enterOrgWebsite" placeholder="Enter your organization's website">
-                    <p><strong>Note:</strong> If the Ark IDs resolver is located separatedly in a different site, please enter the domain name in this field. Otherwise your Ark URL will be: <br /> http://<?php echo $_SERVER['HTTP_HOST']; ?> </p>
+                    <!--<p><strong>Note:</strong> If the Ark IDs resolver is located separatedly in a different site, please enter the domain name in this field. Otherwise your Ark URL will be: <br /> http://<?php //echo $_SERVER['HTTP_HOST']; ?> </p>-->
                 </div>
                 <div class="form-group">
                     <h3 class="text-center">System Admin User</h3>
