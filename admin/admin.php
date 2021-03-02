@@ -98,8 +98,18 @@ $subheader .= "</p>";
                 content: "✔";
                 margin-top: -11px;
                 margin-left: -4px;
-                text-align: center;
                 text-shadow: rgb(176, 190, 217) 1px 1px, rgb(176, 190, 217) -1px -1px, rgb(176, 190, 217) 1px -1px, rgb(176, 190, 217) -1px 1px;
+            }
+
+            table.dataTable th, table.dataTable td {
+              text-align: center;
+            }
+
+            table.dataTable thead th.select-checkbox:before, table.dataTable tbody th.select-checkbox:before {
+              content: "\00a0 \00a0 \00a0\00a0\00a0";
+              border: 1px solid black;
+              border-radius: 3px;
+              font-size: xx-small;
             }
         </style>
         <script>
@@ -967,10 +977,10 @@ $subheader .= "</p>";
                                                               <li>Download <a href="template.csv" download>template.csv</a>, place the above minted Ark IDs into the ARK_ID column.</li>
                                                               <li><strong>There no limitation of data field(s) to be bound with an Ark ID. For UTSC only, highly recommend to have the below essential columns which are already included in the template CSVs above</strong> and add more column(s) if needed for other metadata.
                                                                 <ul>
-                                                                  <li><u>Ark_ID</u>: MANDATORY for binding.</li>
+                                                                  <li><u><strong>Ark_ID</strong></u>: MANDATORY field for binding.</li>
+                                                                  <li><u><strong>URL</strong></u>: MANDATORY field, the Resolver looks for this field to redirection.</li>
                                                                   <li><u>LOCAL_ID</u>: Object's unique ID in the repository.</li>
                                                                   <li><u>PID</u>: persistent Identifiers</li>
-                                                                  <li><u>URL</u>: will be redirected to after Ark ID's URL Resolver.</li>
                                                                   <li><u>COLLECTION</u>(Optional): to assist on searching in the table.</li>
                                                                 </ul>
                                                               </li>
