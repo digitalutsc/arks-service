@@ -8,6 +8,8 @@ Base Projects:
 * https://github.com/Daniel-KM/Noid4Php
 * https://github.com/AkioUnity/Noid4Php
 
+Full Documentation at: https://github.com/digitalutsc/ark-services/wiki
+
 ## Requirement
 
 This application required one of the following environments to be setup: 
@@ -15,10 +17,10 @@ This application required one of the following environments to be setup:
 * OR [LAMP stack](https://www.digitalocean.com/community/tutorials/how-to-install-linux-apache-mysql-php-lamp-stack-on-ubuntu-20-04) to be installed
 
 ## Installation
-https://github.com/digitalutsc/ark-services/wiki#deployment
+Please follow the steps at https://github.com/digitalutsc/ark-services/wiki#deployment
 
 ## Usage
-* Please visit full documentation at https://github.com/digitalutsc/ark-services/wiki#create-a-collection-of-ark-ids
+Please visit full documentation at https://github.com/digitalutsc/ark-services/wiki#create-a-collection-of-ark-ids
 
 ## Contact
 * Kyle Huynh (kyle.huynh@utoronto.ca)
