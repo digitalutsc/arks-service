@@ -47,19 +47,13 @@ $subheader .= "</p>";
     <html>
     <head>
         <title>Ark Services</title>
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-              integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
-              crossorigin="anonymous">
-        <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+        <link rel="stylesheet" href="includes/css/bootstrap.min.css">
+        <script type="text/javascript" language="javascript" src="includes/js/jquery-3.6.0.min.js"></script>
 
 
         <!-- bootsrap -->
-        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
-                integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
-                crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
-                integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
-                crossorigin="anonymous"></script>
+        <script src="includes/js/popper.min.js"></script>
+        <script src="includes/js/bootstrap.min.js"></script>
 
         <!-- datatables -->
         <link rel="stylesheet"
@@ -68,21 +62,21 @@ $subheader .= "</p>";
               href="https://cdn.datatables.net/select/1.3.1/css/select.dataTables.min.css">
 
         <script type="text/javascript" language="javascript"
-                src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+                src="includes/js/jquery.dataTables.min.js"></script>
         <script type="text/javascript" language="javascript"
-                src="https://cdn.datatables.net/buttons/1.6.4/js/dataTables.buttons.min.js"></script>
+                src="includes/js/dataTables.buttons.min.js"></script>
         <script type="text/javascript" language="javascript"
-                src="https://cdn.datatables.net/buttons/1.6.4/js/buttons.html5.min.js"></script>
+                src="includes/js/buttons.html5.min.js"></script>
         <script type="text/javascript" language="javascript"
-                src="https://cdn.datatables.net/select/1.3.1/js/dataTables.select.min.js"></script>
+                src="includes/js/dataTables.select.min.js"></script>
         <script type="text/javascript" language="javascript"
-                src="https://cdn.datatables.net/plug-ins/1.10.22/sorting/natural.js"></script>
+                src="includes/js/natural.js"></script>
 
         <!-- bootstrap select-->
         <link rel="stylesheet"
-              href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.1/js/i18n/defaults-en_US.js"></script>
+              href="includes/css/bootstrap-select.min.css">
+        <script src="includes/js/bootstrap-select.min.js"></script>
+        <script src="includes/js/defaults-en_US.js"></script>
 
         <style>
             .form-group.required .control-label:after {
