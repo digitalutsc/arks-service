@@ -1177,9 +1177,15 @@ $subheader .= "</p>";
                                                 // pulll preserve read data from CSV from local storage
                                                 var csvResult = JSON.parse(localStorage.getItem("importCSV"));
                                                 var password = JSON.parse(localStorage.getItem("syspasswd"));
-                                                var keys = csvResult[0].split(',').map(function (x) {
+                                                if (Array.isArray(csvResult)) {
+                                                  var keys = csvResult[0].split(',').map(function (x) {
                                                     return x.toUpperCase();
-                                                });
+                                                  });
+                                                }
+                                                else {
+                                                  return;
+                                                }
+
 
                                                 // start binding each line of CSV file
                                                 var item = csvResult[index];
@@ -1242,14 +1248,14 @@ $subheader .= "</p>";
                                                     $('#total_data').text(total_data);
 
                                                     // calculate percentage of ongoing process.
-                                                    var width = Math.round(((index + 1) / total_data) * 100);
+                                                    var width = ((index + 1) / total_data) * 100;
 
                                                     // update the progress bar.
                                                     $('#process_data').text(index);
                                                     $('.progress-bar').css('width', width + '%');
 
                                                     // if the process reaches 100%
-                                                    if (width >= 99) {
+                                                    if (width >= 100) {
 
                                                         // dismiss the progress bar
                                                         $('#process').css('display', 'none');
