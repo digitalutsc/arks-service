@@ -80,7 +80,7 @@ if (Database::isInstalled()) {
                 $conn->close();
 
                 $conn = new mysqli(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
-                $sql = 'CREATE TABLE IF NOT EXISTS system (
+                $sql = 'CREATE TABLE IF NOT EXISTS `system` (
                     `_key` VARCHAR(128) NOT NULL PRIMARY KEY,
                     `_value` VARCHAR(128) NOT NULL,
                     UNIQUE (_key)
@@ -89,7 +89,7 @@ if (Database::isInstalled()) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
 
-                $sql = "CREATE TABLE IF NOT EXISTS user (
+                $sql = "CREATE TABLE IF NOT EXISTS `user` (
                         id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                         username VARCHAR(50) NOT NULL UNIQUE,
                         firstname VARCHAR(30) NOT NULL,
