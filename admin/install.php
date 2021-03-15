@@ -118,7 +118,7 @@ if (Database::isInstalled()) {
             }
 
             $conn->close();
-            header("Location: install.php");
+            header("Location: admin.php");
         }
         ?>
     </div>
