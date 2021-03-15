@@ -100,16 +100,16 @@ if (Database::isInstalled()) {
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
-                $sql = 'INSERT INTO system VALUES ("Organization Name", "' . $_POST['enterOrgName'] . '")';
+                $sql = 'INSERT INTO `system` VALUES ("Organization Name", "' . $_POST['enterOrgName'] . '")';
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
-                $sql = 'INSERT INTO system VALUES ("Organization Website", "' . $_POST['enterOrgWebsite'] . '")';
+                $sql = 'INSERT INTO `system` VALUES ("Organization Website", "' . $_POST['enterOrgWebsite'] . '")';
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
 
-                $sql = 'INSERT INTO user  VALUES (NULL, "' . $_POST["enterUsername"] . '", "' . $_POST["enterUserFirstname"] . '", "' . $_POST["enterUserLastname"] . '", "' . secureEncryption($_POST["enterPassword"], "VUQY%IdGWlBT!83YCM6TtY5X-uIYv)i1AEyk67VpusyCDXZW0", 2734025702752005) . '")';
+                $sql = 'INSERT INTO `user`  VALUES (NULL, "' . $_POST["enterUsername"] . '", "' . $_POST["enterUserFirstname"] . '", "' . $_POST["enterUserLastname"] . '", "' . secureEncryption($_POST["enterPassword"], "VUQY%IdGWlBT!83YCM6TtY5X-uIYv)i1AEyk67VpusyCDXZW0", 2734025702752005) . '")';
                 if ($conn->query($sql) === FALSE) {
                     echo '<div class="alert alert-danger" role="alert">Error creating table: ' . $conn->error . '</div>';
                 }
