@@ -1,10 +1,40 @@
+<html>
+<head>
+  <style>
+    .loader{
+      position: fixed;
+      left: 0px;
+      top: 0px;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: url('/front/images/loading.gif')
+      50% 50% no-repeat rgb(249,249,249);
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+<div class="loader"></div>
+</body>
+</html>
+
 <?php
 require_once 'config/MysqlArkConf.php';
 
 use Noid\Config\MysqlArkConf;
 
 if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
-  $uid = str_replace("ark:/", "", $_GET['q']);
+  // processing the Ark URL
+  $params = str_replace("ark:/", "", $_GET['q']);
+  $parts = array_filter(explode("/", $params));
+
+  // get Ark ID
+  $arkid = $parts[0] . '/'. $parts[1];
 
   // get all database Ark related
   $arkdbs = showArkDatabases();
@@ -15,19 +45,41 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
     // loop through database and find matching one with prefix
     foreach ($arkdbs as $db) {
       // if ark ID found, look for URL fields first.
-      $result = lookup($db, $uid, "URL");
+
+      // if there is Qualifier, look up for the qualifier, ignore the ark id
+      if (count($parts) > 2) {
+        // establish qualifier from Ark URL
+        $total = count($parts);
+        $qualifier = "";
+        for ($i = 2; $i < $total; $i++) {
+          $qualifier .= $parts[$i];
+          if ($i != $total - 1) {
+            $qualifier .= "/";
+          }
+        }
+
+        // looking up
+        $result = lookup($db, $arkid, strtoupper($qualifier));
+        if (!empty($result)) {
+          $url = $result;
+          break;
+        }
+      }
+
+      $result = lookup($db, $arkid, "URL");
       if (!empty($result)) {
         // found URL field bound associated with the ark id
         $url = $result;
         break;
       }
     }
+
     // exclusive for UTSC, may removed
     if ($url === "/404.php") {
       // not found URL, get PID and established the URL
       foreach ($arkdbs as $db) {
         // if ark ID found, look for URL fields first.
-        $pid = lookup($db, $uid, "PID");
+        $pid = lookup($db, $arkid, "PID");
         if (!empty($pid)) {
           // found URL field bound associated with the ark id
           $dns = getNAA($db);
@@ -36,12 +88,12 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         }
       }
     }
+    //print_r("<br />$url");
     header("Location: $url");
   }
 } else {
   print "invalid argument";
 }
-
 
 /**
  * Get Org registered info
