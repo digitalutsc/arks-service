@@ -101,6 +101,11 @@ $subheader .= "</p>";
               border-radius: 3px;
               font-size: xx-small;
             }
+
+            .dropdown button {
+              padding-left: 0;
+              color: #007bff;
+            }
         </style>
         <script>
             var noidTemplates = {
@@ -343,15 +348,23 @@ $subheader .= "</p>";
                             "targets": 3,
                             "data": "ark_url",
                             "render": function (data, type, row) {
+                                data.sort();
                                 var count = data.length;
-                                var ark_urls = '<p><a target="_blank" href="' + data[0] + '">' + data[0] + '</a></p>';
+                                var ark_urls = '';
                                 if (count >1) {
-                                   ark_urls += "<p>Derivatives:</p>";
-                                   ark_urls += "<ul>";
-                                  for (var i = 1; i < count; i ++){
-                                    ark_urls += "<li>"+'<a target="_blank" href="' + data[i] + '">' + data[i] + '</a>'+"</li>"
+                                   <?php $dropdown = "derevatives-". time(); ?>
+                                   ark_urls += '<div class="dropdown">' +
+                                                  '<button class="btn btn-default dropdown-toggle" type="button" id="<?php echo $dropdown; ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">'
+                                                    + data[0] +' <span class="caret"></span>' +
+                                                '</button>';
+                                   ark_urls += '<div class="dropdown-menu" aria-labelledby="<?php echo $dropdown; ?>">';
+                                  for (var i = 0; i < count; i ++){
+                                    ark_urls += '<a class="dropdown-item" target="_blank" href="' + data[i] + '">' + data[i] + '</a>';
+                                    if (i === 0) {
+                                      ark_urls += '<div class="dropdown-divider"></div><h6 class="dropdown-header">With Qualifiers:</h6>';
+                                    }
                                   }
-                                  ark_urls += "<ul>";
+                                  ark_urls += "</div></div>";
                                 }
                                 else {
                                   ark_urls = '<a target="_blank" href="' + data[0] + '">' + data[0] + '</a>';
