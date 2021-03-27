@@ -285,6 +285,7 @@ function selectBound()
   $r = [];
   $countColumns = count($columns);
   $index = 1;
+  $qualifiers = [];
 
   foreach ($columns as $column) {
     $column = (array)$column;
@@ -322,15 +323,16 @@ function selectBound()
         $protocol = "https://";
       }
 
-      // check if Ark URL existed from install.php, otherwise set current URL
-      /*$arkURL = Database::getArkURL();
-      if (!isset($arkURL) || empty($arkURL)) {
-        $arkURL = $protocol . $_SERVER['HTTP_HOST'];
-      }*/
-
       $arkURL = $protocol . $_SERVER['HTTP_HOST'];
       // establish Ark URL
-      $r['ark_url'] = rtrim($arkURL,"/") . "/ark:/" . $currentID;
+      $ark_url = rtrim($arkURL,"/") . "/ark:/" . $currentID;
+      $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
+
+      // if there is qualifier bound to an Ark ID, establish the link the link
+      if ($key_data[1] !== "URL" && filter_var($column['_value'], FILTER_VALIDATE_URL)) {
+        array_push($r['ark_url'], strtolower($ark_url. "/". $key_data[1]));
+      }
+
     }
 
     // if the loop reach the last pair of elements (for incompleted bind)
@@ -338,9 +340,9 @@ function selectBound()
       if(!array_key_exists('PID', $r)) {
         $r['PID'] = " ";
       }
-      if(!array_key_exists('LOCAL_ID', $r)) {
+      /*if(!array_key_exists('LOCAL_ID', $r)) {
         $r['LOCAL_ID'] = " ";
-      }
+      }*/
       array_push($result, $r);
     }
     $index++;

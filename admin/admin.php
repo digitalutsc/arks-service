@@ -95,10 +95,6 @@ $subheader .= "</p>";
                 text-shadow: rgb(176, 190, 217) 1px 1px, rgb(176, 190, 217) -1px -1px, rgb(176, 190, 217) 1px -1px, rgb(176, 190, 217) -1px 1px;
             }
 
-            table.dataTable th, table.dataTable td {
-              text-align: center;
-            }
-
             table.dataTable thead th.select-checkbox:before, table.dataTable tbody th.select-checkbox:before {
               content: "\00a0 \00a0 \00a0\00a0\00a0";
               border: 1px solid black;
@@ -276,7 +272,7 @@ $subheader .= "</p>";
                         {data: 'select'},
                         {data: 'id'},
                         {data: 'PID'},
-                        {data: 'LOCAL_ID'},
+                        //{data: 'LOCAL_ID'},
                         {data: 'ark_url'},
                         {data: 'metadata'},
                     ],
@@ -309,7 +305,7 @@ $subheader .= "</p>";
                             orderable: false,
                             targets: 4
                         },
-                        {
+                        /*{
                             "targets": 3,
                             "data": "LOCAL_ID",
                             "render": function (data, type, row) {
@@ -320,10 +316,10 @@ $subheader .= "</p>";
                                 }
 
                             }
-                        },
+                        },*/
 
                         {
-                            "targets": 5,
+                            "targets": 4,
                             "data": "metadata",
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
@@ -344,10 +340,24 @@ $subheader .= "</p>";
                             }
                         },
                         {
-                            "targets": 4,
+                            "targets": 3,
                             "data": "ark_url",
                             "render": function (data, type, row) {
-                                return '<a target="_blank" href="' + data + '">' + data + '</a>';
+                                var count = data.length;
+                                var ark_urls = '<p><a target="_blank" href="' + data[0] + '">' + data[0] + '</a></p>';
+                                if (count >1) {
+                                   ark_urls += "<p>Derivatives:</p>";
+                                   ark_urls += "<ul>";
+                                  for (var i = 1; i < count; i ++){
+                                    ark_urls += "<li>"+'<a target="_blank" href="' + data[i] + '">' + data[i] + '</a>'+"</li>"
+                                  }
+                                  ark_urls += "<ul>";
+                                }
+                                else {
+                                  ark_urls = '<a target="_blank" href="' + data[0] + '">' + data[0] + '</a>';
+                                }
+
+                                return ark_urls;
                             }
                         }
                     ]
@@ -557,7 +567,7 @@ $subheader .= "</p>";
                                    <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: 61220</small>
                                 </div>
                                  <div class="form-group">
-                                    <label class="control-label" for="enterDatabaseName">Redirect URL(NAA):</label>
+                                    <label class="control-label" for="enterDatabaseName">Name Assigning Authority (NAA):</label>
                                     <input type="text" class="form-control" id="enterRedirect" name="enterRedirect"
                                            />
                                    <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: collections.digital.utsc.utoronto.ca</small>
@@ -1307,7 +1317,7 @@ $subheader .= "</p>";
                                             <th></th>
                                             <th>Ark ID</th>
                                             <th>PID</th>
-                                            <th>LOCAL_ID</th>
+<!--                                            <th>LOCAL_ID</th>-->
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
                                         </tr>
