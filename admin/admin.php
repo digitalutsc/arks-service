@@ -102,8 +102,11 @@ $subheader .= "</p>";
               font-size: xx-small;
             }
 
-            .dropdown button {
+            .dropdown a.cus {
               padding-left: 0;
+              color: #007bff;
+            }
+            a.cus1 {
               color: #007bff;
             }
         </style>
@@ -354,15 +357,13 @@ $subheader .= "</p>";
                                 if (count >1) {
                                    <?php $dropdown = "derevatives-". time(); ?>
                                    ark_urls += '<div class="dropdown">' +
-                                                  '<button class="btn btn-default dropdown-toggle" type="button" id="<?php echo $dropdown; ?>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">'
-                                                    + data[0] +' <span class="caret"></span>' +
-                                                '</button>';
-                                   ark_urls += '<div class="dropdown-menu" aria-labelledby="<?php echo $dropdown; ?>">';
-                                  for (var i = 0; i < count; i ++){
-                                    ark_urls += '<a class="dropdown-item" target="_blank" href="' + data[i] + '">' + data[i] + '</a>';
-                                    if (i === 0) {
-                                      ark_urls += '<div class="dropdown-divider"></div><h6 class="dropdown-header">With Qualifiers:</h6>';
-                                    }
+                                               '<a target="_blank" class="btn btn-default cus" href="'+ data[0] +'">'+ data[0] +'</a>'
+                                  ark_urls += '<button type="button" class="btn btn-default dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="sr-only">Toggle Dropdown</span> </button>';
+                                  ark_urls += '<div class="dropdown-menu" aria-labelledby="<?php echo $dropdown; ?>">';
+                                  ark_urls += '<h6 class="dropdown-header">With Qualifiers:</h6>';
+                                  for (var i = 1; i < count; i ++){
+
+                                    ark_urls += '<a class="dropdown-item cus1" target="_blank" href="' + data[i] + '">' + data[i] + '</a>';
                                   }
                                   ark_urls += "</div></div>";
                                 }
