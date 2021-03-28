@@ -297,7 +297,7 @@ $subheader .= "</p>";
                             extend: 'csv',
                             text: 'Export to CSV',
                             exportOptions: {
-                                columns: [1, 2, 3, 4, 5]
+                                columns: [1, 2, 3, 4]
                             }
                         },
                     ],
@@ -879,7 +879,10 @@ $subheader .= "</p>";
                                                     <div class="form-group">
                                                         <label for="enterKey">Key:</label>
                                                         <input type="text" class="form-control" id="enterKey"
-                                                               name="enterKey" required>
+                                                               name="enterKey" aria-describedby="keyHelp" required>
+                                                        <small id="keyHelp" class="form-text text-muted">Enter a metadata field or a qualifier.<br >
+                                                          <strong>Note:</strong> the field <i>URL</i> must be valid for Ark URL to work.
+                                                        </small>
                                                     </div>
                                                     <div class="form-group">
                                                         <label for="enterValue">Value:</label>
