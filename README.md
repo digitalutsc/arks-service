@@ -22,5 +22,6 @@ Please visit full documentation at https://github.com/digitalutsc/arks-service/w
 ![](https://github.com/digitalutsc/arks-service/blob/master/admin/docs/images/Screen%20Shot%202021-03-01%20at%208.45.54%20AM.png?raw=true)
 
 ## Current maintainer
-* Kyle Huynh (kyle.huynh@utoronto.ca)
+* [Kyle Huynh](https://github.com/kylehuynh205)
+* [Nat Kanthan](https://github.com/Natkeeran)
 
