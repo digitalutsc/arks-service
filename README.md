@@ -1,27 +1,27 @@
-# Ark Ids Services
+# Arks Service
 
 ## Introduction
 
 This standalone application provides a user interface to mint, (bulk) bind [ARK Identifiers](https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ), and resolver for Ark URLs.
 
-Base Projects:
-* https://github.com/Daniel-KM/Noid4Php
+Base Project:
 * https://github.com/AkioUnity/Noid4Php
 
-Full Documentation at: https://github.com/digitalutsc/ark-services/wiki
+Full Documentation at: https://github.com/digitalutsc/arks-service/wiki
 
 ## Demo
 
-Please install the Ansible Playbook at https://github.com/digitalutsc/ark-services-playbook#installation.
+Please install the Ansible Playbook at https://github.com/digitalutsc/arks-service-playbook.
 
 ## Installation
-Please follow the steps at https://github.com/digitalutsc/ark-services/wiki#deployment
+Please follow the steps at https://github.com/digitalutsc/arks-service/wiki#deployment
 
 ## Usage
-Please visit full documentation at https://github.com/digitalutsc/ark-services/wiki#create-a-collection-of-ark-ids
+Please visit full documentation at https://github.com/digitalutsc/arks-service/wiki#usage
 
-![](https://github.com/digitalutsc/ark-services/blob/master/admin/docs/images/Screen%20Shot%202021-03-01%20at%208.45.54%20AM.png?raw=true)
+![](https://github.com/digitalutsc/arks-service/blob/master/admin/docs/images/Screen%20Shot%202021-03-01%20at%208.45.54%20AM.png?raw=true)
 
 ## Current maintainer
-* Kyle Huynh (kyle.huynh@utoronto.ca)
+* [Kyle Huynh](https://github.com/kylehuynh205)
+* [Nat Kanthan](https://github.com/Natkeeran)
 
