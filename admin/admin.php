@@ -358,7 +358,7 @@ $subheader .= "</p>";
                                    <?php $dropdown = "derevatives-". time(); ?>
                                    ark_urls += '<div class="dropdown">' +
                                                '<a target="_blank" class="btn btn-default cus" href="'+ data[0] +'">'+ data[0] +'</a>'
-                                  ark_urls += '<button type="button" class="btn btn-default dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="sr-only">Toggle Dropdown</span> </button>';
+                                  ark_urls += '<button type="button" class="btn btn-default dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="sr-only">Arks </span> </button>';
                                   ark_urls += '<div class="dropdown-menu" aria-labelledby="<?php echo $dropdown; ?>">';
                                   ark_urls += '<h6 class="dropdown-header">With Qualifiers:</h6>';
                                   for (var i = 1; i < count; i ++){
@@ -587,12 +587,14 @@ $subheader .= "</p>";
                                    <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: collections.digital.utsc.utoronto.ca</small>
                                 </div>
 
-                                 <div class="form-group">
+                                 <input type="hidden" class="form-control" id="enterInsitutionName" name="enterInsitutionName" value="dsu/utsc-library"
+                                           />
+                                 <!--<div class="form-group" style="display:none">
                                     <label class="control-label" for="enterDatabaseName">Insitution Name(SubNAA):</label>
                                     <input type="text" class="form-control" id="enterInsitutionName" name="enterInsitutionName"
                                            />
                                    <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: dsu/utsc-library</small>
-                                </div>
+                                </div>-->
 
                                 <input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>
                             </form>
@@ -658,8 +660,8 @@ $subheader .= "</p>";
                                 <table class="table table-bordered">
                                     <thead>
                                     <tr>
-                                        <th scope="col">Collections</th>
-                                        <th scope="col">Basic Info</th>
+                                        <th scope="col">Collection</th>
+                                        <th scope="col">Configuration</th>
                                         <th scope="col">Status</th>
 
                                     </tr>
@@ -746,6 +748,7 @@ $subheader .= "</p>";
 
                             }
                             ?>
+                            <p><h5>Minted Arks</h5></p>
                             <div class="row">
                                 <div class="col-md-12">
                                     <table id="minted_table" class="display" style="width:100%">
@@ -768,7 +771,7 @@ $subheader .= "</p>";
 
             <hr>
             <div class="card">
-                <h5 class="card-header">Established Ark IDs</h5>
+                <h5 class="card-header">Bound Arks</h5>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-sm-12">
@@ -971,7 +974,7 @@ $subheader .= "</p>";
                             <!-- Bulk Bind Modal -->
                             <button id="btn-bulk-bind" type="button" class="btn btn-success" data-toggle="modal"
                                     data-target="#bulkBindModal">
-                                Bulk Bind
+                                Bulk Binding
                             </button>
                             <div class="modal fade" id="bulkBindModal" tabindex="-1"
                                  aria-labelledby="bulkBindModalLabel"
@@ -1011,7 +1014,7 @@ $subheader .= "</p>";
                                                         <hr/>
                                                         <div class="container">
                                                             <div class="form-group">
-                                                                <label for="enterPasswordPostBulkBind"><strong>For security measure, please enter admin password before bulk binding: </strong></label>
+                                                                <label for="enterPasswordPostBulkBind"><strong>Please enter admin password before bulk binding: </strong></label>
                                                                 <input required type="password" class="form-control" id="enterPasswordPostBulkBind" name="enterPasswordPostBulkBind"
                                                                        placeholder="Password">
                                                             </div>

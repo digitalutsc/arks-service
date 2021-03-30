@@ -18,7 +18,7 @@ if (Database::isInstalled()) {
 
 <html>
 <head>
-    <title>Ark Services</title>
+    <title>Arks Service</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
           integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
           crossorigin="anonymous">
@@ -58,7 +58,7 @@ if (Database::isInstalled()) {
 <div class="container">
     <div class="row">
         <div class="col-sm text-center">
-            <h1 class="text-center">Ark Service Installation</h1>
+            <h1 class="text-center">Arks Service Installation</h1>
         </div>
     </div>
     <div class="row">
@@ -147,7 +147,7 @@ if (Database::isInstalled()) {
                 </div>
                 <div class="form-group">
                     <label for="enterLastname">Last Name:</label>
-                    <input required type="text" class="form-control" id="enterUserLastname" name="enterUserLastname"
+                    <input required type="text" class="form-control" id="enterUserLastname" name="enterUserLastname">
                 </div>
                 <div class="form-group">
                     <label for="enterUsername">Username</label>
