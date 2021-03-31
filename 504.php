@@ -103,7 +103,7 @@
         <div class="container">
           <div class="sixteen columns context_style">
             <div class="title_style">
-              <span class="editContent" style=""><span class="pix_text">Access Denied</span></span>
+              <span class="editContent" style=""><span class="pix_text">Gateway Timeout</span></span>
             </div>
             <div class="subtitle_style">
                                 <span class="creative_h_text">
