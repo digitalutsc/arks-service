@@ -19,7 +19,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta http-equiv="x-ua-compatible" content="IE=9">
     <!-- Font Awesome -->
-    <link href="front/stylesheets/font-awesome.css" rel="stylesheet">
+    <link href="/front/stylesheets/font-awesome.css" rel="stylesheet">
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
     <!--[if lt IE 9]>
     <script src="js/html5shiv.js"></script>
@@ -28,16 +28,16 @@
     <!--headerIncludes-->
     <!-- CSS
     ================================================== -->
-    <link rel="stylesheet" href="front/stylesheets/menu.css">
-    <link rel="stylesheet" href="front/stylesheets/flat-ui-slider.css">
-    <link rel="stylesheet" href="front/stylesheets/base.css">
-    <link rel="stylesheet" href="front/stylesheets/skeleton.css">
-    <link rel="stylesheet" href="front/stylesheets/landings.css">
-    <link rel="stylesheet" href="front/stylesheets/main.css">
-    <link rel="stylesheet" href="front/stylesheets/landings_layouts.css">
-    <link rel="stylesheet" href="front/stylesheets/lightbox.css">
-    <link rel="stylesheet" href="front/stylesheets/pixicon.css">
-    <link href="front/assets/css/animations.min.css" rel="stylesheet" type="text/css" media="all" />
+    <link rel="stylesheet" href="/front/stylesheets/menu.css">
+    <link rel="stylesheet" href="/front/stylesheets/flat-ui-slider.css">
+    <link rel="stylesheet" href="/front/stylesheets/base.css">
+    <link rel="stylesheet" href="/front/stylesheets/skeleton.css">
+    <link rel="stylesheet" href="/front/stylesheets/landings.css">
+    <link rel="stylesheet" href="/front/stylesheets/main.css">
+    <link rel="stylesheet" href="/front/stylesheets/landings_layouts.css">
+    <link rel="stylesheet" href="/front/stylesheets/lightbox.css">
+    <link rel="stylesheet" href="/front/stylesheets/pixicon.css">
+    <link href="/front/assets/css/animations.min.css" rel="stylesheet" type="text/css" media="all" />
 
     <!--[if lt IE 9]>
     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
@@ -45,27 +45,27 @@
 
     <!-- Favicons OLD
     ==================================================
-    <link rel="shortcut icon" href="front/images/favicon.ico">
-    <link rel="apple-touch-icon" href="front/images/apple-touch-icon.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="front/images/apple-touch-icon-72x72.png">
-    <link rel="apple-touch-icon" sizes="114x114" href="front/images/apple-touch-icon-114x114.png">
+    <link rel="shortcut icon" href="/front/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/front/images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/front/images/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/front/images/apple-touch-icon-114x114.png">
     -->
-    <link rel="apple-touch-icon" sizes="57x57" href="front/images/dsu-favicon/apple-icon-57x57.png">
-    <link rel="apple-touch-icon" sizes="60x60" href="front/images/dsu-favicon/apple-icon-60x60.png">
-    <link rel="apple-touch-icon" sizes="72x72" href="front/images/dsu-favicon/apple-icon-72x72.png">
-    <link rel="apple-touch-icon" sizes="76x76" href="front/images/dsu-favicon/apple-icon-76x76.png">
-    <link rel="apple-touch-icon" sizes="114x114" href="front/images/dsu-favicon/apple-icon-114x114.png">
-    <link rel="apple-touch-icon" sizes="120x120" href="front/images/dsu-favicon/apple-icon-120x120.png">
-    <link rel="apple-touch-icon" sizes="144x144" href="front/images/dsu-favicon/apple-icon-144x144.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="front/images/dsu-favicon/apple-icon-152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="front/images/dsu-favicon/apple-icon-180x180.png">
-    <link rel="icon" type="image/png" sizes="192x192"  href="front/images/dsu-favicon/android-icon-192x192.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="front/images/dsu-favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="front/images/dsu-favicon/favicon-96x96.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="front/images/dsu-favicon/favicon-16x16.png">
-    <link rel="manifest" href="front/images/dsu-favicon/manifest.json">
+    <link rel="apple-touch-icon" sizes="57x57" href="/front/images/dsu-favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/front/images/dsu-favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/front/images/dsu-favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/front/images/dsu-favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/front/images/dsu-favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/front/images/dsu-favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/front/images/dsu-favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/front/images/dsu-favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/front/images/dsu-favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/front/images/dsu-favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/front/images/dsu-favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/front/images/dsu-favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/front/images/dsu-favicon/favicon-16x16.png">
+    <link rel="manifest" href="/front/images/dsu-favicon/manifest.json">
     <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="msapplication-TileImage" content="front/images/dsu-favicon/ms-icon-144x144.png">
+    <meta name="msapplication-TileImage" content="/front/images/dsu-favicon/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
 
 </head>
@@ -80,7 +80,7 @@
                     <nav role="navigation" class="navbar navbar-white navbar-embossed navbar-lg pix_nav_1">
                         <div class="containerss">
                             <div class="navbar-header">
-                                <img src="front/images/uploads/utsc-library-logo.png" class="pix_nav_logo" alt="" style="border-radius: 0px; border-color: rgb(255, 255, 255); border-style: none; border-width: 1px; width: 347px; height: 88px;">
+                                <img src="/front/images/uploads/utsc-library-logo.png" class="pix_nav_logo" alt="" style="border-radius: 0px; border-color: rgb(255, 255, 255); border-style: none; border-width: 1px; width: 347px; height: 88px;">
                             </div>
                         </div><!-- /.container -->
 
@@ -93,10 +93,10 @@
         <div class="has-video creative_header">
             <div class="mask"></div>
             <div class="pix_video_div section_video">
-                <video autoplay="" poster="front/images/video/video_bg.jpg" class="bgvid" loop="">
-                    <!--              <source src="front/images/video/video_bg.webm" type="video/webm">
-                         <source src="front/images/video/video_bg.mp4" type="video/mp4">
-                         <source src="front/images/video/video_bg.ogv" type="video/ogv">
+                <video autoplay="" poster="/front/images/video/video_bg.jpg" class="bgvid" loop="">
+                    <!--              <source src="/front/images/video/video_bg.webm" type="video/webm">
+                         <source src="/front/images/video/video_bg.mp4" type="video/mp4">
+                         <source src="/front/images/video/video_bg.ogv" type="video/ogv">
                      </video> -->
             </div>
             <div class="section_wrapper clearfix">
@@ -188,7 +188,7 @@
 
 <!-- JavaScript
 ================================================== -->
-<script src="front/js-files/jquery-3.3.1.min.js" type="text/javascript"></script>
+<script src="/front/js-files/jquery-3.3.1.min.js" type="text/javascript"></script>
 <script type="text/javascript">
     jQuery.browser = {};
     (function () {
@@ -200,19 +200,19 @@
         }
     })();
 </script>
-<script src="front/js-files/jquery.easing.1.3.js" type="text/javascript"></script>
-<script type="text/javascript" src="front/js-files/jquery.common.min.js"></script>
-<script src="front/js-files/ticker.js" type="text/javascript"></script>
-<script src="front/js-files/custom1.js" type="text/javascript"></script>
+<script src="/front/js-files/jquery.easing.1.3.js" type="text/javascript"></script>
+<script type="text/javascript" src="/front/js-files/jquery.common.min.js"></script>
+<script src="/front/js-files/ticker.js" type="text/javascript"></script>
+<script src="/front/js-files/custom1.js" type="text/javascript"></script>
 
-<script src="front/assets/js/appear.min.js" type="text/javascript"></script>
-<script src="front/js-files/jquery.ui.touch-punch.min.js"></script>
-<script src="front/js-files/bootstrap.min.js"></script>
-<script src="front/js-files/bootstrap-switch.js"></script>
-<script src="front/js-files/custom3.js" type="text/javascript"></script>
+<script src="/front/assets/js/appear.min.js" type="text/javascript"></script>
+<script src="/front/js-files/jquery.ui.touch-punch.min.js"></script>
+<script src="/front/js-files/bootstrap.min.js"></script>
+<script src="/front/js-files/bootstrap-switch.js"></script>
+<script src="/front/js-files/custom3.js" type="text/javascript"></script>
 
 
-<script src="front/assets/js/appear.min.js" type="text/javascript"></script>
-<script src="front/assets/js/animations.js" type="text/javascript"></script>
+<script src="/front/assets/js/appear.min.js" type="text/javascript"></script>
+<script src="/front/assets/js/animations.js" type="text/javascript"></script>
 </body>
 </html>
