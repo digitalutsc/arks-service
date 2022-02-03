@@ -70,6 +70,9 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
       if (!empty($result)) {
         // found URL field bound associated with the ark id
         $url = $result;
+
+        // TODO: add a counter here
+          increase_reidrection($db, $arkid);
         break;
       }
     }
@@ -84,6 +87,9 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
           // found URL field bound associated with the ark id
           $dns = getNAA($db);
           $url = "https://$dns/islandora/object/" . $pid;
+
+          // TODO: add a counter here
+          increase_reidrection($db, $arkid);
           break;
         }
       }
@@ -93,6 +99,45 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
   }
 } else {
   print "invalid argument";
+}
+
+/**
+ *  Counting redirection
+ */
+function increase_reidrection($db, $ark_id) {
+  
+// TODO UPDATE REDIRECTION COUNT HERE
+  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+  if (!$link) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
+  
+  // get existed redirection count.
+  $count = lookup($db, $ark_id, "REDIRECT");
+  if ($count == false) { 
+    $count = 1;
+    // do insert
+    $query = "INSERT INTO `$db` (_key, _value) VALUES('$ark_id REDIRECT', $count)";
+  }
+  else {
+    $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])REDIRECT$"';
+    $count++;
+    // do update
+    $query = "UPDATE `$db` SET _value = $count ". $where;
+  }
+
+  $count++;
+  if (mysqli_query($link, $query)) {
+    echo "New record created successfully";
+  }
+  else {
+   echo "New record created failed"; 
+  }
+  mysqli_close($link);
 }
 
 /**
