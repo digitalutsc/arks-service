@@ -313,6 +313,8 @@ function selectBound()
         $r['PID'] = (!empty($column['_value'])) ? $column['_value'] : ' ';
       if ($key_data[1] == "LOCAL_ID")
         $r['LOCAL_ID'] = (!empty($column['_value'])) ? $column['_value'] : ' ';
+      if ($key_data[1] == "REDIRECT")
+        $r['redirect'] = (!empty($column['_value'])) ? $column['_value'] : ' ';
       $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$column['_value'];
 
       // check if server have https://, if not, go with http://
