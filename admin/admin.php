@@ -280,6 +280,7 @@ $subheader .= "</p>";
                         {data: 'select'},
                         {data: 'id'},
                         {data: 'PID'},
+                        {data: 'redirect'},
                         //{data: 'LOCAL_ID'},
                         {data: 'ark_url'},
                         {data: 'metadata'},
@@ -313,21 +314,21 @@ $subheader .= "</p>";
                             orderable: false,
                             targets: 4
                         },
-                        /*{
+                        {
                             "targets": 3,
-                            "data": "LOCAL_ID",
+                            "data": "redirect",
                             "render": function (data, type, row) {
                                 if (data) {
                                     return data;
                                 } else {
-                                    return " ";
+                                    return "0";
                                 }
 
                             }
-                        },*/
+                        },
 
                         {
-                            "targets": 4,
+                            "targets": 5,
                             "data": "metadata",
                             "render": function (data, type, row) {
                                 if (data !== undefined && data.indexOf("|") != -1) {
@@ -348,7 +349,7 @@ $subheader .= "</p>";
                             }
                         },
                         {
-                            "targets": 3,
+                            "targets": 4,
                             "data": "ark_url",
                             "render": function (data, type, row) {
                                 data.sort();
@@ -1337,6 +1338,7 @@ $subheader .= "</p>";
                                             <th></th>
                                             <th>Ark ID</th>
                                             <th>PID</th>
+                                            <th>Number <br />of Redirects</th>
 <!--                                            <th>LOCAL_ID</th>-->
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
