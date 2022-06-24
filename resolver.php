@@ -19,7 +19,7 @@
   </style>
 </head>
 <body>
-<div class="loader"></div>
+<!--<div class="loader"></div>-->
 </body>
 </html>
 
@@ -143,10 +143,10 @@ function increase_reidrection($db, $ark_id) {
 
   $count++;
   if (mysqli_query($link, $query)) {
-    print_log("New record created successfully");
+    #print_log("New record created successfully");
   }
   else {
-    print_log("New record created failed"); 
+    #print_log("New record created failed"); 
   }
   mysqli_close($link);
 }
