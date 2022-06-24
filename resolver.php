@@ -94,8 +94,19 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
         }
       }
     }
-    //print_r("<br />$url");
-    header("Location: $url");
+    // New: Add a check for ? or ?? and the end of Ark URL
+    if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) === 0 ) {
+      // if the Ark URLs ends with '?'
+      $medata = getMetdata($db, $arkid);
+      print($medata);
+    }
+    else if ( substr_compare($_SERVER['REQUEST_URI'], "??", -2) === 0 ) {
+      $medata = getMetdata($db, $arkid);
+      print($medata);
+    }
+    else {
+      header("Location: $url");
+    }
   }
 } else {
   print "invalid argument";
@@ -132,13 +143,55 @@ function increase_reidrection($db, $ark_id) {
 
   $count++;
   if (mysqli_query($link, $query)) {
-    echo "New record created successfully";
+    print_log("New record created successfully");
   }
   else {
-   echo "New record created failed"; 
+    print_log("New record created failed"); 
   }
   mysqli_close($link);
 }
+
+
+/**
+ * Get full metadata
+ */
+function getMetdata($db, $ark_id)
+{
+  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+  if (!$link) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
+
+  $where = 'WHERE _key LIKE "' . $ark_id .'%"';
+  if ($query = mysqli_query($link, "SELECT *  FROM `$db` ". $where)) {
+
+    if (!mysqli_query($link, "SET @a:='this will not work'")) {
+      printf("Error: %s\n", mysqli_error($query));
+    }
+    $results = $query->fetch_all();
+
+    if (count($results) > 0) {
+      $medata = "<pre>";
+      foreach($results as $pair) {
+        $field = trim(str_replace($ark_id, " ", $pair[0])) ;
+        if (!in_array($field, [':/c', ":/h", "REDIRECT", ""])) {
+          $medata .= $field. ": " . $pair[1] . "\n";
+        }
+      }
+      $medata .= "</pre>";
+      return $medata;
+    }
+
+    $query->close();
+  }
+  mysqli_close($link);
+  return false;
+}
+
 
 /**
  * Get Org registered info
