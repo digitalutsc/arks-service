@@ -1,5 +1,7 @@
 # Arks Service
 
+[![DOI](https://zenodo.org/badge/292369439.svg)](https://zenodo.org/badge/latestdoi/292369439)
+
 ## Introduction
 
 This standalone application provides a user interface to mint, (bulk) bind [ARK Identifiers](https://wiki.lyrasis.org/display/ARKs/ARK+Identifiers+FAQ), and resolver for Ark URLs.
