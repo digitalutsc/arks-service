@@ -327,7 +327,10 @@ function selectBound()
 
       $arkURL = $protocol . $_SERVER['HTTP_HOST'];
       // establish Ark URL
-      $ark_url = rtrim($arkURL,"/") . "/ark:/" . $currentID;
+      // old format
+      //$ark_url = rtrim($arkURL,"/") . "/ark:/" . $currentID;
+      // new format
+      $ark_url = rtrim($arkURL,"/") . "/ark:" . $currentID;
       $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
 
       // if there is qualifier bound to an Ark ID, establish the link the link
