@@ -28,14 +28,17 @@ require_once 'config/MysqlArkConf.php';
 
 use Noid\Config\MysqlArkConf;
 
-if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0) {
+if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_URI'], "/ark:") === 0) {
   // processing the Ark URL
   $params = str_replace("ark:/", "", $_GET['q']);
   $parts = array_filter(explode("/", $params));
 
   // get Ark ID
   $arkid = $parts[0] . '/'. $parts[1];
-
+  if (strpos($arkid, "ark:") === 0) {
+    $arkid = str_replace("ark:", "", $arkid);
+  }
+  
   // get all database Ark related
   $arkdbs = showArkDatabases();
   // only proceed if already have ark_core db
