@@ -1,4 +1,4 @@
 RewriteEngine On
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-RewriteCond %{REQUEST_URI}  ^/ark:/.*$
+RewriteCond %{REQUEST_URI}  ^/ark:.*$
 RewriteRule ^(.*)$ /resolver.php?q=$1 [L]
