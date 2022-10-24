@@ -46,7 +46,7 @@ $subheader .= "</p>";
 
     <html>
     <head>
-        <title>Arks Service</title>
+        <title>ARKS Service</title>
         <link rel="stylesheet" href="includes/css/bootstrap.min.css">
         <script type="text/javascript" language="javascript" src="includes/js/jquery-3.6.0.min.js"></script>
 
@@ -359,7 +359,7 @@ $subheader .= "</p>";
                                    <?php $dropdown = "derevatives-". time(); ?>
                                    ark_urls += '<div class="dropdown">' +
                                                '<a target="_blank" class="btn btn-default cus" href="'+ data[0] +'">'+ data[0] +'</a>'
-                                  ark_urls += '<button type="button" class="btn btn-default dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="sr-only">Arks </span> </button>';
+                                  ark_urls += '<button type="button" class="btn btn-default dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="sr-only">ARKS </span> </button>';
                                   ark_urls += '<div class="dropdown-menu" aria-labelledby="<?php echo $dropdown; ?>">';
                                   ark_urls += '<h6 class="dropdown-header">With Qualifiers:</h6>';
                                   for (var i = 1; i < count; i ++){
@@ -431,8 +431,8 @@ $subheader .= "</p>";
 
         <div class="row">
             <div class="col-sm text-center">
+                <h1>ARK ID Service</h1>
                 <a style="margin-bottom: 20px" class="btn btn-danger" href="/admin/logout.php">Logout</a>
-
             </div>
         </div>
 
@@ -443,7 +443,7 @@ $subheader .= "</p>";
                 print '<h5 class="card-header">Database <i>' . $_GET['db'] . '</i> is selected.</h5>';
             } else {
                 print <<<EOS
-                    <h5 class="card-header">Create a collection of Arks</h5>
+                    <h5 class="card-header">Create a new ARK collection, or select your existing collection</h5>
                 EOS;
             }
             ?>
@@ -578,7 +578,7 @@ $subheader .= "</p>";
                                 <div class="form-group">
                                     <label class="control-label" for="enterDatabaseName">Name Assigning Authority Number(NAAN):</label>
                                     <input type="text" class="form-control" id="enterNAAN" name="enterNAAN"/>
-                                   <small id="naan_tips" class="form-text text-muted">Look up your NAAN here</small>
+                                   <small id="naan_tips" class="form-text text-muted">Look up your NAAN <a href="https://arks.org/about/ark-naans-and-systems/" target="_blank">here</a></small>
                                 </div>
                                  <div class="form-group">
                                     <label class="control-label" for="enterDatabaseName">Name Assigning Authority (NAA):</label>
@@ -719,7 +719,7 @@ $subheader .= "</p>";
                             <form id="form-mint" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                 <div class="form-group">
                                     <input type="hidden" name="db" value="<?php echo $_GET['db'] ?>">
-                                    <label for="exampleInputEmail1">How many:</label>
+                                    <label for="exampleInputEmail1">How many ARKS would you like to mint ?</label>
                                     <input type="number" class="form-control" id="mint-number" name="mint-number">
                                 </div>
                                 <input type="submit" name="mint" value="Mint" class="btn btn-primary"/>
@@ -739,7 +739,7 @@ $subheader .= "</p>";
                                 };
                                 print '
                                 <div class="alert alert-success" role="alert">
-                                    Ark IDs have been minted successfully.
+                                    ARK IDs have been minted successfully.
                                 </div>
                             ';
                                 Database::dbclose($noid);
@@ -748,14 +748,14 @@ $subheader .= "</p>";
 
                             }
                             ?>
-                            <p><h5>Minted Arks</h5></p>
+                            <p><h5>Minted ARKS</h5></p>
                             <div class="row">
                                 <div class="col-md-12">
                                     <table id="minted_table" class="display" style="width:100%">
                                         <thead>
                                         <tr>
                                             <th></th>
-                                            <th>Ark ID</th>
+                                            <th>ARK ID</th>
                                             <th>Minted Date</th>
                                         </tr>
                                         </thead>
@@ -771,7 +771,7 @@ $subheader .= "</p>";
 
             <hr>
             <div class="card">
-                <h5 class="card-header">Bound Arks</h5>
+                <h5 class="card-header">Bound ARKS</h5>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-sm-12">
@@ -791,13 +791,13 @@ $subheader .= "</p>";
 
                                     print '
                                     <div class="alert alert-success" role="alert">
-                                        Ark IDs have been bound successfully.
+                                        ARK IDs have been bound successfully.
                                     </div>
                                 ';
                                 } else {
                                     print '
                                     <div class="alert alert-warning" role="alert">
-                                        Ark IDs does not exist to be bound.
+                                        ARK IDs does not exist to be bound.
                                     </div>
                                 ';
                                 }
@@ -833,13 +833,13 @@ $subheader .= "</p>";
                                 if ($status !== false) {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
-                                                                    Ark ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' has been cleared
+                                                                    ARK ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' has been cleared
                                                                 </div>
                                                             ';
                                 } else {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
-                                                                    Ark ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' failed to be cleared
+                                                                    ARK ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' failed to be cleared
                                                                 </div>
                                                             ';
                                 }
@@ -864,7 +864,7 @@ $subheader .= "</p>";
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="bindsetModalLabel">Binding an Ark ID</h5>
+                                            <h5 class="modal-title" id="bindsetModalLabel">Binding an ARK ID</h5>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -874,7 +874,7 @@ $subheader .= "</p>";
                                                 <form id="form-bindset" method="post"
                                                       action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                     <div class="form-group">
-                                                        <label for="enterIdentifier">Ark ID:</label>
+                                                        <label for="enterIdentifier">ARK ID:</label>
                                                         <select id="enterIdentifier" name="enterIdentifier"
                                                                 class="form-control" data-live-search="true">
                                                         </select>
@@ -884,7 +884,7 @@ $subheader .= "</p>";
                                                         <input type="text" class="form-control" id="enterKey"
                                                                name="enterKey" aria-describedby="keyHelp" required>
                                                         <small id="keyHelp" class="form-text text-muted">Enter a metadata field or a qualifier.<br >
-                                                          <strong>Note:</strong> the field <i>URL</i> must be valid for Ark URL to work.
+                                                          <strong>Note:</strong> the field <i>URL</i> must be valid for ARK URL to work.
                                                         </small>
                                                     </div>
                                                     <div class="form-group">
@@ -917,7 +917,7 @@ $subheader .= "</p>";
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="clearbindsetModalLabel">Unbinding an Ark ID</h5>
+                                            <h5 class="modal-title" id="clearbindsetModalLabel">Unbinding an ARK ID</h5>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -928,7 +928,7 @@ $subheader .= "</p>";
                                                     <form id="form-clear-bindset" method="post"
                                                           action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                         <div class="form-group">
-                                                            <label for="enterToClearIdentifier">Ark ID:</label>
+                                                            <label for="enterToClearIdentifier">ARK ID:</label>
                                                             <select id="enterToClearIdentifier"
                                                                     name="enterToClearIdentifier" class="form-control"
                                                                     data-live-search="true">
@@ -997,15 +997,15 @@ $subheader .= "</p>";
                                                             <p><strong><u>Note:</u></strong> For this section, please
                                                                 follow:</p>
                                                             <ol>
-                                                              <li>Mint Ark ID(s)</li>
-                                                              <li>Download <a href="template.csv" download>template.csv</a>, place the above minted Ark IDs into the ARK_ID column.</li>
-                                                              <li><strong>There no limitation of data field(s) to be bound with an Ark ID. For UTSC only, highly recommend to have the below essential columns which are already included in the template CSVs above</strong> and add more column(s) if needed for other metadata.
+                                                              <li>Mint your ARKs</li>
+                                                              <li>Download <a href="template.csv" download>template.csv</a>, place the above minted ARKs into the ARK_ID column.</li>
+                                                              <li>There is no limitation on the data fields you bind with your ARK. Add additional columns.
                                                                 <ul>
                                                                   <li><u><strong>Ark_ID</strong></u>: MANDATORY field for binding.</li>
                                                                   <li><u><strong>URL</strong></u>: MANDATORY field, the Resolver looks for this field to redirection.</li>
-                                                                  <li><u>LOCAL_ID</u>: Object's unique ID in the repository.</li>
-                                                                  <li><u>PID</u>: persistent Identifiers</li>
-                                                                  <li><u>COLLECTION</u>(Optional): to assist on searching in the table.</li>
+                                                                  <li><u>LOCAL_ID</u>: Object's unique ID in the repository. Any local identifier that is not ARK</li>
+                                                                  <li><u>PID</u>: persistent Identifiers, Any persistent identifier that is not ARK</li>
+                                                                  <li><u>COLLECTION</u>(Optional): Indicating the collection can help you discover.</li>
                                                                 </ul>
                                                               </li>
                                                               <li><strong>Upload the CSV to start the process.</strong></li>
@@ -1145,7 +1145,7 @@ $subheader .= "</p>";
 
                                                             // display the message of ongoing binding process.
                                                             $('#message').html('<div class="alert alert-warning">' +
-                                                                'The Binding process has been ongoing. Please do not close this page until the process is completed.'
+                                                                'The Binding process has started. Please do not close this page until the process is completed.'
                                                                 + '</div>');
 
                                                             // get total number of lines in CSV
@@ -1335,11 +1335,11 @@ $subheader .= "</p>";
                                         <thead>
                                         <tr>
                                             <th></th>
-                                            <th>Ark ID</th>
+                                            <th>ARK ID</th>
                                             <th>PID</th>
                                             <th>Number <br />of Redirects</th>
 <!--                                            <th>LOCAL_ID</th>-->
-                                            <th>Ark URL</th>
+                                            <th>ARK URL</th>
                                             <th>Metadata</th>
                                         </tr>
                                         </thead>
