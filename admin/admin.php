@@ -46,7 +46,7 @@ $subheader .= "</p>";
 
     <html>
     <head>
-        <title>Ark Services</title>
+        <title>Arks Service</title>
         <link rel="stylesheet" href="includes/css/bootstrap.min.css">
         <script type="text/javascript" language="javascript" src="includes/js/jquery-3.6.0.min.js"></script>
 
@@ -431,7 +431,6 @@ $subheader .= "</p>";
 
         <div class="row">
             <div class="col-sm text-center">
-                <?php echo $subheader; ?>
                 <a style="margin-bottom: 20px" class="btn btn-danger" href="/admin/logout.php">Logout</a>
 
             </div>
@@ -461,7 +460,7 @@ $subheader .= "</p>";
                                     <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName"
                                            required/>
                                 </div>
-                                <p><small id="noidHelp" class="form-text text-muted">For configuration detail, please visit <a target="_blank" href="https://metacpan.org/pod/distribution/Noid/noid">https://metacpan.org/pod/distribution/Noid/noid</a> </small></p>
+                                <p><small id="noidHelp" class="form-text text-muted">Review Ark configuration documentation at <a target="_blank" href="https://metacpan.org/pod/distribution/Noid/noid">https://metacpan.org/pod/distribution/Noid/noid</a> </small></p>
 
 
                                   <script type="text/javascript">
@@ -579,13 +578,13 @@ $subheader .= "</p>";
                                 <div class="form-group">
                                     <label class="control-label" for="enterDatabaseName">Name Assigning Authority Number(NAAN):</label>
                                     <input type="text" class="form-control" id="enterNAAN" name="enterNAAN"/>
-                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: 61220</small>
+                                   <small id="naan_tips" class="form-text text-muted">Look up your NAAN here</small>
                                 </div>
                                  <div class="form-group">
                                     <label class="control-label" for="enterDatabaseName">Name Assigning Authority (NAA):</label>
                                     <input type="text" class="form-control" id="enterRedirect" name="enterRedirect"
                                            />
-                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: collections.digital.utsc.utoronto.ca</small>
+                                   <small id="naa_tip" class="form-text text-muted"></small>
                                 </div>
 
                                  <input type="hidden" class="form-control" id="enterInsitutionName" name="enterInsitutionName" value="dsu/utsc-library"
