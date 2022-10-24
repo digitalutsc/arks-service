@@ -578,7 +578,7 @@ $subheader .= "</p>";
                                 <div class="form-group">
                                     <label class="control-label" for="enterDatabaseName">Name Assigning Authority Number(NAAN):</label>
                                     <input type="text" class="form-control" id="enterNAAN" name="enterNAAN"/>
-                                   <small id="naan_tips" class="form-text text-muted">Look up your NAAN <a href="https://arks.org/about/ark-naans-and-systems/" target="_blank">here</a></small>
+                                   <small id="naan_tips" class="form-text text-muted">Look up your NAAN <a href="https://cdlib.org/naan_registry" target="_blank">here</a></small>
                                 </div>
                                  <div class="form-group">
                                     <label class="control-label" for="enterDatabaseName">Name Assigning Authority (NAA):</label>
