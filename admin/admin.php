@@ -431,7 +431,7 @@ $subheader .= "</p>";
 
         <div class="row">
             <div class="col-sm text-center">
-                <h1>ARK ID Service</h1>
+                <h1>Ark ID Service</h1>
                 <a style="margin-bottom: 20px" class="btn btn-danger" href="/admin/logout.php">Logout</a>
             </div>
         </div>
@@ -443,7 +443,7 @@ $subheader .= "</p>";
                 print '<h5 class="card-header">Database <i>' . $_GET['db'] . '</i> is selected.</h5>';
             } else {
                 print <<<EOS
-                    <h5 class="card-header">Create a new ARK collection, or select your existing collection</h5>
+                    <h5 class="card-header">Create a new Ark collection, or select your existing collection</h5>
                 EOS;
             }
             ?>
@@ -739,7 +739,7 @@ $subheader .= "</p>";
                                 };
                                 print '
                                 <div class="alert alert-success" role="alert">
-                                    ARK IDs have been minted successfully.
+                                    Ark IDs have been minted successfully.
                                 </div>
                             ';
                                 Database::dbclose($noid);
@@ -755,7 +755,7 @@ $subheader .= "</p>";
                                         <thead>
                                         <tr>
                                             <th></th>
-                                            <th>ARK ID</th>
+                                            <th>Ark ID</th>
                                             <th>Minted Date</th>
                                         </tr>
                                         </thead>
@@ -791,13 +791,13 @@ $subheader .= "</p>";
 
                                     print '
                                     <div class="alert alert-success" role="alert">
-                                        ARK IDs have been bound successfully.
+                                        Ark IDs have been bound successfully.
                                     </div>
                                 ';
                                 } else {
                                     print '
                                     <div class="alert alert-warning" role="alert">
-                                        ARK IDs does not exist to be bound.
+                                        Ark IDs does not exist to be bound.
                                     </div>
                                 ';
                                 }
@@ -833,13 +833,13 @@ $subheader .= "</p>";
                                 if ($status !== false) {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
-                                                                    ARK ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' has been cleared
+                                                                    Ark ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' has been cleared
                                                                 </div>
                                                             ';
                                 } else {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
-                                                                    ARK ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' failed to be cleared
+                                                                    Ark ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' failed to be cleared
                                                                 </div>
                                                             ';
                                 }
@@ -864,7 +864,7 @@ $subheader .= "</p>";
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="bindsetModalLabel">Binding an ARK ID</h5>
+                                            <h5 class="modal-title" id="bindsetModalLabel">Binding an Ark ID</h5>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -874,7 +874,7 @@ $subheader .= "</p>";
                                                 <form id="form-bindset" method="post"
                                                       action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                     <div class="form-group">
-                                                        <label for="enterIdentifier">ARK ID:</label>
+                                                        <label for="enterIdentifier">Ark ID:</label>
                                                         <select id="enterIdentifier" name="enterIdentifier"
                                                                 class="form-control" data-live-search="true">
                                                         </select>
@@ -884,7 +884,7 @@ $subheader .= "</p>";
                                                         <input type="text" class="form-control" id="enterKey"
                                                                name="enterKey" aria-describedby="keyHelp" required>
                                                         <small id="keyHelp" class="form-text text-muted">Enter a metadata field or a qualifier.<br >
-                                                          <strong>Note:</strong> the field <i>URL</i> must be valid for ARK URL to work.
+                                                          <strong>Note:</strong> the field <i>URL</i> must be valid for Ark URL to work.
                                                         </small>
                                                     </div>
                                                     <div class="form-group">
@@ -917,7 +917,7 @@ $subheader .= "</p>";
                                 <div class="modal-dialog">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="clearbindsetModalLabel">Unbinding an ARK ID</h5>
+                                            <h5 class="modal-title" id="clearbindsetModalLabel">Unbinding an Ark ID</h5>
                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                 <span aria-hidden="true">&times;</span>
                                             </button>
@@ -928,7 +928,7 @@ $subheader .= "</p>";
                                                     <form id="form-clear-bindset" method="post"
                                                           action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                         <div class="form-group">
-                                                            <label for="enterToClearIdentifier">ARK ID:</label>
+                                                            <label for="enterToClearIdentifier">Ark ID:</label>
                                                             <select id="enterToClearIdentifier"
                                                                     name="enterToClearIdentifier" class="form-control"
                                                                     data-live-search="true">
@@ -1335,11 +1335,11 @@ $subheader .= "</p>";
                                         <thead>
                                         <tr>
                                             <th></th>
-                                            <th>ARK ID</th>
+                                            <th>Ark ID</th>
                                             <th>PID</th>
                                             <th>Number <br />of Redirects</th>
 <!--                                            <th>LOCAL_ID</th>-->
-                                            <th>ARK URL</th>
+                                            <th>Ark URL</th>
                                             <th>Metadata</th>
                                         </tr>
                                         </thead>
