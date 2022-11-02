@@ -46,7 +46,7 @@ $subheader .= "</p>";
 
     <html>
     <head>
-        <title>ARKS Service</title>
+        <title>Arks Service</title>
         <link rel="stylesheet" href="includes/css/bootstrap.min.css">
         <script type="text/javascript" language="javascript" src="includes/js/jquery-3.6.0.min.js"></script>
 
@@ -359,7 +359,7 @@ $subheader .= "</p>";
                                    <?php $dropdown = "derevatives-". time(); ?>
                                    ark_urls += '<div class="dropdown">' +
                                                '<a target="_blank" class="btn btn-default cus" href="'+ data[0] +'">'+ data[0] +'</a>'
-                                  ark_urls += '<button type="button" class="btn btn-default dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="sr-only">ARKS </span> </button>';
+                                  ark_urls += '<button type="button" class="btn btn-default dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="sr-only">Arks </span> </button>';
                                   ark_urls += '<div class="dropdown-menu" aria-labelledby="<?php echo $dropdown; ?>">';
                                   ark_urls += '<h6 class="dropdown-header">With Qualifiers:</h6>';
                                   for (var i = 1; i < count; i ++){
@@ -719,7 +719,7 @@ $subheader .= "</p>";
                             <form id="form-mint" method="post" action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                 <div class="form-group">
                                     <input type="hidden" name="db" value="<?php echo $_GET['db'] ?>">
-                                    <label for="exampleInputEmail1">How many ARKS would you like to mint ?</label>
+                                    <label for="exampleInputEmail1">How many Arks would you like to mint ?</label>
                                     <input type="number" class="form-control" id="mint-number" name="mint-number">
                                 </div>
                                 <input type="submit" name="mint" value="Mint" class="btn btn-primary"/>
