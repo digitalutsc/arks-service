@@ -748,7 +748,7 @@ $subheader .= "</p>";
 
                             }
                             ?>
-                            <p><h5>Minted ARKS</h5></p>
+                            <p><h5>Minted Arks </h5></p>
                             <div class="row">
                                 <div class="col-md-12">
                                     <table id="minted_table" class="display" style="width:100%">
@@ -771,7 +771,7 @@ $subheader .= "</p>";
 
             <hr>
             <div class="card">
-                <h5 class="card-header">Bound ARKS</h5>
+                <h5 class="card-header">Bound Arks </h5>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-sm-12">
@@ -997,8 +997,8 @@ $subheader .= "</p>";
                                                             <p><strong><u>Note:</u></strong> For this section, please
                                                                 follow:</p>
                                                             <ol>
-                                                              <li>Mint your ARKs</li>
-                                                              <li>Download <a href="template.csv" download>template.csv</a>, place the above minted ARKs into the ARK_ID column.</li>
+                                                              <li>Mint your Arks </li>
+                                                              <li>Download <a href="template.csv" download>template.csv</a>, place the above minted Arks into the ARK_ID column.</li>
                                                               <li>There is no limitation on the data fields you bind with your ARK. Add additional columns.
                                                                 <ul>
                                                                   <li><u><strong>Ark_ID</strong></u>: MANDATORY field for binding.</li>
