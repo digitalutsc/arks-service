@@ -26,7 +26,7 @@ class MysqlArkDB implements DatabaseInterface
             throw new Exception('NOID requires the extension "Mysql improved" (mysqli).');
         }
 
-        $this->handle = NULL;
+        //$this->handle = NULL;
     }
 
     /**
