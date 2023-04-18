@@ -423,7 +423,7 @@ class Database
      * @param String $dbname
      * @return bool
      */
-    public function exist(string $dbname)
+    static public function exist(string $dbname)
     {
         $dbs = self::showDatabases();
         $existed = false;
