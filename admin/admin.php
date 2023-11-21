@@ -255,12 +255,13 @@ $subheader .= "</p>";
                 // To style only selects with the select-ark-id class
                 // ajax load data to dropdown list
                 jQuery.ajax({
-                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=minted"
+                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=dropdown"
                 }).then(function (data) {
                     $objects = JSON.parse(data);
+                    $array = $objects.data;
                     var options = '<option value="-1" selected disabled>-- Select --</option>';
-                    for (var i = 0; i < $objects.length; i++) {
-                        options += '<option value="' + $objects[i]._key + '">' + $objects[i]._key + '</option>';
+                    for (var i = 0; i < $array.length; i++) {
+                        options += '<option value="' + $array[i]._key + '">' + $array[i]._key + '</option>';
                     }
                     $('#enterIdentifier').html(options).selectpicker();
                     $('#enterToClearIdentifier').html(options).selectpicker();
