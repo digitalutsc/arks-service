@@ -278,44 +278,131 @@ function selectBound()
   if (!Database::exist($_GET['db'])) {
     die(json_encode('Database not found'));
   }
-  $columns = json_decode(select());
-  //array_push($columns, (object)[]);
+
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+
+  $columnIdx = $_GET['order'][0]['column'];
+  $sortCol = $_GET['columns'][$columnIdx];
+  $sortDir = $_GET['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
+  $offset = $_GET['start'] ?? 0;
+  $limit = $_GET['length'] ?? 50;
+  $search = $_GET['search']['value'];
+  
+  if ($sortCol['data'] === 'redirect') {
+    $sql = "SELECT arks.* 
+      FROM `<table-name>`
+      AS arks 
+      JOIN ( 
+        SELECT bound.id, 
+        COALESCE(redirected._value, 0) 
+        AS _value 
+        FROM ( 
+          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
+          FROM <table-name> 
+          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$'
+        ) AS bound 
+        LEFT JOIN ( 
+          SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value 
+          FROM <table-name> 
+          WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\sREDIRECT$'
+        ) AS redirected ON bound.id = redirected.id 
+        ORDER BY _value $sortDir 
+        LIMIT $limit 
+        OFFSET $offset 
+      ) AS subquery 
+      ON arks._key LIKE CONCAT(subquery.id, '%')
+      AND arks._key NOT LIKE '%:\\/c'
+      ORDER BY arks._key ASC;
+    ";
+    $sql_count = "SELECT COUNT(*) as num_filtered
+      FROM (
+        SELECT bound.id, 
+        COALESCE(redirected._value, 0) 
+        AS _value 
+        FROM ( 
+          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
+          FROM <table-name> 
+          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$'
+        ) AS bound 
+        LEFT JOIN ( 
+          SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value 
+          FROM <table-name> 
+          WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\sREDIRECT$'
+        ) AS redirected ON bound.id = redirected.id 
+      ) AS filtered_ids;
+    ";
+  }
+  else { // Sort on Ark IDs
+    $sql = "SELECT arks.* 
+      FROM `<table-name>`
+      AS arks 
+      JOIN ( 
+        SELECT * FROM (
+          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+          FROM `<table-name>`
+          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$' 
+          INTERSECT
+          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+          FROM `<table-name>`
+          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '\\\\s:\\/c' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
+        ) AS target
+        ORDER BY id $sortDir 
+        LIMIT $limit
+        OFFSET $offset
+      ) AS subquery 
+      ON arks._key LIKE CONCAT(subquery.id, '%') 
+      AND arks._key NOT LIKE '%:\\/c' 
+      ORDER BY arks._key $sortDir;
+    ";
+    $sql_count = "SELECT COUNT(*) as num_filtered
+      FROM (
+        SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+        FROM `<table-name>`
+        WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$' 
+        INTERSECT
+        SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+        FROM `<table-name>`
+        WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '\\\\s:\\/c' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
+      ) AS filtered_ids;
+    ";
+  }
+
+  $rows = Database::$engine->query($sql);
+  $num_filtered = Database::$engine->query($sql_count)[0]['num_filtered'] ?? 0;
+  Database::dbclose($noid);
+
   $currentID = null;
   $result = array();
   $r = [];
-  $countColumns = count($columns);
-  $index = 1;
-  $qualifiers = [];
 
-  foreach ($columns as $column) {
-    $column = (array)$column;
+  foreach ($rows as $row) {
+    $row = (array)$row;
 
-    if (isset($column['_key'])) {
-      $key_data = preg_split('/\s+/', $column['_key']);
-      //print_r($column);
+    if (isset($row['_key'])) {
+      $key_data = preg_split('/\s+/', $row['_key']);
       if (!isset($currentID) || ($currentID !== $key_data[0])) {
         $currentID = $key_data[0];
         if (is_array($r) && count($r) > 0) {
-          if(!array_key_exists('PID', $r)) {
-            $r['PID'] = " ";
-          }
-          if(!array_key_exists('LOCAL_ID', $r)) {
-            $r['LOCAL_ID'] = " ";
-          }
           array_push($result, $r);
         }
 
-          $r = [];
+        $r = [
+          'select' => ' ',
+          'id' => $currentID,
+          'PID' => ' ',
+          'LOCAL_ID' => ' ',
+          'redirect' => 0,
+        ];
       }
-      $r['select'] = " ";
-      $r['id'] = $currentID;
+
       if ($key_data[1] == 'PID')
-        $r['PID'] = (!empty($column['_value'])) ? $column['_value'] : ' ';
+        $r['PID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
       if ($key_data[1] == "LOCAL_ID")
-        $r['LOCAL_ID'] = (!empty($column['_value'])) ? $column['_value'] : ' ';
+        $r['LOCAL_ID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
       if ($key_data[1] == "REDIRECT")
-        $r['redirect'] = (!empty($column['_value'])) ? $column['_value'] : ' ';
-      $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$column['_value'];
+        $r['redirect'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
+      $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
 
       // check if server have https://, if not, go with http://
       if (empty($_SERVER['HTTPS'])) {
@@ -334,25 +421,31 @@ function selectBound()
       $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
 
       // if there is qualifier bound to an Ark ID, establish the link the link
-      if ($key_data[1] !== "URL" && filter_var($column['_value'], FILTER_VALIDATE_URL)) {
+      if ($key_data[1] !== "URL" && filter_var($row['_value'], FILTER_VALIDATE_URL)) {
         array_push($r['ark_url'], strtolower($ark_url. "/". $key_data[1]));
       }
-
     }
-
-    // if the loop reach the last pair of elements (for incompleted bind)
-    if ($index === $countColumns) {
-      if(!array_key_exists('PID', $r)) {
-        $r['PID'] = " ";
-      }
-      /*if(!array_key_exists('LOCAL_ID', $r)) {
-        $r['LOCAL_ID'] = " ";
-      }*/
-      array_push($result, $r);
-    }
-    $index++;
   }
-  return json_encode($result);
+  
+  if (!empty($r)) {
+    array_push($result, $r);
+  }
+
+  if ($sortCol['data'] === 'redirect') {
+    $redirect = array_column($result, "redirect");
+    array_multisort($redirect, $sortDir === 'ASC' ? SORT_ASC : SORT_DESC, $result);
+  }
+  else {
+    $id = array_column($result, "id");
+    array_multisort($id, $sortDir === 'ASC' ? SORT_ASC : SORT_DESC, $result);
+  }
+
+  return json_encode(array(
+    "data" => $result,
+    "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
+    "recordsTotal" => countBoundedArks(),
+    "recordsFiltered" => $num_filtered,
+  ));
 }
 
 /**
@@ -423,27 +516,79 @@ function getURL($arkID) {
  */
 function getMinted()
 {
-    GlobalsArk::$db_type = 'ark_mysql';
-    if (!Database::exist($_GET['db'])) {
-        die(json_encode('Database not found'));
-    }
-    $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-    $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
-    $result = Database::$engine->select("_key REGEXP '^$firstpart' and _key REGEXP ':/c$'");
-    //return json_encode($result);
-    $json = array();
-    foreach ($result as $row) {
-        $urow = array();
-        $urow['select']= ' ';
-        $urow['_key'] = trim(str_replace(":/c", "", $row['_key']));
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+    die(json_encode('Database not found'));
+  }
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
 
-        $metadata = explode('|', $row['_value']);
-        //$urow['_value'] = date("F j, Y, g:i a", $metadata[2]);
-        $urow['_value'] = date("F j, Y", $metadata[2]);
-        array_push($json, (object)$urow);
-    }
-    Database::dbclose($noid);
-    return json_encode($json);
+  if (isset($_GET['order'][0]['dir'])) {
+    $sortDir = $_GET['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
+  } else {
+    $sortDir = 'ASC';
+  }
+  $offset = $_GET['start'] ?? 0;
+  $limit = $_GET['length'] ?? 50;
+
+  $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
+    FROM `<table-name>`
+    WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' 
+    ORDER BY _key $sortDir
+    LIMIT $limit
+    OFFSET $offset;
+  ";
+
+  $result = Database::$engine->query($sql);
+  Database::dbclose($noid);
+
+  $json = array();
+  foreach ($result as $row) {
+    $urow = array();
+    $urow['select'] = ' ';
+    $urow['_key'] = $row['id'];
+
+    $metadata = explode('|', $row['_value']);
+    //$urow['_value'] = date("F j, Y, g:i a", $metadata[2]);
+    $urow['_value'] = date("F j, Y", $metadata[2]);
+    array_push($json, (object)$urow);
+  }
+
+  $totalArks = countTotalArks();
+  return json_encode(array(
+    "data" => $json,
+    "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
+    "recordsTotal" => $totalArks,
+    "recordsFiltered" => $totalArks,
+  ));
+}
+
+function countTotalArks() {
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+      die(json_encode('Database not found'));
+  }
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+  $result = Database::$engine->query("SELECT COUNT(DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)')) AS total FROM `<table-name>` WHERE _key LIKE '$firstpart%' and _key REGEXP '\\\\s:\\/c$';");
+  Database::dbclose($noid);
+  return $result[0]['total'] ?? 0;
+}
+
+function countBoundedArks() {
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+      die(json_encode('Database not found'));
+  }
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+  $result = Database::$engine->query("SELECT COUNT(
+    DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)')) AS total 
+    FROM `<table-name>` 
+    WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$';
+  ");
+  Database::dbclose($noid);
+  return $result[0]['total'] ?? 0;
 }
 
 /**
