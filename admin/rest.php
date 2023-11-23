@@ -23,7 +23,7 @@ switch ($_GET['op']) {
     }
     case "dropdown":
     {
-        echo getMintedDrop();
+        echo getMinted();
         break;
     }
     case "fields": {
@@ -521,6 +521,7 @@ function getURL($arkID) {
  */
 function getMinted()
 {
+  $totalArks = countTotalArks();
   GlobalsArk::$db_type = 'ark_mysql';
   if (!Database::exist($_GET['db'])) {
     die(json_encode('Database not found'));
@@ -534,7 +535,7 @@ function getMinted()
     $sortDir = 'ASC';
   }
   $offset = $_GET['start'] ?? 0;
-  $limit = $_GET['length'] ?? 50;
+  $limit = $totalArks ?? 50;
 
   $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
     FROM `<table-name>`
@@ -559,57 +560,6 @@ function getMinted()
     array_push($json, (object)$urow);
   }
 
-  $totalArks = countTotalArks();
-  return json_encode(array(
-    "data" => $json,
-    "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
-    "recordsTotal" => $totalArks,
-    "recordsFiltered" => $totalArks,
-  ));
-}
-
-function getMintedDrop()
-{
-  $totalArks = countTotalArks();
-  GlobalsArk::$db_type = 'ark_mysql';
-  if (!Database::exist($_GET['db'])) {
-    die(json_encode('Database not found'));
-  }
-  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
-
-  if (isset($_GET['order'][0]['dir'])) {
-    $sortDir = $_GET['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
-  } else {
-    $sortDir = 'ASC';
-  }
-  $offset = $_GET['start'] ?? 0;
-  $limit = intval($totalArks) ?? 50;
-
-  $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
-    FROM `<table-name>`
-    WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' 
-    ORDER BY _key $sortDir
-    LIMIT $limit
-    OFFSET $offset;
-  ";
-
-  $result = Database::$engine->query($sql);
-  Database::dbclose($noid);
-
-  $json = array();
-  foreach ($result as $row) {
-    $urow = array();
-    $urow['select'] = ' ';
-    $urow['_key'] = $row['id'];
-
-    $metadata = explode('|', $row['_value']);
-    //$urow['_value'] = date("F j, Y, g:i a", $metadata[2]);
-    $urow['_value'] = date("F j, Y", $metadata[2]);
-    array_push($json, (object)$urow);
-  }
-
-  //$totalArks = countTotalArks();
   return json_encode(array(
     "data" => $json,
     "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
