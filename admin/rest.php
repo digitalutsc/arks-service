@@ -530,10 +530,11 @@ function getMinted()
   }
   $offset = $_GET['start'] ?? 0;
   $limit = $_GET['length'] ?? 50;
+  $search = $_GET['search']['value'];
 
   $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
     FROM `<table-name>`
-    WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' 
+    WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
     ORDER BY _key $sortDir
     LIMIT $limit
     OFFSET $offset;
