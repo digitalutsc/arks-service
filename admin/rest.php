@@ -21,11 +21,6 @@ switch ($_GET['op']) {
         echo getMinted();
         break;
     }
-    case "dropdown":
-    {
-        echo getMinted();
-        break;
-    }
     case "fields": {
         if (isset($_GET['ark_id']) ) {
             echo getFields($_GET['ark_id']);
