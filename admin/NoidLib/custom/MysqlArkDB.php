@@ -150,6 +150,23 @@ class MysqlArkDB implements DatabaseInterface
     }
 
     /**
+     * Query
+     * @param $query
+     * @return false|string
+     */
+    public function query($query) {
+        if (!($this->handle instanceof mysqli)) {
+            return FALSE;
+        }
+        $query = str_replace('<table-name>', $this->db_name, $query);
+
+        if ($res = $this->handle->query($query)) {
+            return $res->fetch_all(MYSQLI_ASSOC);
+        }
+        return FALSE;
+    }
+
+    /**
      * @param string $key
      * @param string $value
      *
