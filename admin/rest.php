@@ -21,6 +21,11 @@ switch ($_GET['op']) {
         echo getMinted();
         break;
     }
+    case "dates":
+    {
+        echo getDates();
+        break;
+    }
     case "fields": {
         if (isset($_GET['ark_id']) ) {
             echo getFields($_GET['ark_id']);
@@ -530,6 +535,7 @@ function getMinted()
   }
   $offset = $_GET['start'] ?? 0;
   $limit = $_GET['length'] ?? 50;
+  $date = $_GET['date'];
 
   $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
     FROM `<table-name>`
@@ -551,7 +557,49 @@ function getMinted()
     $metadata = explode('|', $row['_value']);
     //$urow['_value'] = date("F j, Y, g:i a", $metadata[2]);
     $urow['_value'] = date("F j, Y", $metadata[2]);
-    array_push($json, (object)$urow);
+    if(strcmp((string)$date, (string)$urow['_value']) === 0){
+      array_push($json, (object)$urow);
+    }
+  }
+
+  $totalArks = countTotalArks();
+  return json_encode(array(
+    "data" => $json,
+    "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
+    "recordsTotal" => $totalArks,
+    "recordsFiltered" => $totalArks,
+    "date" => $date,
+  ));
+}
+
+function getDates()
+{
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+    die(json_encode('Database not found'));
+  }
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+
+  $sql = "SELECT DISTINCT _value
+    FROM `<table-name>`
+    WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' 
+  ";
+
+  $result = Database::$engine->query($sql);
+  Database::dbclose($noid);
+
+  $cache = array();
+  $json = array();
+  foreach ($result as $row) {
+    $urow = array();
+    $metadata = explode('|', $row['_value']);
+    //$urow['_value'] = date("F j, Y, g:i a", $metadata[2]);
+    $urow['_value'] = date("F j, Y", $metadata[2]);
+    if(!in_array($urow['_value'], $cache)){
+      array_push($json, (object)$urow);
+      array_push($cache, $urow['_value']);
+    }
   }
 
   $totalArks = countTotalArks();
@@ -562,6 +610,7 @@ function getMinted()
     "recordsFiltered" => $totalArks,
   ));
 }
+
 
 function countTotalArks() {
   GlobalsArk::$db_type = 'ark_mysql';

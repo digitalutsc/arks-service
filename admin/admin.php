@@ -251,16 +251,28 @@ $subheader .= "</p>";
 
 
             $(document).ready(function () {
+                jQuery.ajax({
+                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=dates"
+                }).then(function (data) {
+                    $objects = JSON.parse(data);
+                    $array = $objects.data;
+                    var dates = '<option value="0">Filter by Minted Date</option>';
+                    for (var i = 0; i < $array.length; i++) {
+                        dates += '<option value="' + $array[i]._value + '">' + $array[i]._value + '</option>';
+                    }
+                    $('#dateFilter').html(dates).selectpicker();
+                });
 
                 // To style only selects with the select-ark-id class
                 // ajax load data to dropdown list
                 jQuery.ajax({
-                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=minted"
+                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=minted&date=0"
                 }).then(function (data) {
                     $objects = JSON.parse(data);
+                    $array = $objects.data;
                     var options = '<option value="-1" selected disabled>-- Select --</option>';
-                    for (var i = 0; i < $objects.length; i++) {
-                        options += '<option value="' + $objects[i]._key + '">' + $objects[i]._key + '</option>';
+                    for (var i = 0; i < $array.length; i++) {
+                        options += '<option value="' + $array[i]._key + '">' + $array[i]._key + '</option>';
                     }
                     $('#enterIdentifier').html(options).selectpicker();
                     $('#enterToClearIdentifier').html(options).selectpicker();
@@ -289,15 +301,20 @@ $subheader .= "</p>";
 
                 });
 
+                var filterDate = 'November 24, 2023';
 
+                
                 let mintedTable = jQuery('#minted_table').DataTable({
                     dom: 'lBfrtip',
                     "ajax": $.fn.dataTable.pipeline( {
-                        "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
+                        "url": "rest.php?db=<?php echo $_GET['db']; ?>&op=minted&date="+filterDate,
                         "pages": 5 // number of pages to cache
                     }),
                     processing: true,
                 	serverSide: true,
+                    "initComplete": function( settings, json ) {
+                        console.log(json);
+                    },
                     columns: [
                         {data: 'select'},
                         {data: '_key'},
@@ -329,36 +346,6 @@ $subheader .= "</p>";
                             }
                         },
                     ],
-                    initComplete: function () {
-                      this.api().columns().every(function () {
-                        var column = this;
-                        if ($(column.header()).text() == 'Minted Date') {
-
-                          var select = $('<select><option value="0">Filter by ' + $(column.header()).text() + '</option></select>')
-                            .appendTo($(column.header()).empty())
-                            .on('change', function () {
-                              var val = $.fn.dataTable.util.escapeRegex(
-                                $(this).val()
-                              );
-
-                              if (val == 0) {
-                                column.search('').draw();
-                              } else {
-                                column.search(val ? '^' + val + '$' : '', true, false).draw();
-                              }
-
-                            });
-
-                          column.data().unique().sort().each(function (d, j) {
-                            if (d !== '') {
-                              select.append('<option value="' + d + '">' + d + '</option>')
-                            }
-
-                          });
-                        }
-
-                      });
-                    }
                 });
 
                 mintedTable.on("click", "th.select-checkbox", function () {
@@ -380,6 +367,11 @@ $subheader .= "</p>";
                     }
                 });
 
+                $('#dateFilter').on('change', function (e) {
+                    filterDate = this.value;
+                    mintedTable.ajax.url( 'rest.php?db=<?php echo $_GET['db']; ?>&op=minted&date='+filterDate ).load();
+                    mintedTable.ajax.reload();
+                });
 
                 // Make a Ajax call to Rest api and render data to table
                 let boundTable = jQuery('#bound_table').DataTable({
@@ -878,7 +870,12 @@ $subheader .= "</p>";
                                         <tr>
                                             <th></th>
                                             <th>Ark ID</th>
-                                            <th>Minted Date</th>
+                                            <th>
+                                            <select id="dateFilter">
+                                                <option value="-1" selected disabled>-- Select --
+                                                </option>
+                                            </select>
+                                        </th>
                                         </tr>
                                         </thead>
                                     </table>
