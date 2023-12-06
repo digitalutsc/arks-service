@@ -255,7 +255,7 @@ $subheader .= "</p>";
                 // To style only selects with the select-ark-id class
                 // ajax load data to dropdown list
                 jQuery.ajax({
-                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=minted"
+                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=mintedDrop"
                 }).then(function (data) {
                     $objects = JSON.parse(data);
                     $array = $objects.data;

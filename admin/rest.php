@@ -18,9 +18,14 @@ if (!isset($_GET['db'])) {
 switch ($_GET['op']) {
     case "minted":
     {
-        echo getMinted();
+        echo getMinted(0);
         break;
     }
+    case "mintedDrop":
+      {
+          echo getMinted(1);
+          break;
+      }
     case "fields": {
         if (isset($_GET['ark_id']) ) {
             echo getFields($_GET['ark_id']);
@@ -514,7 +519,7 @@ function getURL($arkID) {
  * Get minted Ark IDs
  * @return false|string
  */
-function getMinted()
+function getMinted($mode)
 {
   $totalArks = countTotalArks();
   GlobalsArk::$db_type = 'ark_mysql';
@@ -529,8 +534,12 @@ function getMinted()
   } else {
     $sortDir = 'ASC';
   }
+  if($mode === 1){
+    $limit = $totalArks;
+  }else{
+    $limit = $_GET['length'] ?? 50;
+  }
   $offset = $_GET['start'] ?? 0;
-  $limit = $totalArks ?? 50;
 
   $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
     FROM `<table-name>`
