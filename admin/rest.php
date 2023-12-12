@@ -300,7 +300,7 @@ function selectBound()
         FROM ( 
           SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
           FROM <table-name> 
-          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$'
+          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
         ) AS bound 
         LEFT JOIN ( 
           SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value 
