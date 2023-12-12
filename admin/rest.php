@@ -305,7 +305,7 @@ function selectBound()
         FROM ( 
           SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
           FROM <table-name> 
-          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$'
+          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
         ) AS bound 
         LEFT JOIN ( 
           SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value 
@@ -540,10 +540,11 @@ function getMinted($mode)
     $limit = $_GET['length'] ?? 50;
   }
   $offset = $_GET['start'] ?? 0;
+  $search = $_GET['search']['value'];
 
   $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
     FROM `<table-name>`
-    WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' 
+    WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
     ORDER BY _key $sortDir
     LIMIT $limit
     OFFSET $offset;
