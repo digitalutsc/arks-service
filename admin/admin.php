@@ -252,50 +252,27 @@ $subheader .= "</p>";
 
             $(document).ready(function () {
 
-                // To style only selects with the select-ark-id class
-                // ajax load data to dropdown list
-                jQuery.ajax({
-                    url: "rest.php?db=<?php echo $_GET['db']; ?>&op=mintedDrop"
-                }).then(function (data) {
-                    $objects = JSON.parse(data);
-                    $array = $objects.data;
-                    var options = '<option value="-1" selected disabled>-- Select --</option>';
-                    for (var i = 0; i < $array.length; i++) {
-                        options += '<option value="' + $array[i]._key + '">' + $array[i]._key + '</option>';
-                    }
-                    $('#enterIdentifier').html(options).selectpicker();
-                    $('#enterToClearIdentifier').html(options).selectpicker();
-                });
-
-
-                $('#enterToClearIdentifier').on('change', function (e) {
-
-                    var selected = this.value;
+                $('#enterToClearIdentifier').focusout(function (e) {
+                    var selected = this.value.trim();
                     $('#enterKeytoClear').empty();
-
                     jQuery.ajax({
                         url: "rest.php?db=<?php echo $_GET['db']; ?>&ark_id=" + selected + "&op=fields"
                     }).then(function (data) {
                         var objects = JSON.parse(data);
-                        //console.log(objects);
                         var options = '';
                         for (var i = 0; i < objects.length; i++) {
                             options += '<option value="' + objects[i] + '">' + objects[i] + '</option>';
                         }
-                        //console.log(options);
-
-
                         $('#enterKeytoClear').html(options).selectpicker('refresh');
                     });
 
                 });
 
-
                 let mintedTable = jQuery('#minted_table').DataTable({
                     dom: 'lBfrtip',
                     "ajax": $.fn.dataTable.pipeline( {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
-                        "pages": 5 // number of pages to cache
+                        "pages": 1 // number of pages to cache
                     }),
                     processing: true,
                 	serverSide: true,
@@ -387,7 +364,7 @@ $subheader .= "</p>";
                     dom: 'lBfrtip',
                     "ajax": $.fn.dataTable.pipeline( {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
-                        "pages": 5 // number of pages to cache
+                        "pages": 1 // number of pages to cache
                     }),
                     processing: true,
                 	serverSide: true,
@@ -909,7 +886,7 @@ $subheader .= "</p>";
                                 $contact = time();
 
                                 // check if ark ID exist
-                                $result = NoidArk::bind($noid, $contact, 1, 'set', $_POST['enterIdentifier'], strtoupper($_POST['enterKey']), $_POST['enterValue']);
+                                $result = NoidArk::bind($noid, $contact, 1, 'set', trim($_POST['enterIdentifier']), strtoupper($_POST['enterKey']), $_POST['enterValue']);
                                 if (isset($result)) {
 
                                     print '
@@ -946,23 +923,23 @@ $subheader .= "</p>";
 
                                   $json = array();
                                   foreach ($result as $row) {
-                                    $status = NoidArk::clearBind($noid, $_POST['enterToClearIdentifier'], trim(str_replace($_POST['enterToClearIdentifier'],"", $row['_key'])));
+                                    $status = NoidArk::clearBind($noid, trim($_POST['enterToClearIdentifier']), trim(str_replace($_POST['enterToClearIdentifier'],"", $row['_key'])));
                                   }
                                 }
                                 else {
-                                  $status = NoidArk::clearBind($noid, $_POST['enterToClearIdentifier'], $_POST['enterKeytoClear']);
+                                  $status = NoidArk::clearBind($noid, trim($_POST['enterToClearIdentifier']), $_POST['enterKeytoClear']);
                                 }
 
                                 if ($status !== false) {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
-                                                                    Ark ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' has been cleared
+                                                                    Ark ID <i>' . trim($_POST['enterToClearIdentifier']) . '</i> - ' . $_POST['enterKeytoClear'] . ' has been cleared
                                                                 </div>
                                                             ';
                                 } else {
                                     print '
                                                                 <div class="alert alert-success" role="alert">
-                                                                    Ark ID <i>' . $_POST['enterToClearIdentifier'] . '</i> - ' . $_POST['enterKeytoClear'] . ' failed to be cleared
+                                                                    Ark ID <i>' . trim($_POST['enterToClearIdentifier']) . '</i> - ' . $_POST['enterKeytoClear'] . ' failed to be cleared
                                                                 </div>
                                                             ';
                                 }
@@ -998,9 +975,7 @@ $subheader .= "</p>";
                                                       action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                     <div class="form-group">
                                                         <label for="enterIdentifier">Ark ID:</label>
-                                                        <select id="enterIdentifier" name="enterIdentifier"
-                                                                class="form-control" data-live-search="true">
-                                                        </select>
+                                                        <input type="text" id="enterIdentifier" name="enterIdentifier" class="form-control">
                                                     </div>
                                                     <div class="form-group">
                                                         <label for="enterKey">Key:</label>
@@ -1052,12 +1027,7 @@ $subheader .= "</p>";
                                                           action="./admin.php?db=<?php echo $_GET['db'] ?>">
                                                         <div class="form-group">
                                                             <label for="enterToClearIdentifier">Ark ID:</label>
-                                                            <select id="enterToClearIdentifier"
-                                                                    name="enterToClearIdentifier" class="form-control"
-                                                                    data-live-search="true">
-                                                                <option value="-1" selected disabled>-- Select --
-                                                                </option>
-                                                            </select>
+                                                            <input type="text" id="enterToClearIdentifier" name="enterToClearIdentifier" class="form-control">
                                                         </div>
 
                                                         <div class="form-group" id="group-unbind-fields">

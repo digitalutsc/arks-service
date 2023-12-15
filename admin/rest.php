@@ -532,7 +532,7 @@ function getMinted($mode)
   if (isset($_GET['order'][0]['dir'])) {
     $sortDir = $_GET['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
   } else {
-    $sortDir = 'ASC';
+    $sortDir = 'DESC';
   }
   if($mode === 1){
     $limit = $totalArks;
@@ -545,7 +545,7 @@ function getMinted($mode)
   $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
     FROM `<table-name>`
     WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    ORDER BY _key $sortDir
+    ORDER BY LENGTH(_key),_key $sortDir
     LIMIT $limit
     OFFSET $offset;
   ";
