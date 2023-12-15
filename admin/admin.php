@@ -293,6 +293,7 @@ $subheader .= "</p>";
                           targets: 2
                         }
                     ],
+                    lengthMenu: [10, 50, 100, 200, 500, 1000, 2000],
                     "order": [[ 1, "asc" ]],
                     select: {
                         style: 'multi',
