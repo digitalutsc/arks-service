@@ -542,14 +542,14 @@ function getMinted($mode)
   $offset = $_GET['start'] ?? 0;
   $search = $_GET['search']['value'];
 
-  $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value
+  $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value, SUBSTRING_INDEX(SUBSTRING_INDEX(_value,'|',3), '|', -1) AS seq
     FROM `<table-name>`
     WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    ORDER BY LENGTH(_key),_key $sortDir
+    ORDER BY seq $sortDir
     LIMIT $limit
     OFFSET $offset;
   ";
-
+  
   $result = Database::$engine->query($sql);
   Database::dbclose($noid);
 

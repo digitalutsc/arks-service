@@ -310,31 +310,6 @@ $subheader .= "</p>";
                     initComplete: function () {
                       this.api().columns().every(function () {
                         var column = this;
-                        if ($(column.header()).text() == 'Minted Date') {
-
-                          var select = $('<select><option value="0">Filter by ' + $(column.header()).text() + '</option></select>')
-                            .appendTo($(column.header()).empty())
-                            .on('change', function () {
-                              var val = $.fn.dataTable.util.escapeRegex(
-                                $(this).val()
-                              );
-
-                              if (val == 0) {
-                                column.search('').draw();
-                              } else {
-                                column.search(val ? '^' + val + '$' : '', true, false).draw();
-                              }
-
-                            });
-
-                          column.data().unique().sort().each(function (d, j) {
-                            if (d !== '') {
-                              select.append('<option value="' + d + '">' + d + '</option>')
-                            }
-
-                          });
-                        }
-
                       });
                     }
                 });
