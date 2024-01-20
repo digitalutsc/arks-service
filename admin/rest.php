@@ -385,6 +385,7 @@ function selectBound()
     $row = (array)$row;
 
     if (isset($row['_key'])) {
+    if ($row['_value'] != "1" && isset($row['_key'])) {
       $key_data = preg_split('/\s+/', $row['_key']);
       if (!isset($currentID) || ($currentID !== $key_data[0])) {
         $currentID = $key_data[0];
@@ -573,6 +574,9 @@ function getMinted($mode)
   ));
 }
 
+/**
+ * Count total Ark 
+ */
 function countTotalArks() {
   GlobalsArk::$db_type = 'ark_mysql';
   if (!Database::exist($_GET['db'])) {
@@ -585,6 +589,9 @@ function countTotalArks() {
   return $result[0]['total'] ?? 0;
 }
 
+/**
+ * Count arks IDs that are bound with metadata
+ */
 function countBoundedArks() {
   GlobalsArk::$db_type = 'ark_mysql';
   if (!Database::exist($_GET['db'])) {

@@ -77,7 +77,10 @@ $subheader .= "</p>";
               href="includes/css/bootstrap-select.min.css">
         <script src="includes/js/bootstrap-select.min.js"></script>
         <script src="includes/js/defaults-en_US.js"></script>
-
+        
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=" crossorigin="anonymous" />
+        
         <style>
             .form-group.required .control-label:after {
                 content: "*";
@@ -275,6 +278,11 @@ $subheader .= "</p>";
                         "pages": 1 // number of pages to cache
                     }),
                     processing: true,
+                    "language": {
+                    "processing": "<span class='fa-stack fa-lg'>\n\
+                                        <i class='fa fa-spinner fa-spin fa-stack-2x fa-fw'></i>\n\
+                                </span>&emsp;Loading ...",
+                    },
                 	serverSide: true,
                     columns: [
                         {data: 'select'},
@@ -343,6 +351,11 @@ $subheader .= "</p>";
                         "pages": 1 // number of pages to cache
                     }),
                     processing: true,
+                    "language": {
+                    "processing": "<span class='fa-stack fa-lg'>\n\
+                                        <i class='fa fa-spinner fa-spin fa-stack-2x fa-fw'></i>\n\
+                                </span>&emsp;Loading ...",
+                    },
                 	serverSide: true,
                     "initComplete": function (settings, json) {
                         $(".collapse").collapse({
@@ -428,6 +441,8 @@ $subheader .= "</p>";
                             "targets": 4,
                             "data": "ark_url",
                             "render": function (data, type, row) {
+                                if (data === undefined)
+                                    return;
                                 data.sort();
                                 var count = data.length;
                                 var ark_urls = '';
