@@ -278,6 +278,9 @@ $subheader .= "</p>";
                         "pages": 1 // number of pages to cache
                     }),
                     processing: true,
+                    "search": {
+                        return: false
+                    },
                     "language": {
                     "processing": "<span class='fa-stack fa-lg'>\n\
                                         <i class='fa fa-spinner fa-spin fa-stack-2x fa-fw'></i>\n\
@@ -351,6 +354,9 @@ $subheader .= "</p>";
                         "pages": 1 // number of pages to cache
                     }),
                     processing: true,
+                    search: {
+                        return: true
+                    },
                     aLengthMenu: [
                         [10, 25, 50, 100, 200, 1000, 2000],
                         [10, 25, 50, 100, 200, 1000, 2000]
@@ -491,12 +497,12 @@ $subheader .= "</p>";
                 });
 
 
-
-
-
                 // Make a Ajax call to Rest api and render data to table
                 let unboundTable = jQuery('#unbound_table').DataTable({
                     dom: 'lBfrtip',
+                    "search": {
+                        "return": true
+                    },
                     "ajax": $.fn.dataTable.pipeline( {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=unbound" ?>",
                         "pages": 1 // number of pages to cache
