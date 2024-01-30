@@ -351,6 +351,11 @@ $subheader .= "</p>";
                         "pages": 1 // number of pages to cache
                     }),
                     processing: true,
+                    aLengthMenu: [
+                        [10, 25, 50, 100, 200, 1000, 2000],
+                        [10, 25, 50, 100, 200, 1000, 2000]
+                    ],
+                    iDisplayLength: 10,
                     "language": {
                     "processing": "<span class='fa-stack fa-lg'>\n\
                                         <i class='fa fa-spinner fa-spin fa-stack-2x fa-fw'></i>\n\
@@ -362,7 +367,7 @@ $subheader .= "</p>";
                             toggle: false
                         });
                         // enable show/hide metadata button after ajax loaded
-                        enableShowHideMetadataColumn();
+                        //enableShowHideMetadataColumn();
 
                     },
                     columns: [
@@ -370,13 +375,12 @@ $subheader .= "</p>";
                         {data: 'id'},
                         {data: 'PID'},
                         {data: 'redirect'},
-                        //{data: 'LOCAL_ID'},
                         {data: 'ark_url'},
                         {data: 'metadata'},
+                        {data: 'policy'},
                     ],
                     "fnDrawCallback": function (oSettings) {
-                        //console.log( 'DataTables has redrawn the table' );
-                        enableShowHideMetadataColumn();
+                        //enableShowHideMetadataColumn();
                     },
                     select: {
                         style: 'multi',
@@ -418,28 +422,26 @@ $subheader .= "</p>";
 
                         {
                             "targets": 5,
-                                                        "data": "metadata",
+                            "data": "metadata",
+                            orderable: false,
                             "render": function (data, type, row) {
-                                if (data !== undefined && data.indexOf("|") != -1) {
-                                    var now = row.id;
-                                    if (now !== undefined) {
-                                        now = now.replace(/[&\/\\#,+()$~%.'":*?<>{}]/g, '');
-                                    }
-                                    data = data.split("|").join("<br/>");
-                                    data = data.split(":").join(": ");
-                                    data = ' <button type="button" class="btn btn-link metadata-btn" data-toggle="collapse"  aria-expanded="false" aria-controls="' + now + '" data-target="#' + now + '">' +
-                                        '<span>Show</span>' +
-                                        '  </button>' +
-                                        '<div class="collapse" id="' + now + '">' +
-                                        '  <div class="card card-body">' + data + '</div>' +
-                                        '</div>';
-                                }
+                                data = '<a target="_blank" href="' + data + '">Click here</a>';
+                                return data;
+                            }
+                        },
+                        {
+                            "targets": 6,
+                            "data": "metadata",
+                            orderable: false,
+                            "render": function (data, type, row) {
+                                data = '<a target="_blank" href="' + data + '">Click here</a>';
                                 return data;
                             }
                         },
                         {
                             "targets": 4,
                             "data": "ark_url",
+                            orderable: false,
                             "render": function (data, type, row) {
                                 if (data === undefined)
                                     return;
@@ -487,6 +489,124 @@ $subheader .= "</p>";
                         $("th.select-checkbox").addClass("selected");
                     }
                 });
+
+
+
+
+
+                // Make a Ajax call to Rest api and render data to table
+                let unboundTable = jQuery('#unbound_table').DataTable({
+                    dom: 'lBfrtip',
+                    "ajax": $.fn.dataTable.pipeline( {
+                        "url": "rest.php?db=<?php echo $_GET['db'] . "&op=unbound" ?>",
+                        "pages": 1 // number of pages to cache
+                    }),
+                    processing: true,
+                    "language": {
+                    "processing": "<span class='fa-stack fa-lg'>\n\
+                                        <i class='fa fa-spinner fa-spin fa-stack-2x fa-fw'></i>\n\
+                                </span>&emsp;Loading ...",
+                    },
+                	serverSide: true,
+                    aLengthMenu: [
+                        [10, 25, 50, 100, 200, 1000, 2000],
+                        [10, 25, 50, 100, 200, 1000, 2000]
+                    ],
+                    iDisplayLength: 10,
+                    "initComplete": function (settings, json) {
+                        $(".collapse").collapse({
+                            toggle: false
+                        });
+                        // enable show/hide metadata button after ajax loaded
+                        //enableShowHideMetadataColumn();
+                    },
+                    columns: [
+                        {data: 'select'},
+                        {data: 'id'},
+                        {data: 'ark_url'},
+                    ],
+                    "fnDrawCallback": function (oSettings) {
+                        //enableShowHideMetadataColumn();
+                    },
+                    select: {
+                        style: 'multi',
+                        selector: 'td:first-child'
+                    },
+                    buttons: [
+                        {
+                            extend: 'csv',
+                            text: 'Export to CSV',
+                            exportOptions: {
+                                columns: [1, 2, 3, 4]
+                            }
+                        },
+                    ],
+                    "order": [[ 1, "asc" ]],
+                    "columnDefs": [
+                        { type: 'natural', targets: "_all" },
+                        {
+                            orderable: false,
+                            className: 'select-checkbox',
+                            targets: 0
+                        },
+                        {
+                            "targets": 2,
+                            orderable: false,
+                            "data": "ark_url",
+                            "render": function (data, type, row) {
+                                if (data === undefined)
+                                    return;
+                                data.sort();
+                                var count = data.length;
+                                var ark_urls = '';
+                                if (count >1) {
+                                   <?php $dropdown = "derevatives-". time(); ?>
+                                   ark_urls += '<div class="dropdown">' +
+                                               '<a target="_blank" class="btn btn-default cus" href="'+ data[0] +'">'+ data[0] +'</a>'
+                                  ark_urls += '<button type="button" class="btn btn-default dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="sr-only">Arks </span> </button>';
+                                  ark_urls += '<div class="dropdown-menu" aria-labelledby="<?php echo $dropdown; ?>">';
+                                  ark_urls += '<h6 class="dropdown-header">With Qualifiers:</h6>';
+                                  for (var i = 1; i < count; i ++){
+
+                                    ark_urls += '<a class="dropdown-item cus1" target="_blank" href="' + data[i] + '">' + data[i] + '</a>';
+                                  }
+                                  ark_urls += "</div></div>";
+                                }
+                                else {
+                                  ark_urls = '<a target="_blank" href="' + data[0] + '">' + data[0] + '</a>';
+                                }
+
+                                return ark_urls;
+                            }
+                        }
+                    ]
+                });
+
+                unboundTable.on("click", "th.select-checkbox", function () {
+                    if ($("th.select-checkbox").hasClass("selected")) {
+                        boununboundTabledTable.rows().deselect();
+                        $("th.select-checkbox").removeClass("selected");
+                    } else {
+                        unboundTable.rows().select();
+                        $("th.select-checkbox").addClass("selected");
+                    }
+                }).on("select deselect", function () {
+                    ("Some selection or deselection going on")
+                    if (unboundTable.rows({
+                        selected: true
+                    }).count() !== unboundTable.rows().count()) {
+                        $("th.select-checkbox").removeClass("selected");
+                    } else {
+                        $("th.select-checkbox").addClass("selected");
+                    }
+                });
+
+
+
+
+
+
+
 
 
                 function enableShowHideMetadataColumn() {
@@ -1422,9 +1542,32 @@ $subheader .= "</p>";
                                             <th>Ark ID</th>
                                             <th>PID</th>
                                             <th>Number <br />of Redirects</th>
-<!--                                            <th>LOCAL_ID</th>-->
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
+                                            <th>Policy <br /> Statement</th>
+                                        </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <div class="card">
+                <h5 class="card-header">Unbound Arks </h5>
+                <div class="card-body">
+                <div class="row" style="margin-top:20px;">
+                        <div class="col-sm-12">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <table id="unbound_table" class="display" style="width:100%">
+                                        <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>Ark ID</th>
+                                            <th>Ark URL</th>
                                         </tr>
                                         </thead>
                                     </table>

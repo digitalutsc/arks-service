@@ -50,6 +50,11 @@ switch ($_GET['op']) {
         echo selectBound();
         break;
     }
+    case 'unbound':
+    {
+        echo selectUnBound();
+        break;
+    }
     case "pid": {
         echo getPID($_GET['ark_id']);
         break;
@@ -277,7 +282,7 @@ function getDbInfo() {
  * Return bound objects in database
  * @return false|string
  */
-function selectBound()
+function selectUnBound()
 {
   GlobalsArk::$db_type = 'ark_mysql';
   if (!Database::exist($_GET['db'])) {
@@ -286,93 +291,47 @@ function selectBound()
 
   $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
   $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+  Database::dbclose($noid);
 
   $columnIdx = $_GET['order'][0]['column'];
   $sortCol = $_GET['columns'][$columnIdx];
   $sortDir = $_GET['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
   $offset = $_GET['start'] ?? 0;
   $limit = $_GET['length'] ?? 50;
+  if ($_GET['length'] == -1) {
+    $limit = NULL;
+  }
   $search = $_GET['search']['value'];
   
-  if ($sortCol['data'] === 'redirect') {
-    $sql = "SELECT arks.* 
+  // sql which gets all arks 
+  $sql_unboundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
+    FROM `<table-name>`
+    WHERE _key LIKE '$firstpart%' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
+    EXCEPT
+      SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
       FROM `<table-name>`
-      AS arks 
-      JOIN ( 
-        SELECT bound.id, 
-        COALESCE(redirected._value, 0) 
-        AS _value 
-        FROM ( 
-          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
-          FROM <table-name> 
-          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-        ) AS bound 
-        LEFT JOIN ( 
-          SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value 
-          FROM <table-name> 
-          WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\sREDIRECT$'
-        ) AS redirected ON bound.id = redirected.id 
-        ORDER BY _value $sortDir 
-        LIMIT $limit 
-        OFFSET $offset 
-      ) AS subquery 
-      ON arks._key LIKE CONCAT(subquery.id, '%')
-      AND arks._key NOT LIKE '%:\\/c'
-      ORDER BY arks._key ASC;
-    ";
-    $sql_count = "SELECT COUNT(*) as num_filtered
-      FROM (
-        SELECT bound.id, 
-        COALESCE(redirected._value, 0) 
-        AS _value 
-        FROM ( 
-          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
-          FROM <table-name> 
-          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$'
-        ) AS bound 
-        LEFT JOIN ( 
-          SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value 
-          FROM <table-name> 
-          WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\sREDIRECT$'
-        ) AS redirected ON bound.id = redirected.id 
-      ) AS filtered_ids;
-    ";
-  }
-  else { // Sort on Ark IDs
-    $sql = "SELECT arks.* 
-      FROM `<table-name>`
-      AS arks 
-      JOIN ( 
-        SELECT * FROM (
-          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
-          FROM `<table-name>`
-          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$' 
-          INTERSECT
-          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
-          FROM `<table-name>`
-          WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '\\\\s:\\/c' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-        ) AS target
-        ORDER BY id $sortDir 
-        LIMIT $limit
-        OFFSET $offset
-      ) AS subquery 
-      ON arks._key LIKE CONCAT(subquery.id, '%') 
-      AND arks._key NOT LIKE '%:\\/c' 
-      ORDER BY arks._key $sortDir;
-    ";
-    $sql_count = "SELECT COUNT(*) as num_filtered
-      FROM (
-        SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
-        FROM `<table-name>`
-        WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$' 
-        INTERSECT
-        SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
-        FROM `<table-name>`
-        WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '\\\\s:\\/c' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-      ) AS filtered_ids;
-    ";
-  }
-
+      WHERE _key LIKE '$firstpart%' AND (_key NOT LIKE '%:\\\\/c' AND _key NOT LIKE '%:\\\\/h')";
+  
+   // sql gets all unbound arks
+  $sql = "SELECT arks.* 
+     FROM `<table-name>`
+     AS arks 
+     RIGHT JOIN ( 
+         $sql_unboundarks
+       ORDER BY id $sortDir 
+       LIMIT $limit
+       OFFSET $offset
+     ) AS subquery 
+     ON arks._key LIKE CONCAT(subquery.id, '%') 
+     ORDER BY arks._key $sortDir;
+  ";
+  $sql_count = "SELECT COUNT(*) as num_filtered
+     FROM (
+       $sql_unboundarks
+     ) AS filtered_ids
+  ";
+  
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
   $rows = Database::$engine->query($sql);
   $num_filtered = Database::$engine->query($sql_count)[0]['num_filtered'] ?? 0;
   Database::dbclose($noid);
@@ -385,7 +344,6 @@ function selectBound()
     $row = (array)$row;
 
     if (isset($row['_key'])) {
-    if ($row['_value'] != "1" && isset($row['_key'])) {
       $key_data = preg_split('/\s+/', $row['_key']);
       if (!isset($currentID) || ($currentID !== $key_data[0])) {
         $currentID = $key_data[0];
@@ -420,10 +378,145 @@ function selectBound()
 
       $arkURL = $protocol . $_SERVER['HTTP_HOST'];
       // establish Ark URL
+      // new format
+      $ark_url = rtrim($arkURL,"/") . "/ark:" . $currentID;
+      $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
+
+      // if there is qualifier bound to an Ark ID, establish the link the link
+      if ($key_data[1] !== "URL" && filter_var($row['_value'], FILTER_VALIDATE_URL)) {
+        array_push($r['ark_url'], strtolower($ark_url. "/". $key_data[1]));
+      }
+    }
+  }
+  if (!empty($r)) {
+    array_push($result, $r);
+  }
+
+  if ($sortCol['data'] === 'redirect') {
+    $redirect = array_column($result, "redirect");
+    array_multisort($redirect, $sortDir === 'ASC' ? SORT_ASC : SORT_DESC, $result);
+  }
+  else {
+    $id = array_column($result, "id");
+    array_multisort($id, $sortDir === 'ASC' ? SORT_ASC : SORT_DESC, $result);
+  }
+
+  return json_encode(array(
+    "data" => $result,
+    "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
+    "recordsTotal" => countTotalArks(),
+    "recordsFiltered" => $num_filtered,
+  ));
+}
+  
+
+
+/**
+ * Return bound objects in database
+ * @return false|string
+ */
+function selectBound()
+{
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+    die(json_encode('Database not found'));
+  }
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+  Database::dbclose($noid);
+
+  $columnIdx = $_GET['order'][0]['column'];
+  $sortCol = $_GET['columns'][$columnIdx];
+  $sortDir = $_GET['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
+  $offset = $_GET['start'] ?? 0;
+  $limit = $_GET['length'] ?? 50;
+  $search = $_GET['search']['value'];
+  
+  // sql which gets all bound arks 
+  $sql_allboundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+    FROM `<table-name>`
+    WHERE _key LIKE '$firstpart%' 
+    AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
+    AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
+    ORDER BY id $sortDir 
+    LIMIT $limit
+    OFFSET $offset";
+
+  // sql which get all bound arks
+  $sql = "SELECT arks.* 
+  FROM `<table-name>`
+  AS arks 
+  RIGHT JOIN ( 
+    $sql_allboundarks
+    
+  ) AS subquery 
+  ON arks._key LIKE CONCAT(subquery.id, '%')
+  ORDER BY arks._key $sortDir;
+  ";
+  
+  $sql_count = "SELECT COUNT(*) as num_filtered
+  FROM (
+    $sql_allboundarks
+  ) AS filtered_ids;
+  ";
+
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  $rows = Database::$engine->query($sql);
+  $num_filtered = Database::$engine->query($sql_count)[0]['num_filtered'] ?? 0;
+  Database::dbclose($noid);
+
+  $currentID = null;
+  $result = array();
+  $r = [];
+
+  foreach ($rows as $row) {
+    $row = (array)$row;
+
+    if (isset($row['_key'])) {
+      $key_data = preg_split('/\s+/', $row['_key']);
+      if (!isset($currentID) || ($currentID !== $key_data[0])) {
+        $currentID = $key_data[0];
+        if (is_array($r) && count($r) > 0) {
+          array_push($result, $r);
+        }
+
+        $r = [
+          'select' => ' ',
+          'id' => $currentID,
+          'PID' => ' ',
+          'LOCAL_ID' => ' ',
+          'redirect' => 0,
+        ];
+      }
+
+      if ($key_data[1] == 'PID')
+        $r['PID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
+      if ($key_data[1] == "LOCAL_ID")
+        $r['LOCAL_ID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
+      if ($key_data[1] == "REDIRECT")
+        $r['redirect'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
+      
+        // check if server have https://, if not, go with http://
+      if (empty($_SERVER['HTTPS'])) {
+        $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
+      }
+      else {
+        $protocol = "https://";
+      }
+
+      $arkURL = $protocol . $_SERVER['HTTP_HOST'];
+      // establish Ark URL
       // old format
       //$ark_url = rtrim($arkURL,"/") . "/ark:/" . $currentID;
       // new format
       $ark_url = rtrim($arkURL,"/") . "/ark:" . $currentID;
+
+      // Old: merged all metdata and display 
+      //$r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
+
+      // New: Link to ? or ?? 
+      $r['metadata'] = $ark_url . "?";
+      $r['policy'] = $ark_url . "??";
       $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
 
       // if there is qualifier bound to an Ark ID, establish the link the link
@@ -529,6 +622,7 @@ function getMinted($mode)
   }
   $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
   $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+  Database::dbclose($noid);
 
   if (isset($_GET['order'][0]['dir'])) {
     $sortDir = $_GET['order'][0]['dir'] === 'asc' ? 'ASC' : 'DESC';
@@ -551,6 +645,7 @@ function getMinted($mode)
     OFFSET $offset;
   ";
   
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
   $result = Database::$engine->query($sql);
   Database::dbclose($noid);
 
@@ -602,7 +697,7 @@ function countBoundedArks() {
   $result = Database::$engine->query("SELECT COUNT(
     DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)')) AS total 
     FROM `<table-name>` 
-    WHERE _key LIKE '$firstpart%' AND _key NOT REGEXP '(\\\\s:\\/c|\\\\sREDIRECT|\\\\sPID|\\\\sLOCAL_ID|\\\\sCOLLECTION)$';
+    WHERE _key LIKE '$firstpart%' AND _key REGEXP '(\\\\s:\\/c|\\\\s:\\/h)$';
   ");
   Database::dbclose($noid);
   return $result[0]['total'] ?? 0;
