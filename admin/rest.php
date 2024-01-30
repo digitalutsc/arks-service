@@ -141,11 +141,12 @@ function bulkbind(){
 
   $result = null;
   if (is_array($_POST) && isset($_POST['data'])) {
-    $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
+    
     // capture identifier (strictly recommend first column)
     $contact = time();
 
     if (!empty($_POST['data'][strtoupper('Ark_ID')])) { // any pending data must has Ark_ID column
+        $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
         // check if the ARK ID has been bound before
         foreach ($_POST['data'] as $key => $pair) {
           if ($key !== strtoupper('Ark_ID')) {
@@ -715,6 +716,7 @@ function getfirstpart()
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
+    Database::dbclose($noid);
     return json_encode($firstpart);
 }
 
@@ -730,5 +732,6 @@ function getPrefix() {
     }
     $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
     $prefix = Database::$engine->get(Globals::_RR . "/prefix");
+    Database::dbclose($noid);
     return json_encode($prefix);
 }
