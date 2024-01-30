@@ -314,18 +314,7 @@ function selectUnBound()
       WHERE _key LIKE '$firstpart%' AND (_key NOT LIKE '%:\\\\/c' AND _key NOT LIKE '%:\\\\/h')";
   
    // sql gets all unbound arks
-  $sql = "SELECT arks.* 
-     FROM `<table-name>`
-     AS arks 
-     RIGHT JOIN ( 
-         $sql_unboundarks
-       ORDER BY id $sortDir 
-       LIMIT $limit
-       OFFSET $offset
-     ) AS subquery 
-     ON arks._key LIKE CONCAT(subquery.id, '%') 
-     ORDER BY arks._key $sortDir;
-  ";
+  $sql = "$sql_unboundarks ORDER BY id $sortDir LIMIT $limit OFFSET $offset";
   $sql_count = "SELECT COUNT(*) as num_filtered
      FROM (
        $sql_unboundarks
@@ -344,62 +333,30 @@ function selectUnBound()
   foreach ($rows as $row) {
     $row = (array)$row;
 
-    if (isset($row['_key'])) {
-      $key_data = preg_split('/\s+/', $row['_key']);
-      if (!isset($currentID) || ($currentID !== $key_data[0])) {
-        $currentID = $key_data[0];
-        if (is_array($r) && count($r) > 0) {
-          array_push($result, $r);
-        }
-
-        $r = [
-          'select' => ' ',
-          'id' => $currentID,
-          'PID' => ' ',
-          'LOCAL_ID' => ' ',
-          'redirect' => 0,
-        ];
-      }
-
-      if ($key_data[1] == 'PID')
-        $r['PID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
-      if ($key_data[1] == "LOCAL_ID")
-        $r['LOCAL_ID'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
-      if ($key_data[1] == "REDIRECT")
-        $r['redirect'] = (!empty($row['_value'])) ? $row['_value'] : ' ';
-      $r['metadata'] = (!empty($r['metadata']) ? $r['metadata'] . "|" : "") . $key_data[1] .':' .$row['_value'];
-
-      // check if server have https://, if not, go with http://
-      if (empty($_SERVER['HTTPS'])) {
-        $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
-      }
-      else {
-        $protocol = "https://";
-      }
-
-      $arkURL = $protocol . $_SERVER['HTTP_HOST'];
-      // establish Ark URL
-      // new format
-      $ark_url = rtrim($arkURL,"/") . "/ark:" . $currentID;
-      $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
-
-      // if there is qualifier bound to an Ark ID, establish the link the link
-      if ($key_data[1] !== "URL" && filter_var($row['_value'], FILTER_VALIDATE_URL)) {
-        array_push($r['ark_url'], strtolower($ark_url. "/". $key_data[1]));
-      }
+    $r['id'] = $row['id'];
+      
+    if (empty($_SERVER['HTTPS'])) {
+      $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
     }
-  }
-  if (!empty($r)) {
+    else {
+      $protocol = "https://";
+    }
+    
+    // establish Ark URL
+    $arkURL = $protocol . $_SERVER['HTTP_HOST'];
+    $ark_url = rtrim($arkURL,"/") . "/ark:" . $row['id'];
+    $r['select'] = ' ';
+    $r['redirect'] = "TBD";
+    // New: Link to ? or ?? 
+    $r['metadata'] = $ark_url . "?";
+    $r['policy'] = $ark_url . "??";
+    $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
+
     array_push($result, $r);
   }
-
-  if ($sortCol['data'] === 'redirect') {
-    $redirect = array_column($result, "redirect");
-    array_multisort($redirect, $sortDir === 'ASC' ? SORT_ASC : SORT_DESC, $result);
-  }
-  else {
-    $id = array_column($result, "id");
-    array_multisort($id, $sortDir === 'ASC' ? SORT_ASC : SORT_DESC, $result);
+  
+  if (!empty($r)) {
+    array_push($result, $r);
   }
 
   return json_encode(array(
@@ -434,24 +391,29 @@ function selectBound()
   $search = $_GET['search']['value'];
   
   // sql which gets all bound arks 
-  $sql = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+  $sql_boundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
     FROM `<table-name>`
     WHERE _key LIKE '$firstpart%' 
     AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
     AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    ORDER BY id $sortDir 
-    LIMIT $limit
-    OFFSET $offset";
+    ORDER BY id $sortDir";
+
+  $sql = "$sql_boundarks LIMIT $limit OFFSET $offset";
+  $sql_count = "SELECT COUNT(*) as num_filtered
+  FROM (
+    $sql_boundarks
+  ) AS filtered_ids
+  ";
 
   $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
   $rows = Database::$engine->query($sql);
+  $num_filtered = Database::$engine->query($sql_count)[0]['num_filtered'] ?? 0;
   Database::dbclose($noid);
 
   $currentID = null;
   $result = array();
   $r = [];
 
-  $count = 0;
   foreach ($rows as $row) {
     $row = (array)$row;
 
@@ -475,7 +437,6 @@ function selectBound()
     $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
 
     array_push($result, $r);
-    $count++;
   }
   
   if (!empty($r)) {
@@ -486,7 +447,7 @@ function selectBound()
     "data" => $result,
     "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
     "recordsTotal" => countBoundedArks(),
-    "recordsFiltered" => $count,
+    "recordsFiltered" => $num_filtered,
   ));
 }
 

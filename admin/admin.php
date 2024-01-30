@@ -590,7 +590,7 @@ $subheader .= "</p>";
                             extend: 'csv',
                             text: 'Export to CSV',
                             exportOptions: {
-                                columns: [1, 2, 3, 4]
+                                columns: [1, 2]
                             },
                             "action": exportAllAction
                         },
