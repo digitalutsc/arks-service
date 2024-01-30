@@ -279,7 +279,7 @@ $subheader .= "</p>";
                     }),
                     processing: true,
                     "search": {
-                        return: false
+                        return: true
                     },
                     "language": {
                     "processing": "<span class='fa-stack fa-lg'>\n\
@@ -315,8 +315,9 @@ $subheader .= "</p>";
                             extend: 'csv',
                             text: 'Export to CSV',
                             exportOptions: {
-                                columns: [1]
-                            }
+                                columns: [1, 2]
+                            },
+                            "action": exportAllAction
                         },
                     ],
                     initComplete: function () {
@@ -326,6 +327,52 @@ $subheader .= "</p>";
                     }
                 });
 
+                /**
+                 * Export all rows (server prcessing) 
+                 * https://stackoverflow.com/questions/41350206/export-all-from-datatables-with-server-side-processing
+                 */
+                function exportAllAction(e, dt, button, config) {
+                    var self = this;
+                    var oldStart = dt.settings()[0]._iDisplayStart;
+                    
+                    dt.one('preXhr', function (e, s, data) {
+                        // Just this once, load all data from the server...
+                        data.start = 0;
+                        data.length = 2147483647;
+                        dt.one('preDraw', function (e, settings) {
+                            // Call the original action function
+                            if (button[0].className.indexOf('buttons-copy') >= 0) {
+                                $.fn.dataTable.ext.buttons.copyHtml5.action.call(self, e, dt, button, config);
+                            } else if (button[0].className.indexOf('buttons-excel') >= 0) {
+                                $.fn.dataTable.ext.buttons.excelHtml5.available(dt, config) ?
+                                    $.fn.dataTable.ext.buttons.excelHtml5.action.call(self, e, dt, button, config) :
+                                    $.fn.dataTable.ext.buttons.excelFlash.action.call(self, e, dt, button, config);
+                            } else if (button[0].className.indexOf('buttons-csv') >= 0) {
+                                $.fn.dataTable.ext.buttons.csvHtml5.available(dt, config) ?
+                                    $.fn.dataTable.ext.buttons.csvHtml5.action.call(self, e, dt, button, config) :
+                                    $.fn.dataTable.ext.buttons.csvFlash.action.call(self, e, dt, button, config);
+                            } else if (button[0].className.indexOf('buttons-pdf') >= 0) {
+                                $.fn.dataTable.ext.buttons.pdfHtml5.available(dt, config) ?
+                                    $.fn.dataTable.ext.buttons.pdfHtml5.action.call(self, e, dt, button, config) :
+                                    $.fn.dataTable.ext.buttons.pdfFlash.action.call(self, e, dt, button, config);
+                            } else if (button[0].className.indexOf('buttons-print') >= 0) {
+                                $.fn.dataTable.ext.buttons.print.action(e, dt, button, config);
+                            }
+                            dt.one('preXhr', function (e, s, data) {
+                                // DataTables thinks the first item displayed is index 0, but we're not drawing that.
+                                // Set the property to what it was before exporting.
+                                settings._iDisplayStart = oldStart;
+                                data.start = oldStart;
+                            });
+                            // Reload the grid with the original page. Otherwise, API functions like table.cell(this) don't work properly.
+                            setTimeout(dt.ajax.reload, 0);
+                            // Prevent rendering of the full data to the DOM
+                            return false;
+                        });
+                    });
+                    // Requery the server with the new one-time export settings
+                    dt.ajax.reload();
+                }
                 mintedTable.on("click", "th.select-checkbox", function () {
                     if ($("th.select-checkbox").hasClass("selected")) {
                         mintedTable.rows().deselect();
@@ -379,7 +426,6 @@ $subheader .= "</p>";
                     columns: [
                         {data: 'select'},
                         {data: 'id'},
-                        {data: 'PID'},
                         {data: 'redirect'},
                         {data: 'ark_url'},
                         {data: 'metadata'},
@@ -398,7 +444,8 @@ $subheader .= "</p>";
                             text: 'Export to CSV',
                             exportOptions: {
                                 columns: [1, 2, 3, 4]
-                            }
+                            },
+                            "action": exportAllAction
                         },
                     ],
                     "order": [[ 1, "asc" ]],
@@ -414,7 +461,7 @@ $subheader .= "</p>";
                             targets: 4
                         },
                         {
-                            "targets": 3,
+                            "targets": 2,
                             "data": "redirect",
                             "render": function (data, type, row) {
                                 if (data) {
@@ -427,6 +474,15 @@ $subheader .= "</p>";
                         },
 
                         {
+                            "targets": 4,
+                            "data": "metadata",
+                            orderable: false,
+                            "render": function (data, type, row) {
+                                data = '<a target="_blank" href="' + data + '">Click here</a>';
+                                return data;
+                            }
+                        },
+                        {
                             "targets": 5,
                             "data": "metadata",
                             orderable: false,
@@ -436,16 +492,7 @@ $subheader .= "</p>";
                             }
                         },
                         {
-                            "targets": 6,
-                            "data": "metadata",
-                            orderable: false,
-                            "render": function (data, type, row) {
-                                data = '<a target="_blank" href="' + data + '">Click here</a>';
-                                return data;
-                            }
-                        },
-                        {
-                            "targets": 4,
+                            "targets": 3,
                             "data": "ark_url",
                             orderable: false,
                             "render": function (data, type, row) {
@@ -544,7 +591,8 @@ $subheader .= "</p>";
                             text: 'Export to CSV',
                             exportOptions: {
                                 columns: [1, 2, 3, 4]
-                            }
+                            },
+                            "action": exportAllAction
                         },
                     ],
                     "order": [[ 1, "asc" ]],
@@ -1546,7 +1594,6 @@ $subheader .= "</p>";
                                         <tr>
                                             <th></th>
                                             <th>Ark ID</th>
-                                            <th>PID</th>
                                             <th>Number <br />of Redirects</th>
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
