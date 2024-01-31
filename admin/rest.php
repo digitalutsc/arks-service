@@ -391,19 +391,27 @@ function selectBound()
   $search = $_GET['search']['value'];
   
   // sql which gets all bound arks 
-  $sql_boundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+  $sql_boundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value as redirect
     FROM `<table-name>`
     WHERE _key LIKE '$firstpart%' 
     AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
     AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    ORDER BY id $sortDir";
-
+    AND _key REGEXP '\\\\sREDIRECT$'";
+    
+  if ($sortCol['data'] === 'redirect') {
+    $sql_boundarks .= "ORDER BY redirect $sortDir";
+  }
+  else {
+    $sql_boundarks .= "ORDER BY id $sortDir";
+  }
+    
   $sql = "$sql_boundarks LIMIT $limit OFFSET $offset";
   $sql_count = "SELECT COUNT(*) as num_filtered
   FROM (
     $sql_boundarks
   ) AS filtered_ids
   ";
+  error_log(print_r($sql, TRUE), 0);
 
   $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
   $rows = Database::$engine->query($sql);
@@ -431,13 +439,7 @@ function selectBound()
     $ark_url = rtrim($arkURL,"/") . "/ark:" . $row['id'];
     $r['select'] = ' ';
     
-    if ($limit != 2147483647) {
-      $redirect = getRedirects($row['id']);
-      $r['redirect'] = (!empty($redirect)) ? $redirect : 0;
-    }
-    else {
-      $r['redirect'] = " ";
-    }
+    $r['redirect'] = $row['redirect'];
     
     // New: Link to ? or ?? 
     $r['metadata'] = $ark_url . "?";
