@@ -240,18 +240,28 @@ class Database
      */
     public static function backupArkDatabase()
     {
+        if (MysqlArkConf::$backup_method == 1) {
+            self::backup_tables(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+        }
+        else if (MysqlArkConf::$backup_method == 2) {
+            self::mysqldump();
+        }
+    }
+
+    /**
+     * Backup the database by using mysqldump
+     */
+    public static function mysqldump() {
+        error_log(print_r("backupArkDatabase", TRUE), 0);
         if (!file_exists(getcwd() . "/db/backup")) {
             mkdir(getcwd() . "/db/backup", 0775);
         }
         $backup_file = MysqlArkConf::$path_db_backup . 'ark-db-backup-' . time() . '.sql';
+        $cmd = MysqlArkConf::$mysqldump . " --user=".MysqlArkConf::$mysql_user." --password=".MysqlArkConf::$mysql_passwd." --host=".MysqlArkConf::$mysql_host." ".MysqlArkConf::$mysql_dbname." > ".$backup_file." 2>&1";
+        error_log(print_r($cmd, TRUE), 0);
+        $output = shell_exec($cmd);
 
-        // get backup
-        $mybackup = self::backup_tables(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
-
-        // save to file
-        $handle = fopen($backup_file, 'w+');
-        fwrite($handle, $mybackup);
-        fclose($handle);
+        error_log(print_r($output, TRUE), 0);
     }
 
     /**
@@ -266,12 +276,17 @@ class Database
      */
     public static function &backup_tables($host, $user, $pass, $name, $tables = '*')
     {
+        // save to file
+        $backup_file = MysqlArkConf::$path_db_backup . 'ark-db-backup-' . time() . '.sql';
+        $handle = fopen($backup_file, 'w+');
+        
         $data = "\n/*---------------------------------------------------------------" .
             "\n  ARK Services DB BACKUP " . date("d.m.Y H:i") . " " .
             "\n  HOST: {$host}" .
             "\n  DATABASE: {$name}" .
             "\n  TABLES: {$tables}" .
             "\n  ---------------------------------------------------------------*/\n";
+        fwrite($handle, $data);
         $link = mysqli_connect($host, $user, $pass);
         mysqli_select_db($link, $name);
         mysqli_query($link, "SET NAMES `utf8` COLLATE `utf8_general_ci`"); // Unicode
@@ -291,10 +306,11 @@ class Database
                 "\n  TABLE: `{$table}`" .
                 "\n  ---------------------------------------------------------------*/\n";
             $data .= "DROP TABLE IF EXISTS `{$table}`;\n";
+            fwrite($handle, $data);
             $res = mysqli_query($link, "SHOW CREATE TABLE `{$table}`");
             $row = mysqli_fetch_row($res);
             $data .= $row[1] . ";\n";
-
+            fwrite($handle, $data);
             $result = mysqli_query($link, "SELECT * FROM `{$table}`");
             $num_rows = mysqli_num_rows($result);
 
@@ -319,10 +335,11 @@ class Database
                 }
                 $data .= "INSERT INTO `{$table}` VALUES ";
                 $data .= "  " . implode(";\nINSERT INTO `{$table}` VALUES ", $vals) . ";\n";
+                fwrite($handle, $data);
             }
         }
         mysqli_close($link);
-        return $data;
+        fclose($handle);
     }
 
     /**
