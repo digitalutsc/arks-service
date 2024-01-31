@@ -431,13 +431,13 @@ function selectBound()
     $ark_url = rtrim($arkURL,"/") . "/ark:" . $row['id'];
     $r['select'] = ' ';
     
-    if ($limit != 2147483647) {
+    /*if ($limit != 2147483647) {
       $redirect = getRedirects($row['id']);
       $r['redirect'] = (!empty($redirect)) ? $redirect : 0;
     }
     else {
       $r['redirect'] = " ";
-    }
+    }*/
     
     // New: Link to ? or ?? 
     $r['metadata'] = $ark_url . "?";

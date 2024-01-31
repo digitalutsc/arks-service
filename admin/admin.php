@@ -426,7 +426,7 @@ $subheader .= "</p>";
                     columns: [
                         {data: 'select'},
                         {data: 'id'},
-                        {data: 'redirect'},
+                        /*{data: 'redirect'},*/
                         {data: 'ark_url'},
                         {data: 'metadata'},
                         {data: 'policy'},
@@ -443,7 +443,7 @@ $subheader .= "</p>";
                             extend: 'csv',
                             text: 'Export to CSV',
                             exportOptions: {
-                                columns: [1, 3, 4, 5]
+                                columns: [1, 2, 3, 4]
                             },
                             "action": exportAllAction
                         },
@@ -460,7 +460,7 @@ $subheader .= "</p>";
                             orderable: false,
                             targets: 4
                         },
-                        {
+                        /*{
                             "targets": 2,
                             "data": "redirect",
                             "render": function (data, type, row) {
@@ -471,8 +471,16 @@ $subheader .= "</p>";
                                 }
 
                             }
+                        },*/
+                        {
+                            "targets": 3,
+                            "data": "metadata",
+                            orderable: false,
+                            "render": function (data, type, row) {
+                                data = '<a target="_blank" href="' + data + '">' + data + '</a>';
+                                return data;
+                            }
                         },
-
                         {
                             "targets": 4,
                             "data": "metadata",
@@ -483,16 +491,7 @@ $subheader .= "</p>";
                             }
                         },
                         {
-                            "targets": 5,
-                            "data": "metadata",
-                            orderable: false,
-                            "render": function (data, type, row) {
-                                data = '<a target="_blank" href="' + data + '">' + data + '</a>';
-                                return data;
-                            }
-                        },
-                        {
-                            "targets": 3,
+                            "targets": 2,
                             "data": "ark_url",
                             orderable: false,
                             "render": function (data, type, row) {
@@ -1594,7 +1593,7 @@ $subheader .= "</p>";
                                         <tr>
                                             <th></th>
                                             <th>Ark ID</th>
-                                            <th>Number <br />of Redirects</th>
+                                            <!--<th>Number <br />of Redirects</th>-->
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
                                             <th>Policy <br /> Statement</th>
