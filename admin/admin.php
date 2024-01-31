@@ -275,7 +275,7 @@ $subheader .= "</p>";
                     dom: 'lBfrtip',
                     "ajax": $.fn.dataTable.pipeline( {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
-                        "pages": 1 // number of pages to cache
+                        "pages": 5 // number of pages to cache
                     }),
                     processing: true,
                     "search": {
@@ -443,7 +443,7 @@ $subheader .= "</p>";
                             extend: 'csv',
                             text: 'Export to CSV',
                             exportOptions: {
-                                columns: [1, 2, 3, 4]
+                                columns: [1, 3, 4, 5]
                             },
                             "action": exportAllAction
                         },
@@ -478,7 +478,7 @@ $subheader .= "</p>";
                             "data": "metadata",
                             orderable: false,
                             "render": function (data, type, row) {
-                                data = '<a target="_blank" href="' + data + '">Click here</a>';
+                                data = '<a target="_blank" href="' + data + '">' + data + '</a>';
                                 return data;
                             }
                         },
@@ -487,7 +487,7 @@ $subheader .= "</p>";
                             "data": "metadata",
                             orderable: false,
                             "render": function (data, type, row) {
-                                data = '<a target="_blank" href="' + data + '">Click here</a>';
+                                data = '<a target="_blank" href="' + data + '">' + data + '</a>';
                                 return data;
                             }
                         },
@@ -552,7 +552,7 @@ $subheader .= "</p>";
                     },
                     "ajax": $.fn.dataTable.pipeline( {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=unbound" ?>",
-                        "pages": 1 // number of pages to cache
+                        "pages": 5 // number of pages to cache
                     }),
                     processing: true,
                     "language": {

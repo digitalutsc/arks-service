@@ -135,7 +135,7 @@ function increase_reidrection($db, $ark_id) {
   if ($count == false) { 
     $count = 1;
     // do insert
-    $query = "INSERT INTO `$db` (_key, _value) VALUES('$ark_id REDIRECT', $count)";
+    $query = "INSERT INTO `$db` (_key, _value) VALUES('$ark_id	REDIRECT', $count)";
   }
   else {
     $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])REDIRECT$"';

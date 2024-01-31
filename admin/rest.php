@@ -346,7 +346,7 @@ function selectUnBound()
     $arkURL = $protocol . $_SERVER['HTTP_HOST'];
     $ark_url = rtrim($arkURL,"/") . "/ark:" . $row['id'];
     $r['select'] = ' ';
-    $r['redirect'] = "TBD";
+
     // New: Link to ? or ?? 
     $r['metadata'] = $ark_url . "?";
     $r['policy'] = $ark_url . "??";
@@ -430,7 +430,15 @@ function selectBound()
     $arkURL = $protocol . $_SERVER['HTTP_HOST'];
     $ark_url = rtrim($arkURL,"/") . "/ark:" . $row['id'];
     $r['select'] = ' ';
-    $r['redirect'] = "TBD";
+    
+    if ($limit != 2147483647) {
+      $redirect = getRedirects($row['id']);
+      $r['redirect'] = (!empty($redirect)) ? $redirect : 0;
+    }
+    else {
+      $r['redirect'] = " ";
+    }
+    
     // New: Link to ? or ?? 
     $r['metadata'] = $ark_url . "?";
     $r['policy'] = $ark_url . "??";
@@ -494,6 +502,28 @@ function getPID($arkID) {
     $result = Database::$engine->select("_key REGEXP '^$arkID' and _key REGEXP 'PID$'");
     Database::dbclose($noid);
     return json_encode($result);
+}
+
+/**
+ * Get Ark PID for ark ID
+ * @param $arkID
+ * @return false|string
+ */
+function getRedirects($arkID) {
+  if (!isset($arkID))
+      return "Ark ID is not valid";
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+      die(json_encode('Database not found'));
+  }
+  $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
+  return NoidArk::fetch($noid, 0, $arkID, ['REDIRECT']);
+  Database::dbclose($noid);
+
+  //$result = Database::$engine->select("_key = '$arkID REDIRECT'");
+  
+  
+  return (is_array($result) && count($result)> 0) ? $result[0]['_value'] : '';
 }
 
 /**
