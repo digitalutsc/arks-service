@@ -57,12 +57,12 @@ $subheader .= "</p>";
 
         <!-- datatables -->
         <link rel="stylesheet"
-              href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css">
+              href="//cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
         <link rel="stylesheet"
               href="https://cdn.datatables.net/select/1.3.1/css/select.dataTables.min.css">
 
         <script type="text/javascript" language="javascript"
-                src="includes/js/jquery.dataTables.min.js"></script>
+                src="///cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
         <script type="text/javascript" language="javascript"
                 src="includes/js/dataTables.buttons.min.js"></script>
         <script type="text/javascript" language="javascript"
@@ -273,18 +273,19 @@ $subheader .= "</p>";
 
                 let mintedTable = jQuery('#minted_table').DataTable({
                     dom: 'lBfrtip',
-                    "ajax": $.fn.dataTable.pipeline( {
+                    /*"ajax": $.fn.dataTable.pipeline( {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
                         "pages": 5 // number of pages to cache
-                    }),
+                    }),*/
+                    "ajax": {
+                        "url": "rest.php?db=<?php echo $_GET['db'] . "&op=minted" ?>",
+                        error: function (xhr, error, code) {
+                            mintedTable.ajax.reload();
+                        }
+                    },
                     processing: true,
                     "search": {
                         return: true
-                    },
-                    "language": {
-                    "processing": "<span class='fa-stack fa-lg'>\n\
-                                        <i class='fa fa-spinner fa-spin fa-stack-2x fa-fw'></i>\n\
-                                </span>&emsp;Loading ...",
                     },
                 	serverSide: true,
                     columns: [
@@ -313,7 +314,14 @@ $subheader .= "</p>";
                     buttons: [
                         {
                             extend: 'csv',
-                            text: 'Export to CSV',
+                            text: 'Export',
+                            exportOptions: {
+                                columns: [1, 2]
+                            },
+                        },
+                        {
+                            extend: 'csv',
+                            text: 'Export All',
                             exportOptions: {
                                 columns: [1, 2]
                             },
@@ -396,10 +404,16 @@ $subheader .= "</p>";
                 // Make a Ajax call to Rest api and render data to table
                 let boundTable = jQuery('#bound_table').DataTable({
                     dom: 'lBfrtip',
-                    "ajax": $.fn.dataTable.pipeline( {
+                    /*"ajax": $.fn.dataTable.pipeline( {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
-                        "pages": 1 // number of pages to cache
-                    }),
+                        "pages": 1, // number of pages to cache
+                    }),*/
+                    "ajax": {
+                        "url": "rest.php?db=<?php echo $_GET['db'] . "&op=bound" ?>",
+                        error: function (xhr, error, code) {
+                            boundTable.ajax.reload();
+                        }
+                    },
                     processing: true,
                     search: {
                         return: true
@@ -409,11 +423,6 @@ $subheader .= "</p>";
                         [10, 25, 50, 100, 200, 1000, 2000]
                     ],
                     iDisplayLength: 10,
-                    "language": {
-                    "processing": "<span class='fa-stack fa-lg'>\n\
-                                        <i class='fa fa-spinner fa-spin fa-stack-2x fa-fw'></i>\n\
-                                </span>&emsp;Loading ...",
-                    },
                 	serverSide: true,
                     "initComplete": function (settings, json) {
                         $(".collapse").collapse({
@@ -421,7 +430,6 @@ $subheader .= "</p>";
                         });
                         // enable show/hide metadata button after ajax loaded
                         //enableShowHideMetadataColumn();
-
                     },
                     columns: [
                         {data: 'select'},
@@ -441,7 +449,14 @@ $subheader .= "</p>";
                     buttons: [
                         {
                             extend: 'csv',
-                            text: 'Export to CSV',
+                            text: 'Export',
+                            exportOptions: {
+                                columns: [1, 2, 3, 4]
+                            },
+                        },
+                        {
+                            extend: 'csv',
+                            text: 'Export all',
                             exportOptions: {
                                 columns: [1, 2, 3, 4]
                             },
@@ -549,16 +564,18 @@ $subheader .= "</p>";
                     "search": {
                         "return": true
                     },
-                    "ajax": $.fn.dataTable.pipeline( {
+                    /*"ajax": $.fn.dataTable.pipeline( {
                         "url": "rest.php?db=<?php echo $_GET['db'] . "&op=unbound" ?>",
                         "pages": 5 // number of pages to cache
-                    }),
-                    processing: true,
-                    "language": {
-                    "processing": "<span class='fa-stack fa-lg'>\n\
-                                        <i class='fa fa-spinner fa-spin fa-stack-2x fa-fw'></i>\n\
-                                </span>&emsp;Loading ...",
+                    }),*/
+                    "ajax": {
+                        "url": "rest.php?db=<?php echo $_GET['db'] . "&op=unbound" ?>",
+                        error: function (xhr, error, code) {
+                            unboundTable.ajax.reload();
+                        }
                     },
+
+                    processing: true,
                 	serverSide: true,
                     aLengthMenu: [
                         [10, 25, 50, 100, 200, 1000, 2000],
@@ -587,7 +604,14 @@ $subheader .= "</p>";
                     buttons: [
                         {
                             extend: 'csv',
-                            text: 'Export to CSV',
+                            text: 'Export',
+                            exportOptions: {
+                                columns: [1, 2]
+                            }
+                        },
+                        {
+                            extend: 'csv',
+                            text: 'Export all',
                             exportOptions: {
                                 columns: [1, 2]
                             },
