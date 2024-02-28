@@ -32,11 +32,13 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
   // processing the Ark URL
   $params = str_replace("ark:/", "", $_GET['q']);
   $parts = array_filter(explode("/", $params));
-
+  $parts_count = count($parts);
   // get Ark ID
   $arkid = $parts[0] . '/'. $parts[1];
+  
   if (strpos($arkid, "ark:") === 0) {
     $arkid = str_replace("ark:", "", $arkid);
+    $naan = explode("/",$arkid)[0];
   }
   
   // get all database Ark related
@@ -47,10 +49,15 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
 
     // loop through database and find matching one with prefix
     foreach ($arkdbs as $db) {
+      
+      // if there is no arks ID, only NAAN, ie. /ark:61220/
+      if ($parts_count == 1) {
+        $url = "https://n2t.net/ark:/" . $naan; 
+        break;
+      }
       // if ark ID found, look for URL fields first.
-
       // if there is Qualifier, look up for the qualifier, ignore the ark id
-      if (count($parts) > 2) {
+       if ($parts_count > 2) {
         // establish qualifier from Ark URL
         $total = count($parts);
         $qualifier = "";
@@ -103,16 +110,64 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
       $medata = getMetdata($db, $arkid);
       print($medata);
     }
-    else if ( substr_compare($_SERVER['REQUEST_URI'], "??", -2) === 0 ) {
-      $medata = getMetdata($db, $arkid);
+    if ( substr_compare($_SERVER['REQUEST_URI'], "??", -2) === 0 ) {
+      $medata = getMetdata($db, $arkid, "??");
       print($medata);
     }
-    else {
+
+    if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) !== 0 ) {
       header("Location: $url");
     }
   }
 } else {
   print "invalid argument";
+}
+
+/**
+ * Get full metadata
+ */
+function getMetdata($db, $ark_id, $type=null)
+{
+  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
+
+  if (!$link) {
+    echo "Error: Unable to connect to MySQL." . PHP_EOL;
+    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+    exit;
+  }
+
+  if (isset($type) && $type == "??") { 
+    $where = 'WHERE (_key LIKE "' . $ark_id .'	??%")';
+  }
+  else {
+    $where = 'WHERE (_key LIKE "' . $ark_id .'	%") AND (_key NOT LIKE "' . $ark_id .'	??%")';
+  }
+
+  if ($query = mysqli_query($link, "SELECT *  FROM `$db` ". $where)) {
+
+    if (!mysqli_query($link, "SET @a:='this will not work'")) {
+      printf("Error: %s\n", mysqli_error($query));
+    }
+    $results = $query->fetch_all();
+    
+    if (count($results) > 0) {
+      $medata = "<pre>";
+      foreach($results as $pair) {
+        $field = trim(str_replace($ark_id, " ", $pair[0])) ;
+        $field = trim(str_replace("??", "", $field));
+        if (!in_array($field, [':/c', ":/h", "REDIRECT", ""])) {
+          $medata .= $field. ": " . $pair[1] . "\n";
+        }
+      }
+      $medata .= "</pre>";
+      return $medata;
+    }
+
+    $query->close();
+  }
+  mysqli_close($link);
+  return false;
 }
 
 /**
@@ -135,7 +190,7 @@ function increase_reidrection($db, $ark_id) {
   if ($count == false) { 
     $count = 1;
     // do insert
-    $query = "INSERT INTO `$db` (_key, _value) VALUES('$ark_id	REDIRECT', $count)";
+    $query = "INSERT INTO `$db` (_key, _value) VALUES('$ark_id REDIRECT', $count)";
   }
   else {
     $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])REDIRECT$"';
@@ -146,55 +201,13 @@ function increase_reidrection($db, $ark_id) {
 
   $count++;
   if (mysqli_query($link, $query)) {
-    #print_log("New record created successfully");
+    //echo "Count ++";
   }
   else {
-    #print_log("New record created failed"); 
+   //echo "Counter not changed";
   }
   mysqli_close($link);
 }
-
-
-/**
- * Get full metadata
- */
-function getMetdata($db, $ark_id)
-{
-  $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
-
-  if (!$link) {
-    echo "Error: Unable to connect to MySQL." . PHP_EOL;
-    echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
-    echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
-    exit;
-  }
-
-  $where = 'WHERE _key LIKE "' . $ark_id .'%"';
-  if ($query = mysqli_query($link, "SELECT *  FROM `$db` ". $where)) {
-
-    if (!mysqli_query($link, "SET @a:='this will not work'")) {
-      printf("Error: %s\n", mysqli_error($query));
-    }
-    $results = $query->fetch_all();
-
-    if (count($results) > 0) {
-      $medata = "<pre>";
-      foreach($results as $pair) {
-        $field = trim(str_replace($ark_id, " ", $pair[0])) ;
-        if (!in_array($field, [':/c', ":/h", "REDIRECT", ""])) {
-          $medata .= $field. ": " . $pair[1] . "\n";
-        }
-      }
-      $medata .= "</pre>";
-      return $medata;
-    }
-
-    $query->close();
-  }
-  mysqli_close($link);
-  return false;
-}
-
 
 /**
  * Get Org registered info
