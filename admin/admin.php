@@ -692,8 +692,6 @@ $subheader .= "</p>";
                         e.preventDefault();
                         var button = $(this);
                         var target_element = button.attr("data-target");
-                        //console.log(target_element);
-                        //console.log($(target_element));
                         $(target_element).collapse('toggle');
                         $(target_element).on('shown.bs.collapse', function () {
                             $("span", button).text('Hide');
@@ -1140,13 +1138,33 @@ $subheader .= "</p>";
                             </div>
                         </div>
                     <?php } ?>
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="dropdown show">
+                                <a class="btn btn-primary dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    --- Select ---
+                                </a>
 
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                                    <button type="button" class="btn btn-link dropdown-item" data-toggle="modal"
+                                            data-target="#bindsetModal">
+                                        Binding an Arks
+                                    </button>
+                                    <button type="button" class="btn btn-link dropdown-item" data-toggle="modal"
+                                            data-target="#clearbindsetModal">
+                                            Unbinding an Arks
+                                    </button>
+                                    <div class="dropdown-divider"></div>
+                                    <button id="btn-bulk-bind" type="button" class="btn btn-link dropdown-item" data-toggle="modal"
+                                            data-target="#bulkBindModal">
+                                        Bulk Binding Arks
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div id="row-bindset" class="row">
                         <div class="col-sm-12">
-                            <button type="button" class="btn btn-primary" data-toggle="modal"
-                                    data-target="#bindsetModal">
-                                Binding
-                            </button>
                             <div class="modal fade" id="bindsetModal" tabindex="-1" aria-labelledby="bindsetModalLabel"
                                  aria-hidden="true">
                                 <div class="modal-dialog">
@@ -1193,10 +1211,6 @@ $subheader .= "</p>";
 
 
                             <!-- Remove Metadata set -->
-                            <button type="button" class="btn btn-secondary" data-toggle="modal"
-                                    data-target="#clearbindsetModal">
-                                Unbinding
-                            </button>
                             <div class="modal fade" id="clearbindsetModal" tabindex="-1"
                                  aria-labelledby="clearbindsetModalLabel"
                                  aria-hidden="true">
@@ -1253,10 +1267,6 @@ $subheader .= "</p>";
                                 </div>
                             </div>
                             <!-- Bulk Bind Modal -->
-                            <button id="btn-bulk-bind" type="button" class="btn btn-success" data-toggle="modal"
-                                    data-target="#bulkBindModal">
-                                Bulk Binding
-                            </button>
                             <div class="modal fade" id="bulkBindModal" tabindex="-1"
                                  aria-labelledby="bulkBindModalLabel"
                                  aria-hidden="true" data-backdrop="static" data-keyboard="false">
@@ -1291,6 +1301,15 @@ $subheader .= "</p>";
                                                               </li>
                                                               <li><strong>Upload the CSV to start the process.</strong></li>
                                                             </ol>
+                                                        </div>
+                                                        <hr/>
+                                                        <div class="container">
+                                                            <div class="form-group">
+                                                                <input class="form-check-input" type="checkbox" id="unbindAllFieldcheckbox" name="unbindAllFieldcheckbox">
+                                                                <label class="form-check-label" for="unbindAllFieldcheckbox">
+                                                                    Replace existing metadata before binding
+                                                                </label>
+                                                            </div>
                                                         </div>
                                                         <hr/>
                                                         <div class="container">
@@ -1377,6 +1396,10 @@ $subheader .= "</p>";
                                                 // disable close button in bulk bind popup to keep it in focus
                                                 $('#btn-close-bulkbind').prop('disabled', true);
                                                 $('#bulk-binding-dismiss-button').prop('disabled', true);
+                                                $('#unbindAllFieldcheckbox').prop('disabled', true);
+                                                
+                                                //capture if Replace existing metadata checkbox is checked
+                                                localStorage.setItem("unbindAllFields", ($('#unbindAllFieldcheckbox').prop('checked') ? 1 : 0 ));
 
                                                 // read and process CSV file
                                                 var csv = $('#importCSV');
@@ -1456,6 +1479,7 @@ $subheader .= "</p>";
                                                                 $('#process').css('display', 'none');
                                                                 $('#btn-close-bulkbind').prop('disabled', false);
                                                                 $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                                $('#unbindAllFieldcheckbox').prop('disabled', false);
 
                                                                 return false;
                                                             } else {
@@ -1488,6 +1512,7 @@ $subheader .= "</p>";
                                                 // pulll preserve read data from CSV from local storage
                                                 var csvResult = JSON.parse(localStorage.getItem("importCSV"));
                                                 var password = JSON.parse(localStorage.getItem("syspasswd"));
+                                                var purged = localStorage.getItem("unbindAllFields");
                                                 if (Array.isArray(csvResult)) {
                                                   var keys = csvResult[0].split(',').map(function (x) {
                                                     return x.toUpperCase();
@@ -1501,7 +1526,7 @@ $subheader .= "</p>";
                                                 // start binding each line of CSV file
                                                 var item = csvResult[index];
                                                 var values = item.split(',');
-
+                                                
                                                 var pdata = {};
                                                 for (var i = 0; i < values.length; i++) {
                                                     // enforce csv must follow sequence LocalID, PID, URL,
@@ -1511,10 +1536,9 @@ $subheader .= "</p>";
                                                 }
 
                                                 // send POST request for each line of read CSV file
-                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata, security: password})
+                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=bulkbind&stage=upload", {data: pdata, security: password, purged: purged})
                                                     .done(function (data) {
-                                                      console.log(data);
-
+                                                        
                                                       var result =  JSON.parse(data);
                                                         if (result.success == 401) {
 
@@ -1525,6 +1549,7 @@ $subheader .= "</p>";
                                                             $('#process').css('display', 'none');
                                                             $('#btn-process').prop('disabled', false);
                                                             $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                            $('#unbindAllFieldcheckbox').prop('disabled', false);
                                                             return;
                                                         }
                                                         else {
@@ -1582,6 +1607,7 @@ $subheader .= "</p>";
                                                         $('#import').val('Import');
                                                         $('#btn-close-bulkbind').prop('disabled', false);
                                                         $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                        $('#unbindAllFieldcheckbox').prop('disabled', false);
                                                         $('#btn-process').hide();
 
                                                         // clear read data from CSV from localstorage

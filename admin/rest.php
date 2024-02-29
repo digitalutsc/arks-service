@@ -138,20 +138,31 @@ function bulkbind(){
   if (empty($_POST['security'])  ||  (Database::isAuth($_POST['security']) === false) ) {
     die(json_encode(['success' => 401, 'message' => 'Security Credentials is invalid, Please verify it again.']));
   }
-
+  
   $result = null;
+  $purged = 0;
   if (is_array($_POST) && isset($_POST['data'])) {
-    
+    $purged = $_POST['purged'];
     // capture identifier (strictly recommend first column)
     $contact = time();
 
     if (!empty($_POST['data'][strtoupper('Ark_ID')])) { // any pending data must has Ark_ID column
         $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
-        // check if the ARK ID has been bound before
+        // check if ark ID exist
+        $identifier = $_POST['data'][strtoupper('Ark_ID')];
+
+        // if the Replace existing metadata before binding is selected, unbind all metadata field
+        if ($purged == 1) { 
+          $where = "_key REGEXP '^" . $identifier ."\t' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+          $result = Database::$engine->select($where);
+
+          $json = array();
+          foreach ($result as $row) {
+            $status = NoidArk::clearBind($noid, trim($identifier), trim(str_replace($identifier,"", $row['_key'])));
+          }
+        }
         foreach ($_POST['data'] as $key => $pair) {
           if ($key !== strtoupper('Ark_ID')) {
-            // check if ark ID exist
-            $identifier = $_POST['data'][strtoupper('Ark_ID')];
             NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($key), $pair);
           }
         }
