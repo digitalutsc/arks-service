@@ -155,7 +155,7 @@ function getMetdata($db, $ark_id, $type=null)
       $medata = "<pre>";
       foreach($results as $pair) {
         $field = trim(str_replace($ark_id, " ", $pair[0])) ;
-        $field = trim(str_replace("??", "", $field));
+        $field = trim(str_replace("?", "", $field));
         if (!in_array($field, [':/c', ":/h", "REDIRECT", ""])) {
           $medata .= $field. ": " . $pair[1] . "\n";
         }
