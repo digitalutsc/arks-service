@@ -138,9 +138,11 @@ function getMetdata($db, $ark_id, $type=null)
   }
 
   if (isset($type) && $type == "??") { 
+    $label = "erc-support:";
     $where = 'WHERE (_key LIKE "' . $ark_id .'	??%")';
   }
   else {
+    $label = "erc:";
     $where = 'WHERE (_key LIKE "' . $ark_id .'	%") AND (_key NOT LIKE "' . $ark_id .'	??%")';
   }
 
@@ -153,6 +155,7 @@ function getMetdata($db, $ark_id, $type=null)
     
     if (count($results) > 0) {
       $medata = "<pre>";
+      $medata .= $label. "\n";
       foreach($results as $pair) {
         $field = trim(str_replace($ark_id, " ", $pair[0])) ;
         $field = trim(str_replace("?", "", $field));

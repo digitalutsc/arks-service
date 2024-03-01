@@ -148,12 +148,49 @@ function bulkbind(){
 
     if (!empty($_POST['data'][strtoupper('Ark_ID')])) { // any pending data must has Ark_ID column
         $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
-        // check if ark ID exist
-        $identifier = $_POST['data'][strtoupper('Ark_ID')];
+        
+        error_log(print_r($_POST['data'], TRUE), 0);
+        $parts = explode("/", $_POST['data'][strtoupper('Ark_ID')]);
+        $identifier = $parts[0]. "/" .$parts[1];
 
-        // if the Replace existing metadata before binding is selected, unbind all metadata field
+        // TODO: check if the column Ark_ID has "/" ==> handle with hierarchical
+        if (substr_count($_POST['data'][strtoupper('Ark_ID')], '/') > 1) { 
+          // this arks ID is hierarchical
+          $hierarchy = "/";
+          for ($i = 2; $i < count($parts); $i++) {
+            if (strpos($parts[$i], ".") !== false) {
+              $hierarchy .= explode(".", $parts[$i])[0]; 
+            }
+            else {
+              $hierarchy .= $parts[$i]; 
+            }
+            if ($i < count($parts)-1)
+              $hierarchy .= "/";
+          }
+        }
+        
+        if (substr_count($_POST['data'][strtoupper('Ark_ID')], '.') > 0) { 
+          // this ark ID has variants
+          $parts_variants = explode(".", $parts[2]);
+          array_shift($parts_variants);
+          $variants = implode(".", $parts_variants); 
+        }
+        // TODO: check if the column Ark_ID has "." ==> handle with object variants
+        
+        // if the Replace existing metadata before binding is selected, unbind all metadata field (no hierarchy)
         if ($purged == 1) { 
-          $where = "_key REGEXP '^" . $identifier ."\t' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+          
+          $condition = "'^" . $identifier;
+          if ((isset($hierarchy) && $hierarchy !== "/")) { 
+            $condition .= "\t$hierarchy";
+          }
+          if (isset($variants)) { 
+            $condition .= "\t$variants";
+          }
+          $condition .= "'";
+          
+          $where = "_key REGEXP ". $condition ." and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+          error_log(print_r($where, TRUE), 0);
           $result = Database::$engine->select($where);
 
           $json = array();
@@ -161,9 +198,23 @@ function bulkbind(){
             $status = NoidArk::clearBind($noid, trim($identifier), trim(str_replace($identifier,"", $row['_key'])));
           }
         }
+
+        // Binding the new metadata
         foreach ($_POST['data'] as $key => $pair) {
           if ($key !== strtoupper('Ark_ID')) {
-            NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($key), $pair);
+            
+            // if there is hierachy, ie 61220/utsc0	/page1 WHO
+            $key_field = "";
+            if ((isset($hierarchy) && $hierarchy !== "/")) {
+              $key_field = $hierarchy . "	";  
+            }
+            // if there is hierachy, ie 61220/utsc0	/page1.image.png
+            if (isset($variants)) { 
+              $key_field .= $variants . "	";
+            }
+            $key_field .= strtoupper($key);  
+
+            NoidArk::bind($noid, $contact, 1, 'set', $identifier, $key_field, $pair);
           }
         }
         Database::dbclose($noid);
