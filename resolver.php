@@ -117,8 +117,8 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
       increase_reidrection($db, $arkid, $qualifier);
       
       // redirect
-      print("Redirecting to " . $url);
-      //header("Location: $url");
+      //print("Redirecting to " . $url);
+      header("Location: $url");
     }
   }
 } else {
