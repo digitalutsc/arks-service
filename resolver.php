@@ -63,12 +63,18 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
         $total = count($parts);
         $qualifier = "/";
         for ($i = 2; $i < $total; $i++) {
-          if (strpos($parts[$i], ".") !== false) {
-            // Qualifier has variants 
-          }
+          
           $qualifier .= $parts[$i];
           if ($i != $total - 1) {
             $qualifier .= "/";
+          }
+
+          if (strpos($parts[$i], ".") !== false) {
+            // Qualifier has variants 
+            $qualifier_parts = explode(".", $qualifier);
+            $hiarachy = $qualifier_parts[0];
+            array_shift($qualifier_parts);
+            $qualifier =  $hiarachy . "\t" . "." . implode(".",$qualifier_parts);
           }
         }
         // looking up
@@ -119,11 +125,11 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
     // New: Add a check for ? or ?? and the end of Ark URL
     if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) === 0 ) {
       // if the Ark URLs ends with '?'
-      $medata = getMetdata($db, $arkid);
+      $medata = getMetdata($db, $arkid, $qualifier);
       print($medata);
     }
     if ( substr_compare($_SERVER['REQUEST_URI'], "??", -2) === 0 ) {
-      $medata = getMetdata($db, $arkid, "??");
+      $medata = getMetdata($db, $arkid, $qualifier,"??");
       print($medata);
     }
 
@@ -139,7 +145,7 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
 /**
  * Get full metadata
  */
-function getMetdata($db, $ark_id, $type=null)
+function getMetdata($db, $ark_id, $qualifier,$type=null)
 {
   $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
@@ -150,15 +156,28 @@ function getMetdata($db, $ark_id, $type=null)
     exit;
   }
 
-  if (isset($type) && $type == "??") { 
+  if (isset($type) && $type == "??") {  // for ??
     $label = "erc-support:";
-    $where = 'WHERE (_key LIKE "' . $ark_id .'	??%")';
+    if (isset($qualifier) && !empty($qualifier)) { 
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$qualifier.'([[:space:]])[^\.].*\\\\?\\\\?.*"';
+    }
+    else {
+      // Query data with Ark ID and field name with ?? attached to it without qualifer
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id. '([[:space:]])[^/].*\\\\?\\\\?.*"';
+    }
+    
   }
-  else {
+  else { // for ?
     $label = "erc:";
-    $where = 'WHERE (_key LIKE "' . $ark_id .'	%") AND (_key NOT LIKE "' . $ark_id .'	??%")';
+    if (isset($qualifier) && !empty($qualifier)) { 
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id. '([[:space:]])'.$qualifier.'([[:space:]])[^\.]" AND _key NOT REGEXP ".*\\\\?\\\\?.*"';
+    }
+    else {
+      // Query data with Ark ID and field name with ? attached to it without qualifer.
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id. '([[:space:]])[^/]" AND _key NOT REGEXP ".*\\\\?\\\\?.*"';
+    }
+    
   }
-
   if ($query = mysqli_query($link, "SELECT *  FROM `$db` ". $where)) {
 
     if (!mysqli_query($link, "SET @a:='this will not work'")) {

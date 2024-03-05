@@ -173,7 +173,7 @@ function bulkbind(){
           // this ark ID has variants
           $parts_variants = explode(".", $parts[2]);
           array_shift($parts_variants);
-          $variants = implode(".", $parts_variants); 
+          $variants = "." . implode(".", $parts_variants); 
         }
         // TODO: check if the column Ark_ID has "." ==> handle with object variants
         
@@ -190,7 +190,6 @@ function bulkbind(){
           $condition .= "'";
           
           $where = "_key REGEXP ". $condition ." and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
-          error_log(print_r($where, TRUE), 0);
           $result = Database::$engine->select($where);
 
           $json = array();
