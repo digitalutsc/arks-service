@@ -81,8 +81,6 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
         $result = lookup($db, $arkid, $qualifier, "URL");
         if (!empty($result)) {
           $url = $result;
-          // add a counter here
-          increase_reidrection($db, $arkid, $qualifier);
           break;
         }
       }
@@ -95,8 +93,6 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
         if (!empty($result)) {
           // found URL field bound associated with the ark id
           $url = $result;
-          // add a counter here
-          increase_reidrection($db, $arkid, $qualifier);
           break;
         }
       }
@@ -105,23 +101,6 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
       }
     }
    
-    // exclusive for UTSC, may removed
-    if ($url === "/404.php") {
-      // not found URL, get PID and established the URL
-      foreach ($arkdbs as $db) {
-        // if ark ID found, look for URL fields first.
-        $pid = lookup($db, $arkid, "PID");
-        if (!empty($pid)) {
-          // found URL field bound associated with the ark id
-          $dns = getNAA($db);
-          $url = "https://$dns/islandora/object/" . $pid;
-
-          // TODO: add a counter here
-          increase_reidrection($db, $arkid, $qualifier);
-          break;
-        }
-      }
-    }
     // New: Add a check for ? or ?? and the end of Ark URL
     if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) === 0 ) {
       // if the Ark URLs ends with '?'
@@ -134,6 +113,10 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
     }
 
     if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) !== 0 ) {
+      // add a counter here
+      increase_reidrection($db, $arkid, $qualifier);
+      
+      // redirect
       print("Redirecting to " . $url);
       //header("Location: $url");
     }
@@ -233,22 +216,21 @@ function increase_reidrection($db, $ark_id, $qualifier) {
     }
   }
   else {
+    // increase the counter
+    $count++;
+
+    // do update
     if (empty($qualifier)) {
       $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])REDIRECT$"';
     }
     else {
       $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$qualifier.'([[:space:]])REDIRECT$"';
     }
-    $count++;
-    // do update
     $query = "UPDATE `$db` SET _value = $count ". $where;
   }
-  $count++;
-  if (mysqli_query($link, $query)) {
-    //echo "Count ++";
-  }
-  else {
-   //echo "Counter not changed";
+  
+  if (!mysqli_query($link, $query)) {
+    error_log(print_r("$query is failed to run", TRUE), 0);
   }
   mysqli_close($link);
 }
