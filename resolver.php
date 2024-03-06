@@ -16,10 +16,13 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    pre {
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
-<!--<div class="loader"></div>-->
+
 </body>
 </html>
 
@@ -33,8 +36,12 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
   $params = str_replace("ark:/", "", $_GET['q']);
   $parts = array_filter(explode("/", $params));
   $parts_count = count($parts);
+  
   // get Ark ID
-  $arkid = $parts[0] . '/'. $parts[1];
+  if ($parts_count > 1)
+    $arkid = $parts[0] . '/'. $parts[1];
+  else 
+    $arkid = $parts[0];
   
   if (strpos($arkid, "ark:") === 0) {
     $arkid = str_replace("ark:", "", $arkid);
@@ -53,8 +60,8 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
 
       // if there is no arks ID, only NAAN, ie. /ark:61220/
       if ($parts_count == 1) {
-        $url = "https://n2t.net/ark:/" . $naan; 
-        break;
+        print(htmlspecialchars_decode(getNAA($db)));
+        return;
       }
       // if ark ID found, look for URL fields first.
       // if there is Qualifier, look up for the qualifier, ignore the ark id
@@ -105,11 +112,11 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
     if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) === 0 ) {
       // if the Ark URLs ends with '?'
       $medata = getMetdata($db, $arkid, $qualifier);
-      print($medata);
+      print_pre($medata);
     }
     if ( substr_compare($_SERVER['REQUEST_URI'], "??", -2) === 0 ) {
       $medata = getMetdata($db, $arkid, $qualifier,"??");
-      print($medata);
+      print_pre($medata);
     }
 
     if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) !== 0 ) {
@@ -123,6 +130,15 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
   }
 } else {
   print "invalid argument";
+}
+
+/**
+ * Print content wrapped around <pre></pre>
+ */
+function print_pre($content) {
+  print("<pre>");
+  print($content);
+  print("<pre/>");
 }
 
 /**

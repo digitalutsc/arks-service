@@ -720,7 +720,7 @@ $subheader .= "</p>";
                 print '<h5 class="card-header">Database <i>' . $_GET['db'] . '</i> is selected.</h5>';
             } else {
 
-                if ($_GET['op'] == "edit") { 
+                if (isset($_GET['op']) && $_GET['op'] == "edit") { 
                     print <<<EOS
                         <h5 class="card-header">Update your existing collection</h5>
                     EOS;
@@ -737,17 +737,23 @@ $subheader .= "</p>";
                 <div id="row-dbcreate" class="row">
                     <div class="col-sm-6">
                         <?php
+                        $back_btn = '<a class="btn btn-secondary" href="./admin.php">Back</a>';
                         if (!isset($_GET['db']) || (isset($_GET['db']) && $_GET['op'] === "edit")) {
                             
                             // submit button to create db
                             $submit_btn = '<input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>';
-                            $back_btn = '<a class="btn btn-secondary" href="./admin.php">Back</a>';
+                            $edit_dbname= "";
+                            $edit_dbtemplate = "";
+                            $edit_dbprefix = "";
+                            $edit_dbtemplate_display = "";
+                            $edit_dbnaan = "";
+                            $edit_dbnaa = "";
 
-                            if ($_GET['op'] === "edit") { 
+                            if (isset($_GET['op']) && $_GET['op'] === "edit") { 
                                 // for Edit database mode
                                 $metadata = json_decode(rest_get("/admin/rest.php?db=" . $_GET['db'] . "&op=dbinfo"));
                                 $edit_dbname = "value='". $_GET['db'] . "' disabled";
-                                
+                               
                                 if (isset($metadata->template)) {
                                     $edit_dbtemplate = '
                                         <script type="text/javascript">
@@ -756,7 +762,6 @@ $subheader .= "</p>";
                                             document.getElementById("selectTemplate").disabled = true;
                                         </script>
                                     ';
-                                    print($edit_dbtemplate);
                                 }
                                 if (isset($metadata->prefix)) { 
                                     $edit_dbprefix = "value='". $metadata->prefix . "' disabled";
@@ -769,11 +774,12 @@ $subheader .= "</p>";
                                     $edit_dbnaan = "value='". $metadata->naan . "' disabled";
                                 }
                                 if (isset($metadata->naa)) { 
-                                    $edit_dbnaa = "value='". $metadata->naa . "'";
+                                    $edit_dbnaa = $metadata->naa;
                                 }
 
                                 if ((isset($_GET['db']) && $_GET['op'] === "edit")) { 
-                                    $submit_btn = '<input type="submit" name="dbupdate" value="Update" class="btn btn-primary"/>';
+                                    $submit_btn  = '<input type="hidden" name="editDBname" id ="editDBname" value="'.$_GET['db'].'"/>';
+                                    $submit_btn .= '<input type="submit" name="dbupdate" value="Update" class="btn btn-primary"/>';
                                     $submit_btn .= $back_btn;
                                 }
                             }
@@ -878,7 +884,7 @@ $subheader .= "</p>";
                                             case 'long': {
                                                 document.getElementById("enterNAAN").required = true;
                                                 document.getElementById("enterInsitutionName").required = true;
-                                                document.getElementById("enterRedirect").required = true;
+                                                document.getElementById("enterNAA").required = true;
                                                 break;
                                             }
                                             default: {
@@ -904,19 +910,13 @@ $subheader .= "</p>";
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label class="control-label" for="enterRedirect">Name Assigning Authority (NAA):</label>
-                                    <input type="text" class="form-control" id="enterRedirect" name="enterRedirect" $edit_dbnaa
-                                           />
+                                    <label class="control-label" for="enterNAA">Name Assigning Authority (NAA):</label>
+                                    <textarea type="text" class="form-control" id="enterNAA" name="enterNAA"
+                                           >$edit_dbnaa</textarea>
                                    <small id="naa_tip" class="form-text text-muted"></small>
                                 </div>
 
                                 <input type="hidden" class="form-control" id="enterInsitutionName" name="enterInsitutionName" value="dsu/utsc-library"/>
-
-                                <div class="form-group">
-                                    <label class="control-label" for="databaseDescription">Description:</label>
-                                    <textarea class="form-control" id="databaseDescription" name="databaseDescription"></textarea>
-                                </div>
-
                                 $submit_btn
                             </form>
                             EOS;
@@ -931,8 +931,10 @@ $subheader .= "</p>";
                     </div>
                     <div class="col-sm-6">
                         <?php
-
+                        
+                        // create an new Ark database
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
+
                             // Repace white space (if there is) with underscore
                             $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
 
@@ -961,7 +963,7 @@ $subheader .= "</p>";
                                     $_POST['selectTemplate'],
                                     $_POST['identifier_minter'],
                                     trim($_POST['enterNAAN']),
-                                    trim($_POST['enterRedirect']),
+                                    trim($_POST['enterNAA']),
                                     trim($_POST['enterInsitutionName']),
                                 );
                                 header("Location: admin.php");
@@ -972,6 +974,13 @@ $subheader .= "</p>";
                                 </div>
                             ';
                             }
+                        }
+
+                        // Update a existing database 
+                        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbupdate'])) {
+                            // backup database before bulk binding
+                            $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
+                            Database::dbupdatesetting($_POST['editDBname'], $dbpath, "naa", $_POST['enterNAA']);;
                         }
 
                         // List all created databases in the table
@@ -994,6 +1003,9 @@ $subheader .= "</p>";
                                             $highlight = "";
                                             $setActive = '<a class="btn btn-success" href="./admin.php?db=' . $db . '">Select</a>';
                                             $setEdit= '<a class="btn btn-warning" href="./admin.php?op=edit&db=' . $db . '">Edit</a>';
+                                            if (isset($_GET['op']) && $_GET['op'] == "edit") {
+                                                $setEdit= '<a class="btn btn-warning disabled" href="#disable>Edit</a>';
+                                            }
                                             if (!isset($_GET['op']) && (isset($_GET['db']) && $_GET['db'] == $db)) {
                                                 $setActive = "<strong>Selected</srong>";
                                                 $highlight = 'class="table-success"';
@@ -1001,7 +1013,8 @@ $subheader .= "</p>";
                                             $metadata = json_decode(rest_get("/admin/rest.php?db=" . $db . "&op=dbinfo"));
                                             $detail = "<p>";
                                             foreach ((array)$metadata as $key => $value) {
-                                                $detail .= "<strong>$key</strong>: $value <br />";
+                                                if ($key !== "naa")
+                                                    $detail .= "<strong>$key</strong>: $value <br />";
                                             }
                                             $detail .= "</p>";
                                             print <<<EOS

@@ -453,6 +453,17 @@ class Database
         return $existed;
     }
 
+    /**
+     * Update database settings
+     * @param $dbname
+     * @param $field
+     * @param null $value
+     */
+    public static function dbupdatesetting($dbname, $dbdir, $field, $value) {
+        $noid = self::dbopen($dbname, $dbdir, DatabaseInterface::DB_WRITE);
+        self::$engine->set(GlobalsArk::_RR . "/$field", $value);
+        self::dbclose($noid);
+    }
 
     /**
      * @param $dbdir
