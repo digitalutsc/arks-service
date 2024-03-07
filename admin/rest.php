@@ -149,29 +149,29 @@ function bulkbind(){
     if (!empty($_POST['data'][strtoupper('Ark_ID')])) { // any pending data must has Ark_ID column
         $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
         
-        error_log(print_r($_POST['data'], TRUE), 0);
         $parts = explode("/", $_POST['data'][strtoupper('Ark_ID')]);
+        $parts_count = count($parts);
         $identifier = $parts[0]. "/" .$parts[1];
 
         // TODO: check if the column Ark_ID has "/" ==> handle with hierarchical
         if (substr_count($_POST['data'][strtoupper('Ark_ID')], '/') > 1) { 
           // this arks ID is hierarchical
           $hierarchy = "/";
-          for ($i = 2; $i < count($parts); $i++) {
+          for ($i = 2; $i < $parts_count; $i++) {
             if (strpos($parts[$i], ".") !== false) {
               $hierarchy .= explode(".", $parts[$i])[0]; 
             }
             else {
               $hierarchy .= $parts[$i]; 
             }
-            if ($i < count($parts)-1)
+            if ($i < $parts_count-1)
               $hierarchy .= "/";
           }
         }
         
         if (substr_count($_POST['data'][strtoupper('Ark_ID')], '.') > 0) { 
           // this ark ID has variants
-          $parts_variants = explode(".", $parts[2]);
+          $parts_variants = explode(".", $parts[$parts_count-1]);
           array_shift($parts_variants);
           $variants = "." . implode(".", $parts_variants); 
         }
