@@ -192,7 +192,9 @@ function getMetdata($db, $ark_id, $qualifier,$type=null)
         $field = trim(str_replace("?", "", $field));
         if (!in_array($field, [':/c', ":/h", "REDIRECT", ""])) {
           if (preg_match("/\t/", $field)) {
-            $field = explode("\t", $field)[1];
+            $parts_field= explode("\t", $field);
+            $count_parts_field = count($parts_field);
+            $field = $parts_field[$count_parts_field-1];
           }
           $medata .= ucwords(strtolower($field)) . ": " . $pair[1] . "\n";
         }
