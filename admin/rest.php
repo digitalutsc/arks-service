@@ -365,23 +365,27 @@ function selectUnBound()
   }
   $search = $_GET['search']['value'];
   
-  // sql which gets all arks 
-  $sql_unboundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
-    FROM `<table-name>`
-    WHERE _key LIKE '$firstpart%' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    EXCEPT
+  // sql which gets the arks without any metadata bound
+  $sql_unboundarks = "SELECT id, REPLACE (id, '$firstpart', '') as _id
+  from (
       SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
       FROM `<table-name>`
-      WHERE _key LIKE '$firstpart%' AND (_key NOT LIKE '%:\\\\/c' AND _key NOT LIKE '%:\\\\/h')";
-  
-   // sql gets all unbound arks
-  $sql = "$sql_unboundarks ORDER BY id $sortDir LIMIT $limit OFFSET $offset";
+      WHERE _key LIKE '$firstpart%' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
+      EXCEPT
+        SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
+        FROM `<table-name>`
+        WHERE _key LIKE '$firstpart%' AND (_key NOT LIKE '%:\\\\/c' AND _key NOT LIKE '%:\\\\/h')
+  ) as list_ids
+  ORDER BY cast(_id as unsigned) $sortDir";
+
+// sql gets all unbound arks
+  $sql = "$sql_unboundarks LIMIT $limit OFFSET $offset";
   $sql_count = "SELECT COUNT(*) as num_filtered
      FROM (
        $sql_unboundarks
      ) AS filtered_ids
   ";
-  
+
   $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
   $rows = Database::$engine->query($sql);
   $num_filtered = Database::$engine->query($sql_count)[0]['num_filtered'] ?? 0;
