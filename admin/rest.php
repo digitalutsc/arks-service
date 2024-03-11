@@ -452,12 +452,15 @@ function selectBound()
   $search = $_GET['search']['value'];
   
   // sql which gets all bound arks 
-  $sql_boundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
-    FROM `<table-name>`
-    WHERE _key LIKE '$firstpart%' 
-    AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
-    AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    ORDER BY id $sortDir";
+  $sql_boundarks = "SELECT id, REPLACE (id, '$firstpart', '') as _id
+      from (
+          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+              FROM `dsu_ark`
+              WHERE _key LIKE '$firstpart%' 
+              AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
+              AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
+      ) as list_ids
+      ORDER BY cast(_id as unsigned) $sortDir";
 
   $sql = "$sql_boundarks LIMIT $limit OFFSET $offset";
   $sql_count = "SELECT COUNT(*) as num_filtered
