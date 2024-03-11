@@ -515,7 +515,7 @@ function selectBound()
   return json_encode(array(
     "data" => $result,
     "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
-    "recordsTotal" => countBoundedArks(),
+    "recordsTotal" => countTotalArks(),
     "recordsFiltered" => $num_filtered,
   ));
 }
@@ -632,10 +632,10 @@ function getMinted($mode)
   $offset = $_GET['start'] ?? 0;
   $search = $_GET['search']['value'];
 
-  $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value, SUBSTRING_INDEX(SUBSTRING_INDEX(_value,'|',3), '|', -1) AS seq
+  $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value, SUBSTRING_INDEX(SUBSTRING_INDEX(_value,'|',4), '|', -1) AS seq
     FROM `<table-name>`
     WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    ORDER BY seq $sortDir
+    ORDER BY  cast(seq as unsigned) $sortDir
     LIMIT $limit
     OFFSET $offset;
   ";
@@ -673,10 +673,9 @@ function countTotalArks() {
       die(json_encode('Database not found'));
   }
   $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
-  $result = Database::$engine->query("SELECT COUNT(DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)')) AS total FROM `<table-name>` WHERE _key LIKE '$firstpart%' and _key REGEXP '\\\\s:\\/c$';");
+  $total = Database::$engine->get(Globals::_RR . "/oacounter");
   Database::dbclose($noid);
-  return $result[0]['total'] ?? 0;
+  return $total;
 }
 
 /**

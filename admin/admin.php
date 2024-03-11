@@ -738,7 +738,7 @@ $subheader .= "</p>";
                     <div class="col-sm-6">
                         <?php
                         $back_btn = '<a class="btn btn-secondary" href="./admin.php">Back</a>';
-                        if (!isset($_GET['db']) || (isset($_GET['db']) && $_GET['op'] === "edit")) {
+                        if (!isset($_GET['db']) || (isset($_GET['db']) && isset($_GET['op']) && $_GET['op'] === "edit")) {
                             
                             // submit button to create db
                             $submit_btn = '<input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>';
