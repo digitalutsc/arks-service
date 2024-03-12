@@ -436,7 +436,7 @@ $subheader .= "</p>";
                         /*{data: 'redirect'},*/
                         {data: 'ark_url'},
                         {data: 'metadata'},
-                        {data: 'policy'},
+                        /*{data: 'policy'},*/
                     ],
                     "fnDrawCallback": function (oSettings) {
                         //enableShowHideMetadataColumn();
@@ -450,14 +450,14 @@ $subheader .= "</p>";
                             extend: 'csv',
                             text: 'Export',
                             exportOptions: {
-                                columns: [1, 2, 3, 4]
+                                columns: [1, 2, 3]
                             },
                         },
                         {
                             extend: 'csv',
                             text: 'Export all',
                             exportOptions: {
-                                columns: [1, 2, 3, 4]
+                                columns: [1, 2, 3]
                             },
                             "action": exportAllAction
                         },
@@ -470,11 +470,11 @@ $subheader .= "</p>";
                             className: 'select-checkbox',
                             targets: 0
                         },
-                        {
+                        /*{
                             orderable: false,
                             targets: 4
                         },
-                        /*{
+                        {
                             "targets": 2,
                             "data": "redirect",
                             "render": function (data, type, row) {
@@ -495,15 +495,15 @@ $subheader .= "</p>";
                                 return data;
                             }
                         },
-                        {
+                        /*{
                             "targets": 4,
-                            "data": "metadata",
+                            "data": "policy",
                             orderable: false,
                             "render": function (data, type, row) {
                                 data = '<a target="_blank" href="' + data + '">' + data + '</a>';
                                 return data;
                             }
-                        },
+                        },*/
                         {
                             "targets": 2,
                             "data": "ark_url",
@@ -1698,7 +1698,6 @@ $subheader .= "</p>";
                                             <!--<th>Number <br />of Redirects</th>-->
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
-                                            <th>Policy <br /> Statement</th>
                                         </tr>
                                         </thead>
                                     </table>
