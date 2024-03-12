@@ -148,12 +148,48 @@ function bulkbind(){
 
     if (!empty($_POST['data'][strtoupper('Ark_ID')])) { // any pending data must has Ark_ID column
         $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
-        // check if ark ID exist
-        $identifier = $_POST['data'][strtoupper('Ark_ID')];
+        
+        $parts = explode("/", $_POST['data'][strtoupper('Ark_ID')]);
+        $parts_count = count($parts);
+        $identifier = $parts[0]. "/" .$parts[1];
 
-        // if the Replace existing metadata before binding is selected, unbind all metadata field
+        // TODO: check if the column Ark_ID has "/" ==> handle with hierarchical
+        if (substr_count($_POST['data'][strtoupper('Ark_ID')], '/') > 1) { 
+          // this arks ID is hierarchical
+          $hierarchy = "/";
+          for ($i = 2; $i < $parts_count; $i++) {
+            if (strpos($parts[$i], ".") !== false) {
+              $hierarchy .= explode(".", $parts[$i])[0]; 
+            }
+            else {
+              $hierarchy .= $parts[$i]; 
+            }
+            if ($i < $parts_count-1)
+              $hierarchy .= "/";
+          }
+        }
+        
+        if (substr_count($_POST['data'][strtoupper('Ark_ID')], '.') > 0) { 
+          // this ark ID has variants
+          $parts_variants = explode(".", $parts[$parts_count-1]);
+          array_shift($parts_variants);
+          $variants = "." . implode(".", $parts_variants); 
+        }
+        // TODO: check if the column Ark_ID has "." ==> handle with object variants
+        
+        // if the Replace existing metadata before binding is selected, unbind all metadata field (no hierarchy)
         if ($purged == 1) { 
-          $where = "_key REGEXP '^" . $identifier ."\t' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+          
+          $condition = "'^" . $identifier;
+          if ((isset($hierarchy) && $hierarchy !== "/")) { 
+            $condition .= "\t$hierarchy";
+          }
+          if (isset($variants)) { 
+            $condition .= "\t$variants";
+          }
+          $condition .= "'";
+          
+          $where = "_key REGEXP ". $condition ." and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
           $result = Database::$engine->select($where);
 
           $json = array();
@@ -161,9 +197,23 @@ function bulkbind(){
             $status = NoidArk::clearBind($noid, trim($identifier), trim(str_replace($identifier,"", $row['_key'])));
           }
         }
+
+        // Binding the new metadata
         foreach ($_POST['data'] as $key => $pair) {
           if ($key !== strtoupper('Ark_ID')) {
-            NoidArk::bind($noid, $contact, 1, 'set', $identifier, strtoupper($key), $pair);
+            
+            // if there is hierachy, ie 61220/utsc0	/page1 WHO
+            $key_field = "";
+            if ((isset($hierarchy) && $hierarchy !== "/")) {
+              $key_field = $hierarchy . "	";  
+            }
+            // if there is hierachy, ie 61220/utsc0	/page1.image.png
+            if (isset($variants)) { 
+              $key_field .= $variants . "	";
+            }
+            $key_field .= strtoupper($key);  
+
+            NoidArk::bind($noid, $contact, 1, 'set', $identifier, $key_field, $pair);
           }
         }
         Database::dbclose($noid);
@@ -315,23 +365,27 @@ function selectUnBound()
   }
   $search = $_GET['search']['value'];
   
-  // sql which gets all arks 
-  $sql_unboundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
-    FROM `<table-name>`
-    WHERE _key LIKE '$firstpart%' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    EXCEPT
+  // sql which gets the arks without any metadata bound
+  $sql_unboundarks = "SELECT id, REPLACE (id, '$firstpart', '') as _id
+  from (
       SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
       FROM `<table-name>`
-      WHERE _key LIKE '$firstpart%' AND (_key NOT LIKE '%:\\\\/c' AND _key NOT LIKE '%:\\\\/h')";
-  
-   // sql gets all unbound arks
-  $sql = "$sql_unboundarks ORDER BY id $sortDir LIMIT $limit OFFSET $offset";
+      WHERE _key LIKE '$firstpart%' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
+      EXCEPT
+        SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id 
+        FROM `<table-name>`
+        WHERE _key LIKE '$firstpart%' AND (_key NOT LIKE '%:\\\\/c' AND _key NOT LIKE '%:\\\\/h')
+  ) as list_ids
+  ORDER BY cast(_id as unsigned) $sortDir";
+
+// sql gets all unbound arks
+  $sql = "$sql_unboundarks LIMIT $limit OFFSET $offset";
   $sql_count = "SELECT COUNT(*) as num_filtered
      FROM (
        $sql_unboundarks
      ) AS filtered_ids
   ";
-  
+
   $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
   $rows = Database::$engine->query($sql);
   $num_filtered = Database::$engine->query($sql_count)[0]['num_filtered'] ?? 0;
@@ -402,12 +456,15 @@ function selectBound()
   $search = $_GET['search']['value'];
   
   // sql which gets all bound arks 
-  $sql_boundarks = "SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
-    FROM `<table-name>`
-    WHERE _key LIKE '$firstpart%' 
-    AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
-    AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    ORDER BY id $sortDir";
+  $sql_boundarks = "SELECT id, REPLACE (id, '$firstpart', '') as _id
+      from (
+          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+              FROM `dsu_ark`
+              WHERE _key LIKE '$firstpart%' 
+              AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
+              AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
+      ) as list_ids
+      ORDER BY cast(_id as unsigned) $sortDir";
 
   $sql = "$sql_boundarks LIMIT $limit OFFSET $offset";
   $sql_count = "SELECT COUNT(*) as num_filtered
@@ -465,7 +522,7 @@ function selectBound()
   return json_encode(array(
     "data" => $result,
     "draw" => isset ( $_GET['draw'] ) ? intval( $_GET['draw'] ) : 0,
-    "recordsTotal" => countBoundedArks(),
+    "recordsTotal" => countTotalArks(),
     "recordsFiltered" => $num_filtered,
   ));
 }
@@ -582,10 +639,10 @@ function getMinted($mode)
   $offset = $_GET['start'] ?? 0;
   $search = $_GET['search']['value'];
 
-  $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value, SUBSTRING_INDEX(SUBSTRING_INDEX(_value,'|',3), '|', -1) AS seq
+  $sql = "SELECT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id, _value, SUBSTRING_INDEX(SUBSTRING_INDEX(_value,'|',4), '|', -1) AS seq
     FROM `<table-name>`
     WHERE _key LIKE '$firstpart%' AND _key REGEXP '\\\\s:\/c$' AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
-    ORDER BY seq $sortDir
+    ORDER BY  cast(seq as unsigned) $sortDir
     LIMIT $limit
     OFFSET $offset;
   ";
@@ -623,10 +680,9 @@ function countTotalArks() {
       die(json_encode('Database not found'));
   }
   $noid = Database::dbopen($_GET["db"], getcwd() . "/db/", DatabaseInterface::DB_WRITE);
-  $firstpart = Database::$engine->get(Globals::_RR . "/firstpart");
-  $result = Database::$engine->query("SELECT COUNT(DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)')) AS total FROM `<table-name>` WHERE _key LIKE '$firstpart%' and _key REGEXP '\\\\s:\\/c$';");
+  $total = Database::$engine->get(Globals::_RR . "/oacounter");
   Database::dbclose($noid);
-  return $result[0]['total'] ?? 0;
+  return $total;
 }
 
 /**

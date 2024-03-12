@@ -16,10 +16,13 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    pre {
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
-<!--<div class="loader"></div>-->
+
 </body>
 </html>
 
@@ -33,8 +36,12 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
   $params = str_replace("ark:/", "", $_GET['q']);
   $parts = array_filter(explode("/", $params));
   $parts_count = count($parts);
+  
   // get Ark ID
-  $arkid = $parts[0] . '/'. $parts[1];
+  if ($parts_count > 1)
+    $arkid = $parts[0] . '/'. $parts[1];
+  else 
+    $arkid = $parts[0];
   
   if (strpos($arkid, "ark:") === 0) {
     $arkid = str_replace("ark:", "", $arkid);
@@ -49,73 +56,75 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
 
     // loop through database and find matching one with prefix
     foreach ($arkdbs as $db) {
-      
+      $qualifier = "";
+
       // if there is no arks ID, only NAAN, ie. /ark:61220/
       if ($parts_count == 1) {
-        $url = "https://n2t.net/ark:/" . $naan; 
-        break;
+        print(htmlspecialchars_decode(getNAA($db)));
+        return;
       }
       // if ark ID found, look for URL fields first.
       // if there is Qualifier, look up for the qualifier, ignore the ark id
-       if ($parts_count > 2) {
+      else if ($parts_count > 2) {
         // establish qualifier from Ark URL
         $total = count($parts);
-        $qualifier = "";
+        $qualifier = "/";
         for ($i = 2; $i < $total; $i++) {
+          
           $qualifier .= $parts[$i];
           if ($i != $total - 1) {
             $qualifier .= "/";
           }
-        }
 
+          if (strpos($parts[$i], ".") !== false) {
+            // Qualifier has variants 
+            $qualifier_parts = explode(".", $qualifier);
+            $hiarachy = $qualifier_parts[0];
+            array_shift($qualifier_parts);
+            $qualifier =  $hiarachy . "\t" . "." . implode(".",$qualifier_parts);
+          }
+        }
         // looking up
-        $result = lookup($db, $arkid, strtoupper($qualifier));
+        $result = lookup($db, $arkid, $qualifier, "URL");
         if (!empty($result)) {
           $url = $result;
           break;
         }
       }
-
-      $result = lookup($db, $arkid, "URL");
-      if (!empty($result)) {
-        // found URL field bound associated with the ark id
-        $url = $result;
-
-        // TODO: add a counter here
-          increase_reidrection($db, $arkid);
-        break;
-      }
-    }
-
-    // exclusive for UTSC, may removed
-    if ($url === "/404.php") {
-      // not found URL, get PID and established the URL
-      foreach ($arkdbs as $db) {
-        // if ark ID found, look for URL fields first.
-        $pid = lookup($db, $arkid, "PID");
-        if (!empty($pid)) {
+      // if there is only Arks ID in URL, just lookup based on the arkID
+      else if ($parts_count == 2) {
+        // do the lookup
+        $result = lookup($db, $arkid, $qualifier, "URL");
+        
+        // if found the results, 
+        if (!empty($result)) {
           // found URL field bound associated with the ark id
-          $dns = getNAA($db);
-          $url = "https://$dns/islandora/object/" . $pid;
-
-          // TODO: add a counter here
-          increase_reidrection($db, $arkid);
+          $url = $result;
           break;
         }
       }
+      else {
+        
+      }
     }
+   
     // New: Add a check for ? or ?? and the end of Ark URL
     if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) === 0 ) {
       // if the Ark URLs ends with '?'
-      $medata = getMetdata($db, $arkid);
-      print($medata);
+      $medata = getMetdata($db, $arkid, $qualifier);
+      print_pre($medata);
     }
     if ( substr_compare($_SERVER['REQUEST_URI'], "??", -2) === 0 ) {
-      $medata = getMetdata($db, $arkid, "??");
-      print($medata);
+      $medata = getMetdata($db, $arkid, $qualifier,"??");
+      print_pre($medata);
     }
 
     if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) !== 0 ) {
+      // add a counter here
+      increase_reidrection($db, $arkid, $qualifier);
+      
+      // redirect
+      //print("Redirecting to " . $url);
       header("Location: $url");
     }
   }
@@ -124,9 +133,18 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
 }
 
 /**
+ * Print content wrapped around <pre></pre>
+ */
+function print_pre($content) {
+  print("<pre>");
+  print($content);
+  print("<pre/>");
+}
+
+/**
  * Get full metadata
  */
-function getMetdata($db, $ark_id, $type=null)
+function getMetdata($db, $ark_id, $qualifier,$type=null)
 {
   $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
@@ -137,13 +155,28 @@ function getMetdata($db, $ark_id, $type=null)
     exit;
   }
 
-  if (isset($type) && $type == "??") { 
-    $where = 'WHERE (_key LIKE "' . $ark_id .'	??%")';
+  if (isset($type) && $type == "??") {  // for ??
+    $label = "erc-support:";
+    if (isset($qualifier) && !empty($qualifier)) { 
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$qualifier.'([[:space:]])[^\.].*\\\\?\\\\?.*"';
+    }
+    else {
+      // Query data with Ark ID and field name with ?? attached to it without qualifer
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id. '([[:space:]])[^/].*\\\\?\\\\?.*"';
+    }
+    
   }
-  else {
-    $where = 'WHERE (_key LIKE "' . $ark_id .'	%") AND (_key NOT LIKE "' . $ark_id .'	??%")';
+  else { // for ?
+    $label = "erc:";
+    if (isset($qualifier) && !empty($qualifier)) { 
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id. '([[:space:]])'.$qualifier.'([[:space:]])[^\.]" AND _key NOT REGEXP ".*\\\\?\\\\?.*"';
+    }
+    else {
+      // Query data with Ark ID and field name with ? attached to it without qualifer.
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id. '([[:space:]])[^/]" AND _key NOT REGEXP ".*\\\\?\\\\?.*"';
+    }
+    
   }
-
   if ($query = mysqli_query($link, "SELECT *  FROM `$db` ". $where)) {
 
     if (!mysqli_query($link, "SET @a:='this will not work'")) {
@@ -153,11 +186,17 @@ function getMetdata($db, $ark_id, $type=null)
     
     if (count($results) > 0) {
       $medata = "<pre>";
+      $medata .= $label. "\n";
       foreach($results as $pair) {
         $field = trim(str_replace($ark_id, " ", $pair[0])) ;
         $field = trim(str_replace("?", "", $field));
         if (!in_array($field, [':/c', ":/h", "REDIRECT", ""])) {
-          $medata .= $field. ": " . $pair[1] . "\n";
+          if (preg_match("/\t/", $field)) {
+            $parts_field= explode("\t", $field);
+            $count_parts_field = count($parts_field);
+            $field = $parts_field[$count_parts_field-1];
+          }
+          $medata .= ucwords(strtolower($field)) . ": " . $pair[1] . "\n";
         }
       }
       $medata .= "</pre>";
@@ -173,7 +212,7 @@ function getMetdata($db, $ark_id, $type=null)
 /**
  *  Counting redirection
  */
-function increase_reidrection($db, $ark_id) {
+function increase_reidrection($db, $ark_id, $qualifier) {
   
 // TODO UPDATE REDIRECTION COUNT HERE
   $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
@@ -186,25 +225,33 @@ function increase_reidrection($db, $ark_id) {
   }
   
   // get existed redirection count.
-  $count = lookup($db, $ark_id, "REDIRECT");
+  $count = lookup($db, $ark_id, $qualifier, "REDIRECT");
   if ($count == false) { 
     $count = 1;
     // do insert
-    $query = "INSERT INTO `$db` (_key, _value) VALUES('$ark_id REDIRECT', $count)";
+    if (empty($qualifier)) {
+      $query = 'INSERT INTO `'. $db .'` (_key, _value) VALUES("'.$ark_id. "	REDIRECT". '", '.$count .')';
+    }
+    else {
+      $query = 'INSERT INTO `'. $db .'` (_key, _value) VALUES("'.$ark_id. "	$qualifier	REDIRECT". '", '.$count .')';
+    }
   }
   else {
-    $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])REDIRECT$"';
+    // increase the counter
     $count++;
+
     // do update
+    if (empty($qualifier)) {
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])REDIRECT$"';
+    }
+    else {
+      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$qualifier.'([[:space:]])REDIRECT$"';
+    }
     $query = "UPDATE `$db` SET _value = $count ". $where;
   }
-
-  $count++;
-  if (mysqli_query($link, $query)) {
-    //echo "Count ++";
-  }
-  else {
-   //echo "Counter not changed";
+  
+  if (!mysqli_query($link, $query)) {
+    error_log(print_r("$query is failed to run", TRUE), 0);
   }
   mysqli_close($link);
 }
@@ -212,7 +259,7 @@ function increase_reidrection($db, $ark_id) {
 /**
  * Get Org registered info
  */
-function lookup($db, $ark_id, $field = "")
+function lookup($db, $ark_id, $qualifier,$field = "")
 {
   $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 
@@ -222,17 +269,23 @@ function lookup($db, $ark_id, $field = "")
     echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
     exit;
   }
-  $where = 'where _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$field.'$"';
-
-  if ($query = mysqli_query($link, "SELECT  _value FROM `$db` ". $where)) {
+  //$where = 'where _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$field.'$"';
+  if (empty($qualifier)) { 
+    $where = 'where _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$field.'$"';
+  }
+  else {
+    $where = "where _key REGEXP '^".$ark_id . "\t" . $qualifier . "\t".$field."'";
+  }
+  
+  if ($query = mysqli_query($link, "SELECT  * FROM `$db` ". $where)) {
 
     if (!mysqli_query($link, "SET @a:='this will not work'")) {
       printf("Error: %s\n", mysqli_error($query));
     }
     $results = $query->fetch_all();
-
+    
     if (count($results) > 0) {
-      return $results[0][0];
+      return $results[0][1];
     }
 
     $query->close();

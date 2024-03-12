@@ -41,7 +41,6 @@ foreach($orgdata as $pair) {
     }
 }
 $subheader .= "</p>";
-
 ?>
 
     <html>
@@ -77,7 +76,7 @@ $subheader .= "</p>";
               href="includes/css/bootstrap-select.min.css">
         <script src="includes/js/bootstrap-select.min.js"></script>
         <script src="includes/js/defaults-en_US.js"></script>
-        
+
         <!-- Font Awesome -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=" crossorigin="anonymous" />
         
@@ -133,7 +132,7 @@ $subheader .= "</p>";
                 ".reedeedk": 'Minting order is random with limit 70,728,100 entry,, prefix must be must be must be "f5",'
             };
             <?php
-            if (isset($_GET['db']) ) {
+            if (isset($_GET['db']) && !isset($_GET['op'])) {
             ?>
 
             //
@@ -437,7 +436,7 @@ $subheader .= "</p>";
                         /*{data: 'redirect'},*/
                         {data: 'ark_url'},
                         {data: 'metadata'},
-                        {data: 'policy'},
+                        /*{data: 'policy'},*/
                     ],
                     "fnDrawCallback": function (oSettings) {
                         //enableShowHideMetadataColumn();
@@ -451,14 +450,14 @@ $subheader .= "</p>";
                             extend: 'csv',
                             text: 'Export',
                             exportOptions: {
-                                columns: [1, 2, 3, 4]
+                                columns: [1, 2, 3]
                             },
                         },
                         {
                             extend: 'csv',
                             text: 'Export all',
                             exportOptions: {
-                                columns: [1, 2, 3, 4]
+                                columns: [1, 2, 3]
                             },
                             "action": exportAllAction
                         },
@@ -471,11 +470,11 @@ $subheader .= "</p>";
                             className: 'select-checkbox',
                             targets: 0
                         },
-                        {
+                        /*{
                             orderable: false,
                             targets: 4
                         },
-                        /*{
+                        {
                             "targets": 2,
                             "data": "redirect",
                             "render": function (data, type, row) {
@@ -496,15 +495,15 @@ $subheader .= "</p>";
                                 return data;
                             }
                         },
-                        {
+                        /*{
                             "targets": 4,
-                            "data": "metadata",
+                            "data": "policy",
                             orderable: false,
                             "render": function (data, type, row) {
                                 data = '<a target="_blank" href="' + data + '">' + data + '</a>';
                                 return data;
                             }
-                        },
+                        },*/
                         {
                             "targets": 2,
                             "data": "ark_url",
@@ -678,14 +677,6 @@ $subheader .= "</p>";
                     }
                 });
 
-
-
-
-
-
-
-
-
                 function enableShowHideMetadataColumn() {
                     // enable show/hide metadata button after ajax loaded
                     $('[data-toggle="collapse"]').click(function (e) {
@@ -725,12 +716,20 @@ $subheader .= "</p>";
 
         <div class="card">
             <?php
-            if (isset($_GET['db'])) {
+            if (isset($_GET['db']) && !isset($_GET['op'])) {
                 print '<h5 class="card-header">Database <i>' . $_GET['db'] . '</i> is selected.</h5>';
             } else {
-                print <<<EOS
-                    <h5 class="card-header">Create a new Ark collection, or select your existing collection</h5>
-                EOS;
+
+                if (isset($_GET['op']) && $_GET['op'] == "edit") { 
+                    print <<<EOS
+                        <h5 class="card-header">Update your existing collection</h5>
+                    EOS;
+                }
+                else {
+                    print <<<EOS
+                        <h5 class="card-header">Create a new Ark collection, or select your existing collection</h5>
+                    EOS;    
+                }
             }
             ?>
 
@@ -738,18 +737,63 @@ $subheader .= "</p>";
                 <div id="row-dbcreate" class="row">
                     <div class="col-sm-6">
                         <?php
-                        if (!isset($_GET['db'])) {
+                        $back_btn = '<a class="btn btn-secondary" href="./admin.php">Back</a>';
+                        if (!isset($_GET['db']) || (isset($_GET['db']) && isset($_GET['op']) && $_GET['op'] === "edit")) {
+                            
+                            // submit button to create db
+                            $submit_btn = '<input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>';
+                            $edit_dbname= "";
+                            $edit_dbtemplate = "";
+                            $edit_dbprefix = "";
+                            $edit_dbtemplate_display = "";
+                            $edit_dbnaan = "";
+                            $edit_dbnaa = "";
+
+                            if (isset($_GET['op']) && $_GET['op'] === "edit") { 
+                                // for Edit database mode
+                                $metadata = json_decode(rest_get("/admin/rest.php?db=" . $_GET['db'] . "&op=dbinfo"));
+                                $edit_dbname = "value='". $_GET['db'] . "' disabled";
+                               
+                                if (isset($metadata->template)) {
+                                    $edit_dbtemplate = '
+                                        <script type="text/javascript">
+                                            var dropdown = document.getElementById("selectTemplate");
+                                            dropdown.value = "'. $metadata->template .'"; 
+                                            document.getElementById("selectTemplate").disabled = true;
+                                        </script>
+                                    ';
+                                }
+                                if (isset($metadata->prefix)) { 
+                                    $edit_dbprefix = "value='". $metadata->prefix . "' disabled";
+                                }
+                                if (!empty($metadata)) { 
+                                    $edit_dbtemplate_display = "d-none";
+                                    $edit_dbtemplate_disabled = "disabled";
+                                }
+                                if (isset($metadata->naan)) { 
+                                    $edit_dbnaan = "value='". $metadata->naan . "' disabled";
+                                }
+                                if (isset($metadata->naa)) { 
+                                    $edit_dbnaa = $metadata->naa;
+                                }
+
+                                if ((isset($_GET['db']) && $_GET['op'] === "edit")) { 
+                                    $submit_btn  = '<input type="hidden" name="editDBname" id ="editDBname" value="'.$_GET['db'].'"/>';
+                                    $submit_btn .= '<input type="submit" name="dbupdate" value="Update" class="btn btn-primary"/>';
+                                    $submit_btn .= $back_btn;
+                                }
+                            }
+                            
+
                             print <<<EOS
                             <form id="form-dbcreate" action="./admin.php" method="post">
                                 <div class="form-group">
-                                    <label for="enterDatabaseName">Collection Name:</label>
-                                    <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName"
+                                    <label for="enterDatabaseName">Database Name:</label>
+                                    <input type="text" class="form-control" id="enterDatabaseName" name="enterDatabaseName" $edit_dbname
                                            required/>
                                 </div>
                                 <p><small id="noidHelp" class="form-text text-muted">Review Ark configuration documentation at <a target="_blank" href="https://metacpan.org/pod/distribution/Noid/noid">https://metacpan.org/pod/distribution/Noid/noid</a> </small></p>
-
-
-                                  <script type="text/javascript">
+                                    <script type="text/javascript">
                                     function onChangeTemplate(value)
                                     {
                                         // reset prefix
@@ -795,11 +839,10 @@ $subheader .= "</p>";
                                             default:
                                                 break;
                                         }
-
                                     }
                                 </script>
                                 <div class="form-group">
-                                    <label for="templateHelp">Template:</label>
+                                    <label for="templateHelp">Template (for minter):</label>
 
                                     <select class="form-control" id="selectTemplate" name="selectTemplate" onchange="onChangeTemplate(this.value);" required>
                                         <option selected disabled value="">Choose...</option>
@@ -820,12 +863,11 @@ $subheader .= "</p>";
                                         <option>.reedeedk</option>
                                     </select>
                                     <p id="templateHelp"></p>
-
                                 </div>
-
+                                $edit_dbtemplate
                                 <div class="form-group">
-                                    <label for="enterDatabaseName">Prefix (must be unique):</label>
-                                    <input type="text" class="form-control" id="enterPrefix" name="enterPrefix" required/>
+                                    <label for="enterDatabaseName">Prefix or Shoulder(must be unique):</label>
+                                    <input type="text" class="form-control" id="enterPrefix" name="enterPrefix" $edit_dbprefix required/>
                                 </div>
 
                                 <script type="text/javascript">
@@ -842,7 +884,7 @@ $subheader .= "</p>";
                                             case 'long': {
                                                 document.getElementById("enterNAAN").required = true;
                                                 document.getElementById("enterInsitutionName").required = true;
-                                                document.getElementById("enterRedirect").required = true;
+                                                document.getElementById("enterNAA").required = true;
                                                 break;
                                             }
                                             default: {
@@ -851,9 +893,9 @@ $subheader .= "</p>";
                                         }
                                     }
                                 </script>
-                                <div class="form-group">
-                                    <label for="enterDatabaseName">Term:</label>
-                                    <select class="form-control" id="identifier_minter" name="identifier_minter" onchange="onChangeTerms(this.value);" required>
+                                <div class="form-group $edit_dbtemplate_display">
+                                    <label for="identifier_minter">Term:</label>
+                                    <select class="form-control" id="identifier_minter" name="identifier_minter" onchange="onChangeTerms(this.value);" $edit_dbtemplate_disabled required>
                                         <option selected disabled value="">Choose...</option>
                                         <option>short</option>
                                         <option>medium</option>
@@ -862,33 +904,26 @@ $subheader .= "</p>";
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="control-label" for="enterDatabaseName">Name Assigning Authority Number(NAAN):</label>
-                                    <input type="text" class="form-control" id="enterNAAN" name="enterNAAN"/>
+                                    <label class="control-label" for="enterNAAN">Name Assigning Authority Number(NAAN):</label>
+                                    <input type="text" class="form-control" id="enterNAAN" name="enterNAAN" $edit_dbnaan/>
                                    <small id="naan_tips" class="form-text text-muted">Look up your NAAN <a href="https://cdlib.org/naan_registry" target="_blank">here</a></small>
                                 </div>
-                                 <div class="form-group">
-                                    <label class="control-label" for="enterDatabaseName">Name Assigning Authority (NAA):</label>
-                                    <input type="text" class="form-control" id="enterRedirect" name="enterRedirect"
-                                           />
+                                
+                                <div class="form-group">
+                                    <label class="control-label" for="enterNAA">Name Assigning Authority (NAA):</label>
+                                    <textarea type="text" class="form-control" id="enterNAA" name="enterNAA"
+                                           >$edit_dbnaa</textarea>
                                    <small id="naa_tip" class="form-text text-muted"></small>
                                 </div>
 
-                                 <input type="hidden" class="form-control" id="enterInsitutionName" name="enterInsitutionName" value="dsu/utsc-library"
-                                           />
-                                 <!--<div class="form-group" style="display:none">
-                                    <label class="control-label" for="enterDatabaseName">Insitution Name(SubNAA):</label>
-                                    <input type="text" class="form-control" id="enterInsitutionName" name="enterInsitutionName"
-                                           />
-                                   <small id="emailHelp" class="form-text text-muted">Exclusive For UTSC: dsu/utsc-library</small>
-                                </div>-->
-
-                                <input type="submit" name="dbcreate" value="Create" class="btn btn-primary"/>
+                                <input type="hidden" class="form-control" id="enterInsitutionName" name="enterInsitutionName" value="dsu/utsc-library"/>
+                                $submit_btn
                             </form>
                             EOS;
 
                         } else {
                             print <<<EOS
-                            <a class="btn btn-secondary" href="./admin.php">Reset</a>
+                            $back_btn
                         EOS;
                         }
                         ?>
@@ -896,8 +931,10 @@ $subheader .= "</p>";
                     </div>
                     <div class="col-sm-6">
                         <?php
-
+                        
+                        // create an new Ark database
                         if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbcreate']) && !isset($_GET['db'])) {
+
                             // Repace white space (if there is) with underscore
                             $database = str_replace(" ", "_", $_POST['enterDatabaseName']);
 
@@ -926,7 +963,7 @@ $subheader .= "</p>";
                                     $_POST['selectTemplate'],
                                     $_POST['identifier_minter'],
                                     trim($_POST['enterNAAN']),
-                                    trim($_POST['enterRedirect']),
+                                    trim($_POST['enterNAA']),
                                     trim($_POST['enterInsitutionName']),
                                 );
                                 header("Location: admin.php");
@@ -939,6 +976,13 @@ $subheader .= "</p>";
                             }
                         }
 
+                        // Update a existing database 
+                        if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dbupdate'])) {
+                            // backup database before bulk binding
+                            $dbpath = getcwd() . DIRECTORY_SEPARATOR . 'db';
+                            Database::dbupdatesetting($_POST['editDBname'], $dbpath, "naa", $_POST['enterNAA']);;
+                        }
+
                         // List all created databases in the table
                         if (count($arkdbs) > 2) {
                             ?>
@@ -948,7 +992,7 @@ $subheader .= "</p>";
                                     <tr>
                                         <th scope="col">Collection</th>
                                         <th scope="col">Configuration</th>
-                                        <th scope="col">Status</th>
+                                        <th scope="col"></th>
 
                                     </tr>
                                     </thead>
@@ -958,21 +1002,29 @@ $subheader .= "</p>";
                                         if (!in_array($db, ['system', 'user'])) {
                                             $highlight = "";
                                             $setActive = '<a class="btn btn-success" href="./admin.php?db=' . $db . '">Select</a>';
-                                            if ((isset($_GET['db']) && $_GET['db'] == $db)) {
+                                            $setEdit= '<a class="btn btn-warning" href="./admin.php?op=edit&db=' . $db . '">Edit</a>';
+                                            if (isset($_GET['op']) && $_GET['op'] == "edit") {
+                                                $setEdit= '<a class="btn btn-warning disabled" href="#disable>Edit</a>';
+                                            }
+                                            if (!isset($_GET['op']) && (isset($_GET['db']) && $_GET['db'] == $db)) {
                                                 $setActive = "<strong>Selected</srong>";
                                                 $highlight = 'class="table-success"';
                                             }
                                             $metadata = json_decode(rest_get("/admin/rest.php?db=" . $db . "&op=dbinfo"));
                                             $detail = "<p>";
                                             foreach ((array)$metadata as $key => $value) {
-                                                $detail .= "<strong>$key</strong>: $value <br />";
+                                                if ($key !== "naa")
+                                                    $detail .= "<strong>$key</strong>: $value <br />";
                                             }
                                             $detail .= "</p>";
                                             print <<<EOS
                                                     <tr $highlight>
                                                         <td scope="row">$db</td>
                                                         <td scope="row">$detail</td>
-                                                        <td scope="row">$setActive</td>
+                                                        <td scope="row">
+                                                            <p>$setActive</p>
+                                                            <p>$setEdit</p>
+                                                        </td>
 
                                                     </tr>
                                                 EOS;
@@ -994,7 +1046,7 @@ $subheader .= "</p>";
         </div>
 
         <?php
-        if (isset($_GET['db'])) { // if a database is selected (db name appears in the URL
+        if (isset($_GET['db']) && !isset($_GET['op'])) { // if a database is selected (db name appears in the URL
             ?>
             <hr>
             <div class="card">
@@ -1307,7 +1359,7 @@ $subheader .= "</p>";
                                                             <div class="form-group">
                                                                 <input class="form-check-input" type="checkbox" id="unbindAllFieldcheckbox" name="unbindAllFieldcheckbox">
                                                                 <label class="form-check-label" for="unbindAllFieldcheckbox">
-                                                                    Replace existing metadata before binding
+                                                                    Replace existing metadata for each Arks
                                                                 </label>
                                                             </div>
                                                         </div>
@@ -1646,7 +1698,6 @@ $subheader .= "</p>";
                                             <!--<th>Number <br />of Redirects</th>-->
                                             <th>Ark URL</th>
                                             <th>Metadata</th>
-                                            <th>Policy <br /> Statement</th>
                                         </tr>
                                         </thead>
                                     </table>
