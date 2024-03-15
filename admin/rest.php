@@ -458,7 +458,7 @@ function selectBound()
   // sql which gets all bound arks 
   $sql_boundarks = "SELECT id, REPLACE (id, '$firstpart', '') as _id
       from (
-          SELECT DISTINCT REGEXP_SUBSTR(_key, '^([^\\\\s]+)') AS id
+          SELECT DISTINCT REGEXP_SUBSTR(_key, '".$firstpart."[[:digit:]]+(\\t[/.]*.*\\t)*') AS id
               FROM `dsu_ark`
               WHERE _key LIKE '$firstpart%' 
               AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
@@ -485,8 +485,7 @@ function selectBound()
   foreach ($rows as $row) {
     $row = (array)$row;
 
-    $r['id'] = $row['id'];
-      
+    $r['id'] = preg_replace('/\s+/', '', $row['id']);
     if (empty($_SERVER['HTTPS'])) {
       $protocol = strtolower(substr($_SERVER["SERVER_PROTOCOL"], 0, strpos($_SERVER["SERVER_PROTOCOL"], '/'))) . '://';
     }
@@ -497,6 +496,7 @@ function selectBound()
     // establish Ark URL
     $arkURL = $protocol . $_SERVER['HTTP_HOST'];
     $ark_url = rtrim($arkURL,"/") . "/ark:" . $row['id'];
+    $ark_url = preg_replace('/\s+/', '', $ark_url);
     $r['select'] = ' ';
     
     /*if ($limit != 2147483647) {
