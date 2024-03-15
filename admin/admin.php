@@ -708,7 +708,7 @@ $subheader .= "</p>";
 
         <div class="row">
             <div class="col-sm text-center">
-                <h1>Ark ID Service</h1>
+                <h1>Arks Service</h1>
                 <a style="margin-bottom: 20px" class="btn btn-danger" href="/admin/logout.php">Logout</a>
             </div>
         </div>
