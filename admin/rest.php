@@ -179,10 +179,9 @@ function bulkbind(){
         
         // if the Replace existing metadata before binding is selected, unbind all metadata field (no hierarchy)
         if ($purged == 1) { 
-          
-          $condition = "'^" . $identifier;
+          $condition = "'^" . $identifier . "\t";
           if ((isset($hierarchy) && $hierarchy !== "/")) { 
-            $condition .= "\t$hierarchy";
+            $condition .= "$hierarchy";
           }
           if (isset($variants)) { 
             $condition .= "\t$variants";
