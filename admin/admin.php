@@ -1476,7 +1476,9 @@ $subheader .= "</p>";
                                                     // handle when reading file completed.
                                                     reader.onload = function (e) {
                                                         // split all lines
-                                                        var csvResult = e.target.result.split(/\n/);
+                                                        var csvResult = e.target.result.split(/\n/).filter(function(line) {
+                                                            return $.trim(line) !== ""; // Alternative: return line.trim()
+                                                        });
 
                                                         // store all read data from CSV in Local storage.
                                                         localStorage.setItem("importCSV", JSON.stringify(csvResult));
