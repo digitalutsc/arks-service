@@ -1394,8 +1394,8 @@ $subheader .= "</p>";
                                                                              aria-valuemax="100">
                                                                         </div>
                                                                     </div>
-                                                                    Binding <span id="process_data">0</span> of <span
-                                                                            id="total_data">0</span> objects.
+                                                                    <span id="process_operation">...</span> <span id="process_data">...</span> of <span
+                                                                            id="total_data">...</span> objects.
                                                                 </div>
 
                                                             </div>
@@ -1499,10 +1499,8 @@ $subheader .= "</p>";
                                                             // store password to caches
                                                             localStorage.setItem("syspasswd", JSON.stringify($("#enterPasswordPostBulkBind").val()));
 
-                                                            // display the message of ongoing binding process.
-                                                            $('#message').html('<div class="alert alert-warning">' +
-                                                                'The Binding process has started. Please do not close this page until the process is completed.'
-                                                                + '</div>');
+                                                            // Hide the progress status message 
+                                                            $('#process_operation').hide();
 
                                                             // get total number of lines in CSV
                                                             var total_data = csvResult.length;
@@ -1543,8 +1541,22 @@ $subheader .= "</p>";
                                                                 // send POST request for each line of read CSV file
                                                                 $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=backupdb", {security: password})
                                                                     .done(function (data) {
+                                                                        // disable input fields
+                                                                        $('#importCSV').attr('disabled', true);
+                                                                        $("#enterPasswordPostBulkBind").attr('disabled', true);
+                                                                        
+                                                                        // Show progress status message.
+                                                                        $('#process_operation').show();
                                                                         // send Post request
-                                                                        doPost(index, total_data, csvResult);
+                                                                        var purged = localStorage.getItem("unbindAllFields");
+                                                                        
+                                                                        if (purged == 1) {
+                                                                            doPostPurging(index, total_data, csvResult);
+                                                                        }
+                                                                        else {
+                                                                            index = 1;
+                                                                            doPostBulkbind(index, total_data, csvResult);
+                                                                        }
                                                                     })
                                                                     .fail(function () {
                                                                         $('#message').html('<div class="alert alert-danger">Fail to run backup the database before bulk binding.</div>');
@@ -1560,7 +1572,16 @@ $subheader .= "</p>";
                                                 }
                                             });
 
-                                            function doPost(index, total_data, csvResult) {
+                                            /**
+                                             * Post Requests to remove existing metadata from imported Arks
+                                             */
+                                            function doPostPurging(index, total_data, csvResult) {
+                                                // Update UI while processing data
+                                                $('.progress-bar').addClass("bg-danger");
+                                                $('#message').html('<div class="alert alert-warning">' +
+                                                                                'Removing existing metadata which already bound to these Arks.'
+                                                                                + '</div>');
+
                                                 // pulll preserve read data from CSV from local storage
                                                 var csvResult = JSON.parse(localStorage.getItem("importCSV"));
                                                 var password = JSON.parse(localStorage.getItem("syspasswd"));
@@ -1574,6 +1595,84 @@ $subheader .= "</p>";
                                                   return;
                                                 }
 
+                                                // start binding each line of CSV file
+                                                var item = csvResult[index];
+                                                var values = item.split(',');
+                                                
+                                                var pdata = {};
+                                                for (var i = 0; i < values.length; i++) {
+                                                    // enforce csv must follow sequence LocalID, PID, URL,
+                                                    if (keys[i] !== undefined) {
+                                                        pdata[keys[i].toUpperCase().replace(/(\r\n|\n|\r)/gm,"")] = values[i].trim().replace(/ /g, "_");
+                                                    }
+                                                }
+
+                                                // send POST request for each line of read CSV file
+                                                $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=purge&stage=upload", {data: pdata, security: password, purged: purged})
+                                                    .done(function (data) {
+                                                        
+                                                      var result =  JSON.parse(data);
+                                                        if (result.success == 401) {
+
+                                                            // display unauthrize message
+                                                            $('#message').html('<div class="alert alert-danger">'+result.message+'</div>');
+
+                                                            // re-enable operation button
+                                                            $('#process').css('display', 'none');
+                                                            $('#btn-process').prop('disabled', false);
+                                                            $('#bulk-binding-dismiss-button').prop('disabled', false);
+                                                            $('#unbindAllFieldcheckbox').prop('disabled', false);
+                                                            return;
+                                                        }
+                                                        else {
+                                                            // process result of each process
+                                                            processPostSuccess(index, csvResult, data, "Removing existing metadata", "Existing Metadata has been removed.");
+
+                                                            // recursive call post request till end of file
+                                                            index++;
+                                                            if (index < csvResult.length)
+                                                                doPostPurging(index, keys, csvResult);
+                                                            else {
+                                                                index = 1;
+                                                                doPostBulkbind(index, total_data, csvResult);
+                                                            }
+                                                        }
+
+
+                                                    })
+                                                    .fail(function () {
+                                                        $('#message').html('<div class="alert alert-danger">Fail to read the CSV file.</div>');
+                                                        $('#importCSV').attr('disabled', false);
+                                                        $('#importCSV').val('Import');
+                                                    });
+                                            }
+
+                                            /**
+                                             * Post Requests to bulk bind metdata to import Arks
+                                             */
+                                            function doPostBulkbind(index, total_data, csvResult) {
+                                                // dismiss the progress bar
+                                                $('#process').css('display', 'block');
+                                                $('.progress-bar').removeClass("bg-danger");
+                                                $('.progress-bar').addClass("bg-success");
+                                                 // display the message of ongoing binding process.
+                                                 $('#message').html('<div class="alert alert-warning">' +
+                                                                'The Binding process has started. Please do not close this page until the process is completed.'
+                                                                + '</div>');
+                                                // pulll preserve read data from CSV from local storage
+                                                
+                                                var csvResult = JSON.parse(localStorage.getItem("importCSV"));
+                                                var password = JSON.parse(localStorage.getItem("syspasswd"));
+                                                var purged = localStorage.getItem("unbindAllFields");
+                                                
+                                                if (Array.isArray(csvResult)) {
+                                                  var keys = csvResult[0].split(',').map(function (x) {
+                                                    return x.toUpperCase();
+                                                  });
+                                                }
+                                                else {
+                                                  return;
+                                                }
 
                                                 // start binding each line of CSV file
                                                 var item = csvResult[index];
@@ -1606,12 +1705,12 @@ $subheader .= "</p>";
                                                         }
                                                         else {
                                                             // process result of each process
-                                                            processPostSuccess(index, csvResult, data);
+                                                            processPostSuccess(index, csvResult, data, "Binding", "Bulk Bind successfully completed.");
 
                                                             // recursive call post request till end of file
                                                             index++;
                                                             if (index < csvResult.length)
-                                                                doPost(index, keys, csvResult);
+                                                                doPostBulkbind(index, keys, csvResult);
                                                         }
 
 
@@ -1623,14 +1722,17 @@ $subheader .= "</p>";
                                                     });
                                             }
 
-                                            function processPostSuccess(index, csvResult, data) {
+                                            /**
+                                             * Handler for Post request success runnin, mainly update UIs
+                                             */
+                                            function processPostSuccess(index, csvResult, data, operation, message) {
                                                 // get total objects to bind
                                                 var total_data = csvResult.length;
                                                 // get result form POST request from REST api
                                                 var result = JSON.parse(data);
-
+                                                console.log(csvResult[index]);
                                                 // if success
-                                                if (result.success === 1) {
+                                                if (result.success === true) {
 
                                                     // display total lines have to import
                                                     $('#total_data').text(total_data);
@@ -1639,20 +1741,20 @@ $subheader .= "</p>";
                                                     var width = ((index + 1) / total_data) * 100;
 
                                                     // update the progress bar.
+                                                    $('#process_operation').text(operation);
                                                     $('#process_data').text(index);
                                                     $('.progress-bar').css('width', width + '%');
 
                                                     // if the process reaches 100%
                                                     if (width >= 100) {
 
-                                                        // dismiss the progress bar
+                                                        // disable all buttons during processing
+                                                         // dismiss the progress bar
                                                         $('#process').css('display', 'none');
 
                                                         // reset the input type file
-                                                        $('#importCSV').val('');
-
-                                                        // display completed message
-                                                        $('#message').html('<div class="alert alert-success">Bulk Bind successfully completed.</div>');
+                                                        //$('#importCSV').val('');
+                                                        $('#importCSV').attr('disabled', true);
 
                                                         // re-enable all buttons
                                                         $('#import').attr('disabled', false);
@@ -1662,9 +1764,14 @@ $subheader .= "</p>";
                                                         $('#unbindAllFieldcheckbox').prop('disabled', false);
                                                         $('#btn-process').hide();
 
+                                                         // display completed message
+                                                        $('#message').html('<div class="alert alert-success">'+message+'</div>');
+                                                        
                                                         // clear read data from CSV from localstorage
-                                                        localStorage.removeItem("importCSV");
-                                                        localStorage.removeItem("syspasswd");
+                                                        if (operation === "Binding") {
+                                                            localStorage.removeItem("importCSV");
+                                                            localStorage.removeItem("syspasswd");
+                                                        }
 
                                                         // if click on close button, page will be refresh to update the tables.
                                                         $('#btn-close-bulkbind').click(function () {
@@ -1678,6 +1785,12 @@ $subheader .= "</p>";
                                                     $('#importCSV').val('Import');
                                                 }
                                             }
+
+                                            function disableActiveUI(messsage) {
+                                                
+                                                
+                                            }
+                                            
                                         </script>
 
                                     </div>
