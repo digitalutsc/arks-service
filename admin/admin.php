@@ -692,28 +692,21 @@ $subheader .= "</p>";
                         })
                     });
                 }
-
             });
             <?php
             }
             ?>
-
-
         </script>
 
     </head>
     <body>
     <div class="container">
-
-
         <div class="row">
             <div class="col-sm text-center">
                 <h1>Arks Service</h1>
                 <a style="margin-bottom: 20px" class="btn btn-danger" href="/admin/logout.php">Logout</a>
             </div>
         </div>
-
-
         <div class="card">
             <?php
             if (isset($_GET['db']) && !isset($_GET['op'])) {
@@ -1394,10 +1387,11 @@ $subheader .= "</p>";
                                                                              aria-valuemax="100">
                                                                         </div>
                                                                     </div>
-                                                                    <span id="process_operation">...</span> <span id="process_data">...</span> of <span
-                                                                            id="total_data">...</span> objects.
+                                                                    <div id="progress-status-message">
+                                                                        <span id="progress_operation"></span> <span id="process_data"></span> of <span
+                                                                            id="total_data"></span> Arks.
+                                                                    </div>
                                                                 </div>
-
                                                             </div>
                                                         </div>
 
@@ -1422,6 +1416,7 @@ $subheader .= "</p>";
                                             // at beginning, hide and disable process button
                                             $('#btn-process').hide();
                                             $('#btn-process').prop('disabled', true);
+                                            $('#progress-status-message').hide();
 
                                             $("#AllFieldcheckbox").click(function(){
                                               if($(this).prop("checked") == true){
@@ -1502,7 +1497,7 @@ $subheader .= "</p>";
                                                             localStorage.setItem("syspasswd", JSON.stringify($("#enterPasswordPostBulkBind").val()));
 
                                                             // Hide the progress status message 
-                                                            $('#process_operation').hide();
+                                                            $('#progress_operation').hide();
 
                                                             // get total number of lines in CSV
                                                             var total_data = csvResult.length;
@@ -1548,14 +1543,17 @@ $subheader .= "</p>";
                                                                         $("#enterPasswordPostBulkBind").attr('disabled', true);
                                                                         
                                                                         // Show progress status message.
-                                                                        $('#process_operation').show();
+                                                                        $('#progress_operation').show();
                                                                         // send Post request
                                                                         var purged = localStorage.getItem("unbindAllFields");
                                                                         
+                                                                        // if the checkbox Replace existing metadata is checked
                                                                         if (purged == 1) {
+                                                                            // Doing the purging metadata first
                                                                             doPostPurging(index, total_data, csvResult);
                                                                         }
                                                                         else {
+                                                                            // othersise, procceed with bulk binding
                                                                             index = 1;
                                                                             doPostBulkbind(index, total_data, csvResult);
                                                                         }
@@ -1581,9 +1579,9 @@ $subheader .= "</p>";
                                                 // Update UI while processing data
                                                 $('.progress-bar').addClass("bg-danger");
                                                 $('#message').html('<div class="alert alert-warning">' +
-                                                                                'Removing existing metadata which already bound to these Arks.'
+                                                                                'Removing existing metadata from the imported Arks.'
                                                                                 + '</div>');
-
+                                                
                                                 // pulll preserve read data from CSV from local storage
                                                 var csvResult = JSON.parse(localStorage.getItem("importCSV"));
                                                 var password = JSON.parse(localStorage.getItem("syspasswd"));
@@ -1612,8 +1610,7 @@ $subheader .= "</p>";
                                                 // send POST request for each line of read CSV file
                                                 $.post("rest.php?db=<?php echo $_GET['db']; ?>&op=purge&stage=upload", {data: pdata, security: password, purged: purged})
                                                     .done(function (data) {
-                                                        
-                                                      var result =  JSON.parse(data);
+                                                        var result =  JSON.parse(data);
                                                         if (result.success == 401) {
 
                                                             // display unauthrize message
@@ -1628,7 +1625,7 @@ $subheader .= "</p>";
                                                         }
                                                         else {
                                                             // process result of each process
-                                                            processPostSuccess(index, csvResult, data, "Removing existing metadata", "Existing Metadata has been removed.");
+                                                            processPostSuccess(index, csvResult, data, "Removing existing metadata from", "Existing Metadata has been removed.");
 
                                                             // recursive call post request till end of file
                                                             index++;
@@ -1639,8 +1636,6 @@ $subheader .= "</p>";
                                                                 doPostBulkbind(index, total_data, csvResult);
                                                             }
                                                         }
-
-
                                                     })
                                                     .fail(function () {
                                                         $('#message').html('<div class="alert alert-danger">Fail to read the CSV file.</div>');
@@ -1743,9 +1738,10 @@ $subheader .= "</p>";
                                                     var width = ((index + 1) / total_data) * 100;
 
                                                     // update the progress bar.
-                                                    $('#process_operation').text(operation);
+                                                    $('#progress_operation').text(operation);
                                                     $('#process_data').text(index);
                                                     $('.progress-bar').css('width', width + '%');
+                                                    $('#progress-status-message').show();
 
                                                     // if the process reaches 100%
                                                     if (width >= 100) {
@@ -1787,14 +1783,7 @@ $subheader .= "</p>";
                                                     $('#importCSV').val('Import');
                                                 }
                                             }
-
-                                            function disableActiveUI(messsage) {
-                                                
-                                                
-                                            }
-                                            
                                         </script>
-
                                     </div>
                                 </div>
                             </div>
