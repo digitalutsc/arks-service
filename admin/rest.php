@@ -143,7 +143,6 @@ function handle_hierachy_variants() {
  * Handle ajax call for each row of CSV during purging existing metadata
  */
 function purging() {
-  error_log(print_r("purging....", TRUE), 0);
   $status = true;
   GlobalsArk::$db_type = 'ark_mysql';
   if (!Database::exist($_GET['db'])) {
@@ -197,14 +196,12 @@ function purging() {
       
     $where = "_key REGEXP ". $condition ." and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
     $result = Database::$engine->select($where);
-    error_log(print_r($where, TRUE), 0);
     $json = array();
     foreach ($result as $row) {
       $status &= NoidArk::clearBind($noid, trim($identifier), trim(str_replace($identifier,"", $row['_key'])));
     }
     Database::dbclose($noid);
   }
-  error_log(print_r(json_encode(['success' => $status]), TRUE), 0);
   return json_encode(['success' => $status]);
 }
 
