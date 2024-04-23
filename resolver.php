@@ -242,10 +242,10 @@ function increase_reidrection($db, $ark_id, $qualifier) {
 
     // do update
     if (empty($qualifier)) {
-      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])REDIRECT$"';
+      $where = 'WHERE _key LIKE "'.$ark_id.'%REDIRECT"';
     }
     else {
-      $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$qualifier.'([[:space:]])REDIRECT$"';
+      $where = 'WHERE _key LIKE "'.$ark_id.'%'.$qualifier.'%REDIRECT"';
     }
     $query = "UPDATE `$db` SET _value = $count ". $where;
   }
@@ -269,9 +269,9 @@ function lookup($db, $ark_id, $qualifier,$field = "")
     echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
     exit;
   }
-  //$where = 'where _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$field.'$"';
+
   if (empty($qualifier)) { 
-    $where = 'where _key regexp "(^|[[:space:]])'.$ark_id.'([[:space:]])'.$field.'$"';
+    $where = "where _key REGEXP '^".$ark_id . "\t".$field."'";
   }
   else {
     $where = "where _key REGEXP '^".$ark_id . "\t" . $qualifier . "\t".$field."'";
@@ -294,6 +294,9 @@ function lookup($db, $ark_id, $qualifier,$field = "")
   return false;
 }
 
+/**
+ * Get NAA from of arksdb
+ */
 function getNAA($db) {
   $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
 

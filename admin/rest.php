@@ -84,6 +84,16 @@ switch ($_GET['op']) {
         Database::backupArkDatabase();
         return json_encode(['success' => 1]);
     }
+    case 'purge': {
+      if (isset($_GET['stage']) && $_GET['stage'] == 'upload'){
+        // return result status
+        echo purging();
+    }
+    else {
+        echo  json_encode("Invalid stage");
+    }
+    break;
+    }
     case 'bulkbind': {
 
         if (isset($_GET['stage']) && $_GET['stage'] == 'upload'){
@@ -123,6 +133,76 @@ function getFields($ark_id) {
     }
     Database::dbclose($noid);
     return json_encode($json);
+}
+
+function handle_hierachy_variants() {
+
+}
+
+/**
+ * Handle ajax call for each row of CSV during purging existing metadata
+ */
+function purging() {
+  $status = true;
+  GlobalsArk::$db_type = 'ark_mysql';
+  if (!Database::exist($_GET['db'])) {
+    die(json_encode(['success' => 0, 'message' => 'Database not found']));
+  }
+  if (empty($_POST['security'])  ||  (Database::isAuth($_POST['security']) === false) ) {
+    die(json_encode(['success' => 401, 'message' => 'Security Credentials is invalid, Please verify it again.']));
+  }
+
+  $result = null;
+  $purged = 0;
+  if (is_array($_POST) && isset($_POST['data'])) {
+    $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
+
+    $parts = explode("/", $_POST['data'][strtoupper('Ark_ID')]);
+    $parts_count = count($parts);
+    $identifier = $parts[0]. "/" .$parts[1];
+
+    // TODO: check if the column Ark_ID has "/" ==> handle with hierarchical
+    if (substr_count($_POST['data'][strtoupper('Ark_ID')], '/') > 1) { 
+      // this arks ID is hierarchical
+      $hierarchy = "/";
+      for ($i = 2; $i < $parts_count; $i++) {
+        if (strpos($parts[$i], ".") !== false) {
+          $hierarchy .= explode(".", $parts[$i])[0]; 
+        }
+        else {
+          $hierarchy .= $parts[$i]; 
+        }
+        if ($i < $parts_count-1)
+          $hierarchy .= "/";
+      }
+    }
+    
+    if (substr_count($_POST['data'][strtoupper('Ark_ID')], '.') > 0) { 
+      // this ark ID has variants
+      $parts_variants = explode(".", $parts[$parts_count-1]);
+      array_shift($parts_variants);
+      $variants = "." . implode(".", $parts_variants); 
+    }
+
+    // if the Replace existing metadata before binding is selected, unbind all metadata field (no hierarchy)
+    $condition = "'^" . $identifier . "\t";
+    if ((isset($hierarchy) && $hierarchy !== "/")) { 
+      $condition .= "$hierarchy";
+    }
+    if (isset($variants)) { 
+      $condition .= "\t$variants";
+    }
+    $condition .= "'";
+      
+    $where = "_key REGEXP ". $condition ." and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+    $result = Database::$engine->select($where);
+    $json = array();
+    foreach ($result as $row) {
+      $status &= NoidArk::clearBind($noid, trim($identifier), trim(str_replace($identifier,"", $row['_key'])));
+    }
+    Database::dbclose($noid);
+  }
+  return json_encode(['success' => $status]);
 }
 
 /**
@@ -175,29 +255,7 @@ function bulkbind(){
           array_shift($parts_variants);
           $variants = "." . implode(".", $parts_variants); 
         }
-        // TODO: check if the column Ark_ID has "." ==> handle with object variants
-        
-        // if the Replace existing metadata before binding is selected, unbind all metadata field (no hierarchy)
-        if ($purged == 1) { 
-          
-          $condition = "'^" . $identifier;
-          if ((isset($hierarchy) && $hierarchy !== "/")) { 
-            $condition .= "\t$hierarchy";
-          }
-          if (isset($variants)) { 
-            $condition .= "\t$variants";
-          }
-          $condition .= "'";
-          
-          $where = "_key REGEXP ". $condition ." and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
-          $result = Database::$engine->select($where);
-
-          $json = array();
-          foreach ($result as $row) {
-            $status = NoidArk::clearBind($noid, trim($identifier), trim(str_replace($identifier,"", $row['_key'])));
-          }
-        }
-
+       
         // Binding the new metadata
         foreach ($_POST['data'] as $key => $pair) {
           if ($key !== strtoupper('Ark_ID')) {
@@ -217,11 +275,11 @@ function bulkbind(){
           }
         }
         Database::dbclose($noid);
-        return json_encode(['success' => 1]);
+        return json_encode(['success' => true]);
     }
     else {
       // todo: flag error of missing Ark ID column
-      return json_encode(['success' => 0]);
+      return json_encode(['success' => false]);
     }
   }
 }
