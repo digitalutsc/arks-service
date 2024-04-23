@@ -477,10 +477,6 @@ function selectUnBound()
 
     array_push($result, $r);
   }
-  
-  if (!empty($r)) {
-    array_push($result, $r);
-  }
 
   return json_encode(array(
     "data" => $result,
@@ -570,10 +566,6 @@ function selectBound()
     $r['policy'] = $ark_url . "??";
     $r['ark_url'] = (array_key_exists("ark_url", $r) && is_array($r['ark_url']) && count($r['ark_url']) > 1) ? $r['ark_url'] : [$ark_url];
 
-    array_push($result, $r);
-  }
-  
-  if (!empty($r)) {
     array_push($result, $r);
   }
 
