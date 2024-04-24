@@ -700,7 +700,7 @@
 
     </head>
     <body>
-        <?php embedGoogleAnalytics(); ?>
+        <?php embedServices(); ?>
         <div class="container">
             <div class="row">
                 <div class="col-sm text-center">
