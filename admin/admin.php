@@ -1,6 +1,6 @@
 <?php
     require_once "functions.php";
-
+    require_once "../services.php";
     use Noid\Lib\Helper;
     use Noid\Lib\Noid;
     use Noid\Lib\Storage\DatabaseInterface;
@@ -700,6 +700,7 @@
 
     </head>
     <body>
+        <?php embedGoogleAnalytics(); ?>
         <div class="container">
             <div class="row">
                 <div class="col-sm text-center">
