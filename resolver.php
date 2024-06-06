@@ -84,8 +84,14 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
             $qualifier =  $hiarachy . "\t" . "." . implode(".",$qualifier_parts);
           }
         }
-        // looking up
+        // looking up for URL
         $result = lookup($db, $arkid, $qualifier, "URL");
+
+        // Look up for Where?
+        if (empty($result)) {
+          $result = lookup($db, $arkid, $qualifier, "WHERE?");
+        }
+        // if found the results, 
         if (!empty($result)) {
           $url = $result;
           break;
@@ -93,9 +99,13 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
       }
       // if there is only Arks ID in URL, just lookup based on the arkID
       else if ($parts_count == 2) {
-        // do the lookup
+        // do the lookup for URL
         $result = lookup($db, $arkid, $qualifier, "URL");
         
+        // Look up for Where?
+        if (empty($result)) {
+          $result = lookup($db, $arkid, $qualifier, "WHERE?");
+        }
         // if found the results, 
         if (!empty($result)) {
           // found URL field bound associated with the ark id
