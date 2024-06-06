@@ -11,10 +11,6 @@ Base Project:
 
 Full Documentation at: https://github.com/digitalutsc/arks-service/wiki
 
-## Demo
-
-Please install the Ansible Playbook at https://github.com/digitalutsc/arks-service-playbook.
-
 ## Installation
 Please follow the steps at https://github.com/digitalutsc/arks-service/wiki#deployment
 
