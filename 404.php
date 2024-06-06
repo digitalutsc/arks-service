@@ -1,3 +1,4 @@
+<?php require_once "services.php"; ?>
 <!DOCTYPE html>
 <!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
 <!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
@@ -70,7 +71,7 @@
 
 </head>
 <body>
-
+<?php embedServices(); ?>
 <div id="page" class="page">
 
     <div class="pixfort_normal_1" id="section_header_1_dark">
