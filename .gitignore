@@ -1,6 +1,13 @@
 config/MysqlArkConf.php
 admin/db/*
 db/*
+composer.*
+vendor/*
+php8.1_errors.log
+admin/php8.1_errors.log
+.htaccess-drupal
+services.php
+index.php
 
 # exception to the rule
 !admin/db/.gitkeep
