@@ -1,5 +1,8 @@
 <?php
-
+if (!file_exists('../config/MysqlArkConf.php')) {
+    header("Location: ./index.php");
+    exit;
+}
 require_once "functions.php";
 
 use Noid\Lib\Custom\Database;

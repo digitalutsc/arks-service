@@ -1,4 +1,8 @@
 <?php
+    if (!file_exists('../config/MysqlArkConf.php')) {
+        header("Location: ./index.php");
+        exit;
+    } 
     require_once "functions.php";
     require_once "../services.php";
     use Noid\Lib\Helper;
