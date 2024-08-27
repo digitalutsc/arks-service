@@ -513,7 +513,7 @@ function selectBound()
   $sql_boundarks = "SELECT id, REPLACE (id, '$firstpart', '') as _id
       from (
           SELECT DISTINCT REGEXP_SUBSTR(_key, '".$firstpart."[[:digit:]]+(\\t[/.]*.*\\t)*') AS id
-              FROM `dsu_ark`
+              FROM `<table-name>`
               WHERE _key LIKE '$firstpart%' 
               AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
               AND (_key LIKE '%$search%' OR _value LIKE '%$search%')
