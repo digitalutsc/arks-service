@@ -1060,7 +1060,7 @@
                             </div>
                             <div class="col-sm-7">
                                 <?php
-                                if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number'])) {
+                                if ($_SERVER["REQUEST_METHOD"] == "POST" && !empty($_POST['mint-number']) && $_POST['mint-number'] > 0) {
 
                                     // backup database before bulk binding
                                     Database::backupArkDatabase();
@@ -1074,11 +1074,18 @@
                                     <div class="alert alert-success" role="alert">
                                         Ark IDs have been minted successfully.
                                     </div>
-                                ';
+                                    ';
                                     Database::dbclose($noid);
                                     // redirect to the page.
                                     header("Location: admin.php?db=" . $_GET["db"]);
 
+                                }
+                                else if ($_SERVER["REQUEST_METHOD"] == "POST" && (empty($_POST['mint-number']) || $_POST['mint-number'] <= 0)) {
+                                    print '
+                                    <div class="alert alert-warning" role="alert">
+                                        Please enter a valid number to mint.
+                                    </div>
+                                    ';
                                 }
                                 ?>
                                 <p><h5>Minted Arks </h5></p>
