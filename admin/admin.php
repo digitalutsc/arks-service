@@ -1057,6 +1057,62 @@
                                     </div>
                                     <input type="submit" name="mint" value="Mint" class="btn btn-primary"/>
                                 </form>
+                                 <!-- Modal -->
+                                <div class="modal fade" id="MtingProgressModal" tabindex="-1" aria-labelledby="MtingProgressModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="MtingProgressModalLabel">Minting...</h5>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="progress">
+                                                    <div id="minting_progress_bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <script>
+                                    document.addEventListener('DOMContentLoaded', function() {
+                                     // Get the form, modal, input field, and progress bar
+                                    const mintForm = document.getElementById('form-mint');
+                                    const mintingProgressModalElement = document.getElementById('MtingProgressModal');
+                                    const mintingProgressModal = new bootstrap.Modal(mintingProgressModalElement, {
+                                        backdrop: 'static',
+                                        keyboard: false
+                                    });
+                                    const mintNumberInput = document.getElementById('mint-number');
+                                    const progressBar = document.getElementById('minting_progress_bar');
+
+                                    // Add event listener to the form submit event
+                                    mintForm.addEventListener('submit', function(event) {
+                                        // Show the modal
+                                        mintingProgressModal.show();
+
+                                        // Get the mint number value and convert it to milliseconds
+                                        const mintDuration = parseInt(mintNumberInput.value) * 1000;
+
+                                        // Reset the progress bar
+                                        progressBar.style.width = '0%';
+                                        progressBar.setAttribute('aria-valuenow', '0');
+
+                                        // Update the progress bar over the specified duration
+                                        let startTime = Date.now();
+                                        let interval = setInterval(function() {
+                                            let elapsedTime = Date.now() - startTime;
+                                            let progress = Math.min((elapsedTime / mintDuration) * 100, 100);
+                                            progressBar.style.width = progress + '%';
+                                            progressBar.setAttribute('aria-valuenow', progress);
+
+                                            if (progress >= 100) {
+                                                clearInterval(interval);
+                                                // Hide the modal after the timeout
+                                                //mintingProgressModal.hide();
+                                            }
+                                        }, 100); // Update every 100ms
+                                    });
+                                });
+                                </script>
                             </div>
                             <div class="col-sm-7">
                                 <?php
@@ -1067,13 +1123,19 @@
 
                                     $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
                                     $contact = time();
+                                    $count = 0;
                                     while ($_POST['mint-number']--) {
                                         $id = NoidArk::mint($noid, $contact);
+                                        $count++;
                                     };
                                     print '
                                     <div class="alert alert-success" role="alert">
                                         Ark IDs have been minted successfully.
                                     </div>
+                                    <script>
+                                        // Update progress bar
+                                        progressBar.setAttribute("aria-valuenow", 100);
+                                    </script>
                                     ';
                                     Database::dbclose($noid);
                                     // redirect to the page.

@@ -88,11 +88,11 @@ switch ($_GET['op']) {
       if (isset($_GET['stage']) && $_GET['stage'] == 'upload'){
         // return result status
         echo purging();
-    }
-    else {
-        echo  json_encode("Invalid stage");
-    }
-    break;
+      }
+      else {
+          echo  json_encode("Invalid stage");
+      }
+      break;
     }
     case 'bulkbind': {
 

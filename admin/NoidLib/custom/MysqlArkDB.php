@@ -81,7 +81,7 @@ class MysqlArkDB implements DatabaseInterface
             }
 
             // Optimize the table for better performance.
-            $this->handle->query("OPTIMIZE TABLE `" . $this->db_name . "`");
+            //$this->handle->query("OPTIMIZE TABLE `" . $this->db_name . "`");
 
             return $this->handle;
         }
