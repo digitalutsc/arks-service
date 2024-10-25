@@ -117,19 +117,21 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
         
       }
     }
-   
     // New: Add a check for ? or ?? and the end of Ark URL
-    if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) === 0 ) {
+    if ( (substr($_SERVER['REQUEST_URI'], -5) === "?info") 
+    || substr_compare($_SERVER['REQUEST_URI'], "?", -1) === 0 ) {
       // if the Ark URLs ends with '?'
       $medata = getMetdata($db, $arkid, $qualifier);
       print_pre($medata);
     }
-    if ( substr_compare($_SERVER['REQUEST_URI'], "??", -2) === 0 ) {
+    if ( substr_compare($_SERVER['REQUEST_URI'], "??", -2) === 0 
+        || (substr($_SERVER['REQUEST_URI'], -5) === "?info") ) {
       $medata = getMetdata($db, $arkid, $qualifier,"??");
       print_pre($medata);
     }
 
-    if ( substr_compare($_SERVER['REQUEST_URI'], "?", -1) !== 0 ) {
+    if (substr($_SERVER['REQUEST_URI'], -5) !== "?info" 
+      && substr_compare($_SERVER['REQUEST_URI'], "?", -1) !== 0 ) {
       // add a counter here
       increase_reidrection($db, $arkid, $qualifier);
       
@@ -154,17 +156,15 @@ function print_pre($content) {
 /**
  * Get full metadata
  */
-function getMetdata($db, $ark_id, $qualifier,$type=null)
+function getMetdata($db, $ark_id, $qualifier, $type=null)
 {
   $link = mysqli_connect(MysqlArkConf::$mysql_host, MysqlArkConf::$mysql_user, MysqlArkConf::$mysql_passwd, MysqlArkConf::$mysql_dbname);
-
   if (!$link) {
     echo "Error: Unable to connect to MySQL." . PHP_EOL;
     echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
     echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
     exit;
   }
-
   if (isset($type) && $type == "??") {  // for ??
     $label = "erc-support:";
     if (isset($qualifier) && !empty($qualifier)) { 
@@ -174,7 +174,6 @@ function getMetdata($db, $ark_id, $qualifier,$type=null)
       // Query data with Ark ID and field name with ?? attached to it without qualifer
       $where = 'WHERE _key regexp "(^|[[:space:]])'.$ark_id. '([[:space:]])[^/].*\\\\?\\\\?.*"';
     }
-    
   }
   else { // for ?
     $label = "erc:";
@@ -188,12 +187,10 @@ function getMetdata($db, $ark_id, $qualifier,$type=null)
     
   }
   if ($query = mysqli_query($link, "SELECT *  FROM `$db` ". $where)) {
-
     if (!mysqli_query($link, "SET @a:='this will not work'")) {
       printf("Error: %s\n", mysqli_error($query));
     }
     $results = $query->fetch_all();
-    
     if (count($results) > 0) {
       $medata = "<pre>";
       $medata .= $label. "\n";
