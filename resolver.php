@@ -203,7 +203,7 @@ function getMetdata($db, $ark_id, $qualifier, $type=null)
             $count_parts_field = count($parts_field);
             $field = $parts_field[$count_parts_field-1];
           }
-          $medata .= ucwords(strtolower($field)) . ": " . $pair[1] . "\n";
+          $medata .= ucwords(strtolower($field)) . ": " . str_replace("_", " ", $pair[1]) . "\n";
         }
       }
       $medata .= "</pre>";
