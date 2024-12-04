@@ -1429,9 +1429,7 @@
                                                                     <p><strong><label for="importCSV">Upload
                                                                                 CSV: </label></strong>
                                                                     </p>
-                                                                    <input type="file"
-                                                                        id="importCSV" name="importCSV"
-                                                                        accept=".csv">
+                                                                    <input type="file" id="importCSV"  name="importCSV" accept=".csv, .tsv, text/csv, text/tab-separated-values">
                                                                     <small id="emailHelp" class="form-text text-muted">Only
                                                                         accept
                                                                         CSV</small>
@@ -1515,8 +1513,8 @@
                                                     var ext = csv.val().split(".").pop().toLowerCase();
 
                                                     // verify if uploaded file is CSV file.
-                                                    if ($.inArray(ext, ["csv"]) === -1) {
-                                                        $('#message').html('<div class="alert alert-danger">Only accept CSV file</div>');
+                                                    if ($.inArray(ext, ["csv", "tsv"]) === -1) {
+                                                        $('#message').html('<div class="alert alert-danger">Only accept CSV or TSV file</div>');
                                                         return false;
                                                     }
 
@@ -1573,9 +1571,16 @@
                                                                 }
 
                                                                 // get headers
-                                                                var keys = csvResult[0].split(',').map(function (x) {
-                                                                    return x.toUpperCase().trim().replace(/ /g, "_");
-                                                                });
+                                                                if ($('#importCSV').val().split(".").pop().toLowerCase() === "tsv") { 
+                                                                    var keys = csvResult[0].split('\t').map(function (x) {
+                                                                        return x.toUpperCase().trim().replace(/ /g, "_");
+                                                                    });
+                                                                }
+                                                                else {
+                                                                    var keys = csvResult[0].split(',').map(function (x) {
+                                                                        return x.toUpperCase().trim().replace(/ /g, "_");
+                                                                    });
+                                                                }
                                                                 // check if the CSV must have 3 mandatory columns
                                                                 if ($.inArray("ARK_ID", keys) === -1) {
                                                                     // show message.
@@ -1648,12 +1653,12 @@
                                                     var password = JSON.parse(localStorage.getItem("syspasswd"));
                                                     var purged = localStorage.getItem("unbindAllFields");
                                                     if (Array.isArray(csvResult)) {
-                                                    var keys = csvResult[0].split(',').map(function (x) {
-                                                        return x.toUpperCase();
-                                                    });
+                                                        var keys = csvResult[0].split(',').map(function (x) {
+                                                            return x.toUpperCase();
+                                                        });
                                                     }
                                                     else {
-                                                    return;
+                                                        return;
                                                     }
 
                                                     // start binding each line of CSV file
@@ -1724,17 +1729,29 @@
                                                     var purged = localStorage.getItem("unbindAllFields");
                                                     
                                                     if (Array.isArray(csvResult)) {
-                                                    var keys = csvResult[0].split(',').map(function (x) {
-                                                        return x.toUpperCase();
-                                                    });
+                                                        if ($('#importCSV').val().split(".").pop().toLowerCase() === "tsv") { 
+                                                            var keys = csvResult[0].split('\t').map(function (x) {
+                                                                return x.toUpperCase();
+                                                            });
+                                                        }
+                                                        else {
+                                                            var keys = csvResult[0].split(',').map(function (x) {
+                                                                return x.toUpperCase();
+                                                            });
+                                                        }
                                                     }
                                                     else {
-                                                    return;
+                                                        return;
                                                     }
 
                                                     // start binding each line of CSV file
                                                     var item = csvResult[index];
-                                                    var values = item.split(',');
+                                                    if ($('#importCSV').val().split(".").pop().toLowerCase() === "tsv") { 
+                                                        var values = item.split('\t');
+                                                    }
+                                                    else {
+                                                        var values = item.split(',');
+                                                    }
                                                     
                                                     var pdata = {};
                                                     for (var i = 0; i < values.length; i++) {
