@@ -1647,15 +1647,22 @@
                                                     $('#message').html('<div class="alert alert-warning">' +
                                                                                     'Removing existing metadata from the imported Arks.'
                                                                                     + '</div>');
-                                                    
-                                                    // pulll preserve read data from CSV from local storage
+                                                     // pulll preserve read data from CSV from local storage
                                                     var csvResult = JSON.parse(localStorage.getItem("importCSV"));
                                                     var password = JSON.parse(localStorage.getItem("syspasswd"));
                                                     var purged = localStorage.getItem("unbindAllFields");
+
                                                     if (Array.isArray(csvResult)) {
-                                                        var keys = csvResult[0].split(',').map(function (x) {
-                                                            return x.toUpperCase();
-                                                        });
+                                                        if ($('#importCSV').val().split(".").pop().toLowerCase() === "tsv") { 
+                                                            var keys = csvResult[0].split('\t').map(function (x) {
+                                                                return x.toUpperCase();
+                                                            });
+                                                        }
+                                                        else {
+                                                            var keys = csvResult[0].split(',').map(function (x) {
+                                                                return x.toUpperCase();
+                                                            });
+                                                        }
                                                     }
                                                     else {
                                                         return;
@@ -1663,8 +1670,13 @@
 
                                                     // start binding each line of CSV file
                                                     var item = csvResult[index];
-                                                    var values = item.split(',');
-                                                    
+                                                    if ($('#importCSV').val().split(".").pop().toLowerCase() === "tsv") { 
+                                                        var values = item.split('\t');
+                                                    }
+                                                    else {
+                                                        var values = item.split(',');
+                                                    }
+
                                                     var pdata = {};
                                                     for (var i = 0; i < values.length; i++) {
                                                         // enforce csv must follow sequence LocalID, PID, URL,
