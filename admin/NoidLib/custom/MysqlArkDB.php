@@ -209,6 +209,20 @@ class MysqlArkDB implements DatabaseInterface
      * @return bool
      * @throws Exception
      */
+    public function purge($where)
+    {
+        if (!($this->handle instanceof mysqli)) {
+            return FALSE;
+        }
+        return $this->handle->query("DELETE FROM `" . $this->db_name . "` WHERE " . $where);
+    } 
+
+    /**
+     * @param string $key
+     *
+     * @return bool
+     * @throws Exception
+     */
     public function exists($key)
     {
         if (!($this->handle instanceof mysqli)) {

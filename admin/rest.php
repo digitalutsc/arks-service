@@ -161,46 +161,8 @@ function purging() {
     $parts_count = count($parts);
     $identifier = $parts[0]. "/" .$parts[1];
 
-    // TODO: check if the column Ark_ID has "/" ==> handle with hierarchical
-    if (substr_count($_POST['data'][strtoupper('Ark_ID')], '/') > 1) { 
-      // this arks ID is hierarchical
-      $hierarchy = "/";
-      for ($i = 2; $i < $parts_count; $i++) {
-        if (strpos($parts[$i], ".") !== false) {
-          $hierarchy .= explode(".", $parts[$i])[0]; 
-        }
-        else {
-          $hierarchy .= $parts[$i]; 
-        }
-        if ($i < $parts_count-1)
-          $hierarchy .= "/";
-      }
-    }
-    
-    if (substr_count($_POST['data'][strtoupper('Ark_ID')], '.') > 0) { 
-      // this ark ID has variants
-      $parts_variants = explode(".", $parts[$parts_count-1]);
-      array_shift($parts_variants);
-      $variants = "." . implode(".", $parts_variants); 
-    }
-
-    // if the Replace existing metadata before binding is selected, unbind all metadata field (no hierarchy)
-    $condition = "'^" . $identifier . "\t";
-    if ((isset($hierarchy) && $hierarchy !== "/")) { 
-      $condition .= "$hierarchy";
-    }
-    if (isset($variants)) { 
-      $condition .= "\t$variants";
-    }
-    $condition .= "'";
-      
-    $where = "_key REGEXP ". $condition ." and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
-    $result = Database::$engine->select($where);
-    $json = array();
-    foreach ($result as $row) {
-      $status &= NoidArk::clearBind($noid, trim($identifier), trim(str_replace($identifier,"", $row['_key'])));
-    }
-    Database::dbclose($noid);
+    $where = "_key REGEXP '^" . $identifier ."\t' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+    $status = Database::$engine->purge($where);
   }
   return json_encode(['success' => $status]);
 }

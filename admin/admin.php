@@ -1217,13 +1217,8 @@
                                         // todo: if "all field" is checked, delete all fields bound instead
                                         $noid = Database::dbopen($_GET["db"], dbpath(), DatabaseInterface::DB_WRITE);
                                         if (isset($_POST['AllFieldcheckbox']) && $_POST['AllFieldcheckbox'] === "all-fields") {
-                                        $where = "_key REGEXP '^" . $_POST['enterToClearIdentifier'] ."\t' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
-                                        $result = Database::$engine->select($where);
-
-                                        $json = array();
-                                        foreach ($result as $row) {
-                                            $status = NoidArk::clearBind($noid, trim($_POST['enterToClearIdentifier']), trim(str_replace($_POST['enterToClearIdentifier'],"", $row['_key'])));
-                                        }
+                                            $where = "_key REGEXP '^" . $_POST['enterToClearIdentifier'] ."\t' and _key NOT REGEXP ':/c$' and _key NOT REGEXP ':/h$' order by _key";
+                                            $status = Database::$engine->purge($where);
                                         }
                                         else {
                                             $status = NoidArk::clearBind($noid, trim($_POST['enterToClearIdentifier']), $_POST['enterKeytoClear']);
