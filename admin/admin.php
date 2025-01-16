@@ -19,7 +19,11 @@
     use Noid\Lib\Custom\NoidArk;
 
     // check if user logging yet
-    auth();
+    if (!auth()) { 
+        echo 'Access denied ! Your login credential is matched. <a href="logout.php">Please enter your login credentials to
+                    login.</a>';
+        exit();
+    }
 
     // start buffer for all input for the forms
     ob_start();
