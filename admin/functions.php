@@ -102,6 +102,7 @@ function rest_get($req)
       $cURLConnection = curl_init();
       curl_setopt($cURLConnection, CURLOPT_URL, $protocol . $_SERVER['HTTP_HOST'] . $req);
       curl_setopt($cURLConnection, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($cURLConnection, CURLOPT_FOLLOWLOCATION, true);
 
       $result = curl_exec($cURLConnection);
 
