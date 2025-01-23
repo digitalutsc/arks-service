@@ -474,7 +474,7 @@ function selectBound()
   // sql which gets all bound arks 
   $sql_boundarks = "SELECT id, REPLACE (id, '$firstpart', '') as _id
       from (
-          SELECT DISTINCT SUBSTRING_INDEX(_key, '\t', 1) AS id
+          SELECT DISTINCT REGEXP_SUBSTR(_key, '".$firstpart."[[:digit:][:alpha:]]+(\\t[/.]*.*\\t)*') AS id
               FROM `<table-name>`
               WHERE _key LIKE '$firstpart%' 
               AND (_key NOT REGEXP '\\\\s:\\/c' AND _key NOT REGEXP '\\\\s:\\/h') 
