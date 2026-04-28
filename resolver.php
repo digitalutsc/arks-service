@@ -1,3 +1,7 @@
+<?php
+if ((strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_URI'], "/ark:") === 0) 
+    && (substr($_SERVER['REQUEST_URI'], -9) !== '/manifest')) {
+?>
 <html>
 <head>
   <style>
@@ -27,6 +31,7 @@
 </html>
 
 <?php
+}
 require_once 'config/MysqlArkConf.php';
 
 use Noid\Config\MysqlArkConf;
@@ -128,6 +133,43 @@ if (strpos($_SERVER['REQUEST_URI'], "/ark:/") === 0 || strpos($_SERVER['REQUEST_
         || (substr($_SERVER['REQUEST_URI'], -5) === "?info") ) {
       $medata = getMetdata($db, $arkid, $qualifier,"??");
       print_pre($medata);
+    }
+
+    // Added support for /manifest endpoint 
+    if  (substr($_SERVER['REQUEST_URI'], -9) === '/manifest') {
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30, // Better to have a timeout than 0 (infinite)
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+        ));
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+
+        curl_close($curl);
+
+        if ($err || !json_validate($response)) {
+            // Handle potential errors if the remote server is down
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(500);
+            header("Location: https://ark.digital.utsc.utoronto.ca/");
+            return;
+        }
+
+        // 1. Set the Header to JSON
+        header('Content-Type: application/json');
+        header('Content-Length: ' . strlen($response));
+
+        // 2. Output the response
+        echo $response;
+        return;
     }
 
     if (substr($_SERVER['REQUEST_URI'], -5) !== "?info" 
