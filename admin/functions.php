@@ -181,6 +181,9 @@ function auth(){
     $conn->close();
     
     if (!isset($data) || !isset($users[$data['username']])) {
+        header('HTTP/1.1 401 Unauthorized');
+        header('WWW-Authenticate: Digest realm="' . $realm .
+            '",qop="auth",nonce="' . uniqid() . '",opaque="' . md5($realm) . '"');
         die('Wrong Credentials! <a href="logout.php">Please enter your login credentials to
                 login.</a>');
     }
