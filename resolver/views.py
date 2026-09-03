@@ -20,7 +20,13 @@ from django.shortcuts import render
 
 from core.arkpath import Inflection, parse_ark_path
 from core.models import ELEMENT_URL, ELEMENT_WHERE, Ark, Collection, Organisation, Resolution
-from resolver.services import fetch_json, raw_request_uri, render_erc
+from resolver.services import (
+    TargetTooLarge,
+    UnsafeTarget,
+    fetch_json,
+    raw_request_uri,
+    render_erc,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +85,14 @@ def _manifest(ark: Ark, qualifier: str) -> HttpResponse:
 
     try:
         body = fetch_json(target)
+    except UnsafeTarget as exc:
+        # Worth its own line: this is a misconfigured or malicious binding, not
+        # an unreachable target, and the two need different remedies.
+        logger.warning("manifest target refused for %s -> %s: %s", ark.name, target, exc)
+        return JsonResponse({"error": "The bound URL may not be fetched."}, status=502)
+    except TargetTooLarge as exc:
+        logger.warning("manifest too large for %s -> %s: %s", ark.name, target, exc)
+        return JsonResponse({"error": "The manifest is too large to proxy."}, status=502)
     except Exception:
         logger.warning("manifest fetch failed for %s -> %s", ark.name, target, exc_info=True)
         return JsonResponse({"error": "Could not fetch the manifest."}, status=502)

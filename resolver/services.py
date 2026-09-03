@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 import urllib.request
 from collections.abc import Iterable
+from urllib.parse import quote, urlparse
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -29,8 +32,14 @@ def raw_request_uri(request: HttpRequest) -> str:
     raw = request.META.get("RAW_URI") or request.META.get("REQUEST_URI")
     if raw:
         return raw
+
+    # request.path is already percent-decoded, but parse_ark_path decodes what
+    # it is given exactly once. Re-encode so both routes decode the same number
+    # of times — otherwise an identifier containing a literal '%20' resolves
+    # under gunicorn and 404s under runserver.
+    path = quote(request.path, safe="/:@!$&'()*+,;=~")
     query = request.META.get("QUERY_STRING", "")
-    return f"{request.path}?{query}" if query else request.path
+    return f"{path}?{query}" if query else path
 
 
 def is_support_element(name: str) -> bool:
@@ -64,15 +73,80 @@ def render_erc(bindings: Iterable, include_support: bool) -> str:
     return "\n".join(lines) + "\n"
 
 
+class UnsafeTarget(Exception):
+    """The bound URL must not be fetched server-side."""
+
+
+class TargetTooLarge(Exception):
+    """The target returned more than the manifest size limit."""
+
+
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects rather than re-checking every hop."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def check_fetch_target(url: str) -> None:
+    """
+    Raise :class:`UnsafeTarget` unless ``url`` is safe to fetch server-side.
+
+    The target of a /manifest request comes from a binding, which any Editor or
+    bulk-bind CSV can set, and the endpoint is public. Without this the resolver
+    is a fetch proxy into the host and its private network.
+    """
+    parsed = urlparse(url or "")
+    if parsed.scheme not in ("http", "https"):
+        raise UnsafeTarget(
+            "Only http and https targets may be fetched; this URL uses the "
+            f"{parsed.scheme or 'missing'!r} scheme."
+        )
+    if not parsed.hostname:
+        raise UnsafeTarget("The target URL has no host.")
+
+    try:
+        resolved = socket.getaddrinfo(
+            parsed.hostname, parsed.port or None, proto=socket.IPPROTO_TCP
+        )
+    except OSError as exc:
+        raise UnsafeTarget(f"Could not resolve {parsed.hostname!r}.") from exc
+
+    for entry in resolved:
+        address = ipaddress.ip_address(entry[4][0])
+        if (
+            address.is_private
+            or address.is_loopback
+            or address.is_link_local
+            or address.is_reserved
+            or address.is_multicast
+            or address.is_unspecified
+        ):
+            raise UnsafeTarget(
+                f"{parsed.hostname} resolves to the internal address {address}, "
+                "which this service will not fetch."
+            )
+
+
 def fetch_json(url: str, timeout: int | None = None, max_bytes: int | None = None) -> bytes:
     """
     Fetch ``url`` server-side and return its raw body.
 
     Used only by the /manifest inflection, which proxies a target's JSON (a IIIF
-    manifest in practice) instead of redirecting to it.
+    manifest in practice) instead of redirecting to it. Redirects are refused,
+    since following one would bypass :func:`check_fetch_target`.
     """
     timeout = timeout if timeout is not None else settings.MANIFEST_FETCH_TIMEOUT
     max_bytes = max_bytes if max_bytes is not None else settings.MANIFEST_MAX_BYTES
+
+    check_fetch_target(url)
+
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
-        return response.read(max_bytes)
+    opener = urllib.request.build_opener(_NoRedirects)
+    with opener.open(request, timeout=timeout) as response:
+        # Read one byte past the limit so truncation is detectable; a silently
+        # truncated body would otherwise surface as an unexplained parse error.
+        body = response.read(max_bytes + 1)
+    if len(body) > max_bytes:
+        raise TargetTooLarge(f"The target returned more than {max_bytes} bytes.")
+    return body

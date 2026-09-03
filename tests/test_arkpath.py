@@ -159,3 +159,44 @@ def test_manifest_after_a_qualifier_keeps_the_qualifier():
 
 def test_a_plain_ark_is_not_a_manifest_request():
     assert parse_ark_path("ark:/61220/utsc1").manifest is False
+
+
+# --- percent-encoding -----------------------------------------------------
+# The legacy rewrite handed resolver.php a URL-decoded $_GET['q'], and the
+# import stores legacy keys literally, so a qualifier stored as "/page 1" is
+# reached by requesting "/page%201". Comparing the encoded form would 404.
+
+
+def test_a_percent_encoded_space_is_decoded():
+    parsed = parse_ark_path("/ark:/61220/utsc1/page%201")
+    assert parsed.qualifier == "/page 1"
+
+
+def test_a_percent_encoded_identifier_is_decoded():
+    parsed = parse_ark_path("/ark:/61220/utsc%2Da")
+    assert parsed.identifier == "utsc-a"
+
+
+def test_non_ascii_percent_encoding_is_decoded():
+    parsed = parse_ark_path("/ark:/61220/caf%C3%A9")
+    assert parsed.identifier == "café"
+
+
+def test_an_encoded_question_mark_is_not_an_inflection():
+    # %3F is data inside the identifier, not the metadata inflection.
+    parsed = parse_ark_path("/ark:/61220/utsc1%3F")
+    assert parsed.identifier == "utsc1?"
+    assert parsed.inflection is Inflection.NONE
+
+
+def test_a_real_question_mark_still_inflects_after_decoding():
+    parsed = parse_ark_path("/ark:/61220/caf%C3%A9?")
+    assert parsed.identifier == "café"
+    assert parsed.inflection is Inflection.BRIEF
+
+
+def test_an_encoded_slash_does_not_split_the_qualifier():
+    # %2F is a literal slash inside one path component, not a separator.
+    parsed = parse_ark_path("/ark:/61220/utsc1/a%2Fb")
+    assert parsed.qualifier == "/a/b"
+    assert parsed.name == "61220/utsc1"

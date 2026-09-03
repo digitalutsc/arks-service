@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
+from urllib.parse import unquote
 
 #: Trailing path segment that asks the resolver to proxy the target's JSON.
 MANIFEST_SUFFIX = "manifest"
@@ -115,7 +116,12 @@ def parse_ark_path(path: str) -> ArkPath | None:
         rest = rest[: -(len(MANIFEST_SUFFIX) + 1)]
 
     trailing_slash = rest.endswith("/")
-    parts = [p for p in rest.split("/") if p]
+    # Split on the structural characters *before* decoding, so that an encoded
+    # '/' (%2F) stays inside one component and an encoded '?' (%3F) is never
+    # mistaken for an inflection. Legacy compared the decoded path (Apache
+    # handed resolver.php a decoded $_GET['q']) and the import stores legacy
+    # keys literally, so the comparison here has to be against decoded text.
+    parts = [unquote(p) for p in rest.split("/") if p]
 
     if not parts:
         return None

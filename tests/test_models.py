@@ -155,3 +155,44 @@ def test_organisation_survives_edits():
     org.name = "UTSC Digital Scholarship Unit"
     org.save()
     assert Organisation.load().name == "UTSC Digital Scholarship Unit"
+
+
+# --- concurrency ----------------------------------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+def test_two_first_time_resolutions_of_the_same_ark_do_not_collide():
+    # Both callers find no counter row and both try to create one; the loser
+    # must fall back to incrementing, not raise IntegrityError out of the
+    # resolver. A crawler hitting a freshly imported ARK does exactly this.
+    import threading
+
+    from django.db import connection, connections
+
+    if connection.vendor == "sqlite":
+        pytest.skip("SQLite serialises writes globally; nothing to prove here")
+
+    collection = Collection.objects.create(name="race", prefix="race", naan="61220", template=".zd")
+    ark = Ark.objects.create(collection=collection, identifier="race0", sequence=0)
+
+    workers = 8
+    start = threading.Barrier(workers)
+    errors = []
+
+    def worker():
+        try:
+            start.wait()
+            Resolution.record(ark, "")
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+        finally:
+            connections.close_all()
+
+    threads = [threading.Thread(target=worker) for _ in range(workers)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, errors
+    assert Resolution.objects.get(ark=ark, qualifier="").count == workers

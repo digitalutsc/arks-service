@@ -5,9 +5,12 @@ All deployment-specific values come from the environment (see .env.example), so 
 project directory can be renamed freely without touching code.
 """
 
+import os
 from pathlib import Path
 
 from environs import Env
+
+from arkservice.checks import check_production_settings
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -16,6 +19,13 @@ env.read_env(BASE_DIR / ".env", recurse=False)
 
 SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="dev-insecure-key-change-me")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
+_DATABASE_URL = env.str("DATABASE_URL", default="")
+
+# Refuse to start on an incomplete production configuration rather than serving
+# 404s from an empty SQLite file with a well-known secret key. Tests set
+# PYTEST_VERSION, and run with DEBUG false, so they are exempt.
+if not os.environ.get("PYTEST_VERSION") and not os.environ.get("ARKSERVICE_SKIP_CONFIG_CHECK"):
+    check_production_settings(debug=DEBUG, secret_key=SECRET_KEY, database_url=_DATABASE_URL)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
@@ -134,7 +144,14 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
     CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Apache sets this header itself (see deploy/apache-arkservice.conf); it is
+    # only trustworthy because gunicorn listens on loopback and nothing else can
+    # reach it directly.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # 0 by default so a first deployment cannot lock a domain into HTTPS before
+    # the certificate is known good; set it once TLS is confirmed.
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
 
 # --- Celery ---------------------------------------------------------------
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379/0")

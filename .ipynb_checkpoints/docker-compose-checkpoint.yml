@@ -1,0 +1,57 @@
+# Dev / prototype stack. Named explicitly so renaming the checkout directory
+# does not orphan the volumes.
+name: arkservice
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ark
+      POSTGRES_PASSWORD: ark
+      POSTGRES_DB: ark
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ark"]
+      interval: 5s
+      retries: 10
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate --no-input &&
+             gunicorn arkservice.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile -"
+    environment: &env
+      DATABASE_URL: postgres://ark:ark@db:5432/ark
+      CELERY_BROKER_URL: redis://redis:6379/0
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-insecure-change-me}
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      SESSION_COOKIE_SECURE: "false"
+      CSRF_COOKIE_SECURE: "false"
+      MEDIA_ROOT: /data/media
+    volumes: [media:/data/media]
+    ports: ["8000:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
+  worker:
+    build: .
+    command: celery -A arkservice worker --loglevel=info --concurrency=2
+    environment: *env
+    volumes: [media:/data/media]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
+volumes:
+  pgdata:
+  media:

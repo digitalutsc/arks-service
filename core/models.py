@@ -10,7 +10,7 @@ here the same information is normalised into collections, ARKs and bindings.
 from __future__ import annotations
 
 from django.core.exceptions import ValidationError
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
 from minting.noid import TemplateError, TemplateSpec, parse_template
@@ -189,13 +189,31 @@ class Resolution(models.Model):
 
     @classmethod
     def record(cls, ark: Ark, qualifier: str = "") -> None:
-        """Count one redirect, without reading the current value first."""
-        with transaction.atomic():
-            updated = cls.objects.filter(ark=ark, qualifier=qualifier).update(
-                count=models.F("count") + 1, last_at=timezone.now()
-            )
-            if not updated:
-                cls.objects.create(ark=ark, qualifier=qualifier, count=1, last_at=timezone.now())
+        """
+        Count one redirect, without reading the current value first.
+
+        The row usually exists, so try the update first. When it does not, two
+        callers can both find nothing and both try to insert; the loser catches
+        the unique-constraint violation and increments instead. Getting this
+        wrong turns the first hit on a freshly imported ARK — exactly what a
+        crawler produces after a cutover — into a 500.
+        """
+        now = timezone.now()
+        if cls._increment(ark, qualifier, now):
+            return
+
+        try:
+            with transaction.atomic():
+                cls.objects.create(ark=ark, qualifier=qualifier, count=1, last_at=now)
+        except IntegrityError:
+            # Someone else created it between our update and our insert.
+            cls._increment(ark, qualifier, now)
+
+    @classmethod
+    def _increment(cls, ark: Ark, qualifier: str, now) -> int:
+        return cls.objects.filter(ark=ark, qualifier=qualifier).update(
+            count=models.F("count") + 1, last_at=now
+        )
 
 
 class Organisation(models.Model):

@@ -239,3 +239,46 @@ def test_root_shows_a_minimal_landing_page(client):
     response = client.get("/")
     assert response.status_code == 200
     assert "UTSC Digital Scholarship Unit" in response.content.decode()
+
+
+# --- percent-encoding -----------------------------------------------------
+
+
+def test_an_encoded_qualifier_resolves(client, ark):
+    # The import stores legacy keys literally, so a qualifier really can contain
+    # a space; it is requested as %20.
+    Binding.objects.create(ark=ark, qualifier="/page 1", name="URL", value="https://e.example/p1")
+    response = get(client, "/ark:/61220/utsc1/page%201")
+    assert response.status_code == 302
+    assert response["Location"] == "https://e.example/p1"
+
+
+def test_an_encoded_identifier_resolves(client, collection):
+    odd = Ark.objects.create(collection=collection, identifier="café")
+    Binding.objects.create(ark=odd, name="URL", value="https://e.example/cafe")
+    assert get(client, "/ark:/61220/caf%C3%A9")["Location"] == "https://e.example/cafe"
+
+
+def test_decoding_is_the_same_with_and_without_a_raw_uri(client, ark):
+    # Gunicorn sets RAW_URI (undecoded); other servers do not, and Django's
+    # request.path is already decoded. Both must reach the same binding, and
+    # neither may decode twice.
+    Binding.objects.create(ark=ark, qualifier="/a%20b", name="URL", value="https://e.example/lit")
+    with_raw = client.get("/ark:/61220/utsc1/a%2520b", RAW_URI="/ark:/61220/utsc1/a%2520b")
+    without_raw = client.get("/ark:/61220/utsc1/a%2520b")
+    assert with_raw.status_code == 302
+    assert without_raw.status_code == 302
+    assert with_raw["Location"] == without_raw["Location"] == "https://e.example/lit"
+
+
+def test_manifest_refuses_a_local_file_target(client, ark):
+    # An Editor can set any URL; the public endpoint must not read the disk.
+    Binding.objects.create(ark=ark, name="URL", value="file:///etc/passwd")
+    response = get(client, "/ark:/61220/utsc1/manifest")
+    assert response.status_code == 502
+    assert b"passwd" not in response.content
+
+
+def test_manifest_refuses_a_link_local_target(client, ark):
+    Binding.objects.create(ark=ark, name="URL", value="http://169.254.169.254/latest/meta-data/")
+    assert get(client, "/ark:/61220/utsc1/manifest").status_code == 502
