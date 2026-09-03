@@ -10,6 +10,12 @@ htmlcov/
 
 .env
 *.sqlite3
+
+# Legacy exports hold staff credentials, and the reports made from them.
+*.sql
+*.sql.gz
+import-report.csv
+cutover-diff.csv
 /media/
 /staticfiles/
 /exports/

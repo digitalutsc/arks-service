@@ -112,7 +112,8 @@ line from gunicorn's `RAW_URI`, and Apache must not re-canonicalise the URI on
 the way through. Without `nocanon`, metadata requests silently become redirects.
 
 **Docker** (development only) replaces Apache with WhiteNoise inside gunicorn
-and MySQL with PostgreSQL:
+and MySQL with PostgreSQL. The stack is defined in the `docker-arks-service`
+repository beside this one, not here:
 
 ```mermaid
 flowchart LR
@@ -203,7 +204,7 @@ erDiagram
 
     COLLECTION {
         string name UK
-        string prefix UK "unique service-wide"
+        string prefix UK "unique within its NAAN"
         string naan
         text   naa "returned for /ark:/<naan>/"
         string template "noid, e.g. .zd"
@@ -416,7 +417,7 @@ rather than minting a second batch.
 
 ```mermaid
 flowchart TD
-    A["Freeze writes on legacy"] --> B["mysqldump → scratch database"]
+    A["Freeze writes on legacy"] --> B["export the database<br/><i>mysqldump or phpMyAdmin</i>"]
     B --> C["import_legacy --dry-run"]
     C --> D["import_legacy"]
     D --> E["ark_stats<br/><i>do the counts look right?</i>"]
@@ -439,12 +440,29 @@ flowchart TD
     style N fill:#fdeeee
 ```
 
-**`import_legacy`** reads keys literally rather than re-deriving them, so
-whatever production actually holds survives — including anything legacy wrote in
+**`import_legacy`** reads the export file directly — the handover is a `.sql`
+file, and requiring it to be restored into a scratch MySQL server first was an
+obstacle with no purpose. Keys are read literally rather than re-derived, so
+whatever production actually holds survives, including anything legacy wrote in
 a form its own resolver could not read back. Identifiers are decoded back to
 their counter value, which is what lets minting resume exactly where production
-left off. It is idempotent and bulk-written: ~100k ARKs / 440k rows in about
-15 seconds, and a second run is a few-second no-op.
+left off. It is idempotent and bulk-written: the real production export, 97,596
+ARKs and 2.76M bindings, takes about a minute, and a second run creates nothing.
+
+Three things about the legacy data are not taken literally, each because taking
+it literally would be wrong rather than faithful:
+
+| Legacy held | Why it cannot come across as-is |
+|---|---|
+| every value HTML-escaped (`&amp;` for `&`) | an artefact of the PHP storage layer, not something a curator typed. Decoded once on the way in, and `resolve_diff` decodes legacy's answers the same way so the gate stays meaningful |
+| an identifier's mint date only in its `:/c` circulation record | dropping it dated every migrated ARK to the day of the migration. Read back, giving real dates from 2020 to 2026 |
+| thousands of elements under two spellings, one ending in a carriage return | only one can survive a `(ark, qualifier, name)` unique constraint. The clean spelling wins and the other is written to a review CSV rather than lost silently |
+
+An identifier is imported if it has a circulation record **or** any element that
+is not a redirect count. That brings across the 19,947 identifiers production
+minted and never bound — without them, minting would eventually reissue them —
+and leaves out the paths the legacy resolver counted hits for but which were
+never ARKs. Full detail in [MIGRATION.md](MIGRATION.md).
 
 **`resolve_diff`** is the gate. It walks every NAAN root, every ARK, every
 qualifier anything is bound under, and the `?`, `??` and `?info` inflections,

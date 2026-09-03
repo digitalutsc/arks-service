@@ -9,11 +9,13 @@ fetching lives in the ``resolve_diff`` command.
 
 from __future__ import annotations
 
+import csv
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from core.legacy import decode_legacy_text
 from core.models import Ark, Binding, Collection
 
 
@@ -101,6 +103,35 @@ def iter_check_paths(
 #: Legacy answered an unresolvable ARK by redirecting to its own error page.
 LEGACY_NOT_FOUND_PAGE = "404.php"
 
+#: The suffixes that ask an ARK about itself rather than for its target.
+INFLECTIONS = ("??", "?info", "?")
+
+
+def base_path(path: str) -> str:
+    """The ARK a path is about, with any inflection taken off."""
+    for suffix in INFLECTIONS:
+        if path.endswith(suffix):
+            return path[: -len(suffix)]
+    return path
+
+
+def read_known_paths(path) -> set[str]:
+    """
+    ARK paths the import already reported as not carried over verbatim.
+
+    A handful of legacy rows cannot survive the move intact — an element held
+    under two spellings, most of all. Those ARKs will differ, and knowing that
+    in advance is what keeps the cutover gate meaningful instead of permanently
+    red.
+    """
+    with open(path, newline="") as handle:
+        return {
+            row["ark_path"].strip()
+            for row in csv.DictReader(handle)
+            if (row.get("ark_path") or "").strip()
+        }
+
+
 _TAG = re.compile(r"<[^>]+>")
 
 
@@ -144,12 +175,15 @@ def compare(
     redirect or the body for a metadata response. Differences of *expression*
     are normalised away — a legacy redirect to 404.php is a 404, and legacy's
     <pre>-wrapped metadata is compared line-wise — so that what remains is a
-    real difference in what the ARK resolves to. Returns ``None`` when the two
-    agree.
+    real difference in what the ARK resolves to — so are the entities legacy's
+    storage layer left in its output. Returns ``None`` when the two agree.
     """
     legacy_status, legacy_target = legacy
     new_status, new_target = new
-    legacy_target = legacy_target or ""
+    # Legacy stored every value HTML-escaped and served it as it stood, so its
+    # answers carry "&amp;" where the real URL has "&". That is a difference in
+    # how the two systems spell the same target, not in the target.
+    legacy_target = decode_legacy_text(legacy_target or "").rstrip("\r")
     new_target = new_target or ""
 
     if _is_legacy_miss(legacy_status, legacy_target, legacy_base) and new_status == 404:

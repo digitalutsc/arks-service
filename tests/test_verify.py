@@ -194,3 +194,71 @@ def test_a_genuine_difference_is_not_an_error():
         "/ark:/61220/utsc1", (302, "https://old.example"), (302, "https://new.example")
     )
     assert difference.is_error is False
+
+
+# --- legacy's storage encoding leaked into its answers --------------------
+
+
+def test_entities_in_a_legacy_redirect_are_not_a_difference():
+    # Legacy stored every value HTML-escaped and redirected to it as it stood,
+    # so its Location header carries "&amp;" where the real URL has "&".
+    legacy = (302, "https://example.org/search?a=1&amp;b=2")
+    new = (302, "https://example.org/search?a=1&b=2")
+    assert compare("/ark:/61220/utsc0", legacy, new) is None
+
+
+def test_a_genuinely_different_target_is_still_a_difference():
+    legacy = (302, "https://example.org/search?a=1&amp;b=2")
+    new = (302, "https://example.org/search?a=1&b=3")
+    assert compare("/ark:/61220/utsc0", legacy, new) is not None
+
+
+def test_entities_in_legacy_metadata_are_not_a_difference():
+    legacy = (200, "<pre>erc:\nWhat: Fish &amp; Chips\nWho: O&#039;Brien</pre>")
+    new = (200, "erc:\nWhat: Fish & Chips\nWho: O'Brien")
+    assert compare("/ark:/61220/utsc0?", legacy, new) is None
+
+
+def test_a_trailing_carriage_return_in_legacy_metadata_is_not_a_difference():
+    legacy = (200, "<pre>erc:\nTitle: Digital File Name: _A1\r</pre>")
+    new = (200, "erc:\nTitle: Digital File Name: _A1")
+    assert compare("/ark:/61220/utsc0?", legacy, new) is None
+
+
+# --- differences the import already told us about -------------------------
+
+
+def test_known_paths_are_read_from_the_import_report(tmp_path):
+    from core.verify import read_known_paths
+
+    report = tmp_path / "report.csv"
+    report.write_text(
+        "reason,table,ark_path,element,value\n"
+        "duplicate-element,dsu_ark,/ark:/61220/utsc0,COLLECTION,Other\n"
+        "redirect-for-unknown-ark,dsu_ark,/ark:/61220/utsc9biblio,REDIRECT,8\n"
+    )
+    assert read_known_paths(report) == {"/ark:/61220/utsc0", "/ark:/61220/utsc9biblio"}
+
+
+def test_an_empty_report_names_nothing(tmp_path):
+    from core.verify import read_known_paths
+
+    report = tmp_path / "empty.csv"
+    report.write_text("reason,table,ark_path,element,value\n")
+    assert read_known_paths(report) == set()
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ("/ark:/61220/utsc0", "/ark:/61220/utsc0"),
+        ("/ark:/61220/utsc0?", "/ark:/61220/utsc0"),
+        ("/ark:/61220/utsc0??", "/ark:/61220/utsc0"),
+        ("/ark:/61220/utsc0?info", "/ark:/61220/utsc0"),
+        ("/ark:/61220/utsc0/page1?", "/ark:/61220/utsc0/page1"),
+    ],
+)
+def test_an_inflection_is_the_same_ark_as_the_path_it_decorates(path, expected):
+    from core.verify import base_path
+
+    assert base_path(path) == expected

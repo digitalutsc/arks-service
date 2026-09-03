@@ -254,3 +254,66 @@ def test_the_cli_and_the_ui_purge_the_same_way(collection):
 
     assert not Binding.objects.filter(ark__identifier="utsc0").exists()
     assert not Binding.objects.filter(ark__identifier="utsc1").exists()
+
+
+# --- the cutover gate -----------------------------------------------------
+
+
+def test_resolve_diff_passes_when_both_systems_agree(collection, monkeypatch):
+    from core.management.commands import resolve_diff as command
+
+    Ark.objects.create(collection=collection, identifier="utsc0", sequence=0)
+    monkeypatch.setattr(command, "_fetch", lambda url, timeout: (302, "https://example.org/0"))
+    output = run("resolve_diff", "--legacy-base", "https://old", "--new-base", "https://new")
+    assert "resolve identically" in output
+
+
+def test_resolve_diff_fails_on_a_real_difference(collection, monkeypatch):
+    from core.management.commands import resolve_diff as command
+
+    Ark.objects.create(collection=collection, identifier="utsc0", sequence=0)
+
+    def fetch(url, timeout):
+        return (
+            302,
+            "https://example.org/old"
+            if url.startswith("https://old")
+            else "https://example.org/new",
+        )
+
+    monkeypatch.setattr(command, "_fetch", fetch)
+    with pytest.raises(CommandError, match="Do not flip"):
+        run("resolve_diff", "--legacy-base", "https://old", "--new-base", "https://new")
+
+
+def test_resolve_diff_does_not_fail_on_paths_the_import_reported(collection, monkeypatch, tmp_path):
+    from core.management.commands import resolve_diff as command
+
+    Ark.objects.create(collection=collection, identifier="utsc0", sequence=0)
+    report = tmp_path / "report.csv"
+    report.write_text(
+        "reason,table,ark_path,element,value\n"
+        "duplicate-element,UTSC,/ark:/61220/utsc0,COLLECTION,Other\n"
+    )
+
+    def fetch(url, timeout):
+        if url.endswith("/ark:/61220/"):
+            return (200, "UTSC Library")
+        return (
+            302,
+            "https://example.org/old"
+            if url.startswith("https://old")
+            else "https://example.org/new",
+        )
+
+    monkeypatch.setattr(command, "_fetch", fetch)
+    output = run(
+        "resolve_diff",
+        "--legacy-base",
+        "https://old",
+        "--new-base",
+        "https://new",
+        "--known",
+        str(report),
+    )
+    assert "already reported" in output

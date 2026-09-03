@@ -10,11 +10,13 @@ anything is switched over.
 
 | | |
 |---|---|
-| [DEPLOY.md](DEPLOY.md) | Local, Docker, CI and production deployment; cutover runbook; environment variables; troubleshooting |
+| [DEPLOY.md](DEPLOY.md) | Local, Docker, CI and production deployment; environment variables; troubleshooting |
+| [MIGRATION.md](MIGRATION.md) | Moving the legacy service's data here: what maps to what, the review report, the cutover runbook |
 | [USAGES.md](USAGES.md) | Every task, in the staff interface and on the command line |
 | [README_EXTENDED.md](README_EXTENDED.md) | Architecture, components, data model and diagrams of every request path |
 | [SCALE.md](SCALE.md) | Measured performance and capacity, what grows and what does not |
 | [deploy/](deploy/) | systemd units and the Apache vhost |
+| [../docker-arks-service/](../docker-arks-service/) | The Docker stack for development and demos, driven by `make` |
 
 ## Quick start
 
@@ -27,15 +29,17 @@ cp .env.example .env                  # then edit
 ./.venv/bin/python manage.py runserver
 ```
 
-Or bring up the whole stack — app, worker, Redis, PostgreSQL — with Docker:
+Or bring the whole stack up — app, worker, Redis, PostgreSQL — from the
+deployment repository beside this one:
 
 ```bash
-docker compose up
-# http://localhost:8000
+cd ../docker-arks-service && make install
+# http://localhost:8000, with the login it prints
 ```
 
-The image carries no data. Production does **not** use Docker; it runs bare on
-the LAMP VM against the existing MySQL server ([DEPLOY.md](DEPLOY.md)).
+That repository holds every Docker file; this one holds none. Production uses
+neither: it runs bare on the LAMP VM against the existing MySQL server
+([DEPLOY.md](DEPLOY.md)).
 
 ## How it fits together
 
@@ -65,6 +69,16 @@ Eight concurrent minters cannot produce a duplicate — that is a test, not a ho
 inflections, `/manifest` JSON proxying, per-qualifier redirect counters, and the
 NAA response for a bare NAAN.
 
+**Staff interface.** A sidebar console: dashboard, collections, ARK search,
+users. Every ARK is shown with the URL it actually resolves at *in the
+environment you are looking at* — derived from the request, so Docker shows
+`http://localhost:8000/ark:/…` and production shows the real domain. Override
+with `ARK_PUBLIC_BASE_URL` only when staff reach the admin on a different
+hostname than the resolver. The sidebar names the environment for the same
+reason: nobody should paste a localhost URL into a catalogue record. There is no
+inline CSS or JavaScript anywhere in the templates — the CSP forbids both, and a
+test enforces it.
+
 **No HTTP API.** The admin UI talks to the ORM directly; scripts use management
 commands. Legacy `admin/rest.php` goes away at cutover — check your access logs
 for callers first ([DEPLOY.md](DEPLOY.md#step-0--find-out-who-calls-the-old-rest-endpoint)).
@@ -79,8 +93,9 @@ manage.py unbind 61220/utsc1 URL          # or --all
 manage.py bulk_bind utsc /tmp/batch.csv --results /tmp/out.csv
 manage.py export_arks --collection utsc --out /tmp/utsc.csv
 manage.py ark_stats
-manage.py import_legacy --legacy-url mysql://user:pw@host/ark_legacy
-manage.py resolve_diff --legacy-base https://old --new-base http://127.0.0.1:8000
+manage.py import_legacy --legacy-dump /srv/ARK_CORE.sql --report review.csv
+manage.py resolve_diff --legacy-base https://old --new-base http://127.0.0.1:8000 \
+    --known review.csv
 ```
 
 ## Tests

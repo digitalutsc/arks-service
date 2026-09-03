@@ -409,23 +409,26 @@ scheme that had to go. Create accounts fresh.
 
 ## 12. Migrate from the legacy service
 
-Full runbook in [DEPLOY.md](DEPLOY.md#cutover-from-the-legacy-service). In
-brief:
+Full runbook in [MIGRATION.md](MIGRATION.md). In brief:
 
 ```bash
-# 1. restore a dump into a scratch database, then:
-manage.py import_legacy --legacy-url mysql://user:pw@localhost/ark_legacy_copy --dry-run
-manage.py import_legacy --legacy-url mysql://user:pw@localhost/ark_legacy_copy
+# 1. read the export straight from the file — no scratch database
+manage.py import_legacy --legacy-dump /srv/ARK_CORE.sql --report review.csv --dry-run
+manage.py import_legacy --legacy-dump /srv/ARK_CORE.sql --report review.csv
 manage.py ark_stats
 
 # 2. prove every ARK resolves identically before flipping anything
 manage.py resolve_diff \
     --legacy-base https://ark.digital.utsc.utoronto.ca \
-    --new-base http://127.0.0.1:8000 --out cutover-diff.csv
+    --new-base http://127.0.0.1:8000 --known review.csv --out cutover-diff.csv
 ```
 
-`import_legacy` is idempotent — rehearse it as often as you like. `resolve_diff`
-exits non-zero until every path matches.
+`import_legacy` is idempotent — rehearse it as often as you like. `review.csv`
+lists the few rows that could not be carried over exactly, and `resolve_diff`
+exits non-zero until every path that is not in it matches.
+
+To rehearse the whole thing in Docker instead, see
+[`../docker-arks-service/MIGRATION.md`](../docker-arks-service/MIGRATION.md).
 
 ---
 

@@ -6,13 +6,14 @@ directory name, so it can be renamed or moved freely.
 | Environment | Runs on | Database | Worker | Static files |
 |---|---|---|---|---|
 | **Local** | `runserver` | SQLite | eager (in-process) | Django dev server |
-| **Dev / Docker** | Compose: gunicorn + celery | PostgreSQL 16 | Redis + Celery | WhiteNoise |
+| **Dev / Docker** | Compose: gunicorn + celery, defined in `docker-arks-service` | PostgreSQL 16 | Redis + Celery | WhiteNoise |
 | **CI** | GitHub Actions | PostgreSQL **and** MySQL | n/a | n/a |
 | **Production** | Bare on the LAMP VM | MySQL/MariaDB | Redis + Celery (systemd) | Apache, WhiteNoise as fallback |
 
-Production deliberately does **not** use Docker: it runs against the MySQL
-server already on the VM. The image exists so the whole stack can be brought up
-anywhere with one command, and carries no data.
+No Docker file lives in this repository. The stack is defined next door in
+`../docker-arks-service`, which builds an image from this checkout; see section
+2. Production deliberately does not use it either, running against the MySQL
+server already on the VM.
 
 ---
 
@@ -62,35 +63,46 @@ deliberate — see [Boot guards](#boot-guards). For local work, set
 
 ## 2. Docker (dev and prototyping)
 
-Brings up four containers: `web` (gunicorn), `worker` (celery), `redis`, and
-`db` (PostgreSQL 16).
+The Docker stack lives in its own repository, `docker-arks-service`, checked out
+beside this one. It contains no application code: it points at this checkout and
+builds an image from it, which is why nothing here refers to Docker.
 
-```bash
-docker compose up --build
-# http://localhost:8000
+```
+arks-redesign/
+├── arks-service-new/       this repository
+└── docker-arks-service/    the Docker stack
 ```
 
-The Compose project is named `arkservice` explicitly, so renaming the checkout
-directory does not orphan the volumes.
-
 ```bash
-# create a collection and mint inside the stack
-docker compose exec web python manage.py createcollection "UTSC Digital Collections" \
-    --prefix utsc --naan 61220 --naa "UTSC Library" --template .zd
-docker compose exec web python manage.py mint utsc 10
-docker compose exec web python manage.py createsuperuser
-
-# tear down, keeping data
-docker compose down
-# tear down, discarding data
-docker compose down -v
+cd ../docker-arks-service
+make install     # build and start everything, from nothing
+make up          # start an already-built stack
+make down        # stop it, keeping the data
+make clean       # remove it entirely: containers, volumes, image
+make rebuild     # clean, then install
 ```
 
-Configuration comes from the environment block in `docker-compose.yml`; override
-`DJANGO_SECRET_KEY` in your shell or an `.env` file next to the compose file.
+`make install` generates a secret key and an administrator password, brings up
+`web` (gunicorn), `worker` (celery), `redis` and `db` (PostgreSQL 16), waits
+until `/healthz` answers, creates the administrator, and prints the login.
+Re-running it changes nothing that is already set.
 
-The image runs `collectstatic` at build time and serves static files through
-WhiteNoise, so no separate web server is needed.
+Management commands run through the same Makefile:
+
+```bash
+make manage ARGS="createcollection 'UTSC Digital Collections' \
+    --prefix utsc --naan 61220 --naa 'UTSC Library' --template .zd"
+make manage ARGS="mint utsc 10"
+```
+
+Configuration is the `.env` file in that repository, and `ARKS_SRC` in it says
+where this checkout is. The image runs `collectstatic` at build time and serves
+static files through WhiteNoise, so no separate web server is needed.
+
+One thing to know when working here: the Dockerfile copies each top-level
+package of this repository by name rather than the whole tree, so **a new
+top-level Django app needs a matching `COPY --from=src` line** in
+`docker-arks-service/Dockerfile`. Its README says so too.
 
 ---
 
@@ -299,53 +311,44 @@ locally, or the no-API decision needs revisiting.
 
 Nothing may mint or bind after the dump is taken, or the two will diverge.
 
-### Step 2 — dump and restore into a scratch database
+### Steps 2 to 4 — export, import, and prove it
+
+These are the substance of the migration and have their own document:
+**[MIGRATION.md](MIGRATION.md)**. In brief:
 
 ```bash
-mysqldump ark_legacy > /tmp/ark-legacy.sql
-mysql -e 'CREATE DATABASE ark_legacy_copy CHARACTER SET utf8mb4'
-mysql ark_legacy_copy < /tmp/ark-legacy.sql
-```
+# on the legacy server, after writes are frozen
+mysqldump --single-transaction --default-character-set=utf8mb4 ARK_CORE > /srv/ARK_CORE.sql
 
-### Step 3 — import
-
-Idempotent, so rehearse it as often as you like.
-
-```bash
+# here — no scratch database needed, the export is read directly
 .venv/bin/python manage.py import_legacy \
-    --legacy-url mysql://user:pw@localhost/ark_legacy_copy --dry-run
+    --legacy-dump /srv/ARK_CORE.sql --report review.csv --dry-run
 .venv/bin/python manage.py import_legacy \
-    --legacy-url mysql://user:pw@localhost/ark_legacy_copy
+    --legacy-dump /srv/ARK_CORE.sql --report review.csv
 .venv/bin/python manage.py ark_stats
-```
 
-Roughly 100k ARKs / 440k rows takes about 15 seconds. A second run is a no-op of
-a few seconds.
-
-### Step 4 — diff every ARK against the running legacy service
-
-```bash
-# quick read first
+# then prove every ARK resolves identically, under gunicorn on an alternate port
 .venv/bin/python manage.py resolve_diff \
     --legacy-base https://ark.digital.utsc.utoronto.ca \
-    --new-base http://127.0.0.1:8000 --sample 500
-
-# then the whole thing
+    --new-base http://127.0.0.1:8001 --known review.csv --sample 500
 .venv/bin/python manage.py resolve_diff \
     --legacy-base https://ark.digital.utsc.utoronto.ca \
-    --new-base http://127.0.0.1:8000 --out cutover-diff.csv
+    --new-base http://127.0.0.1:8001 --known review.csv --out cutover-diff.csv
 ```
 
-It walks every NAAN root, every ARK, every qualifier anything is bound under,
-and the `?`, `??` and `?info` inflections. It exits non-zero while anything
-differs, and **separately** if any path could not be fetched — a socket failure
-proves nothing either way, so those are reported apart from real differences
-rather than counted as passes. If you see them, lower `--workers`; the default
-of 8 can exhaust local ports when both services are on one host.
+Roughly 100k ARKs and 2.8M rows import in about a minute. It is idempotent, so
+rehearse it as often as you like; a second run creates nothing.
 
-Legacy answers a miss by redirecting to its own `404.php` and wraps metadata in
-`<pre>`; those idioms are normalised before comparison, so what remains is a
-real difference in what an ARK resolves to.
+`resolve_diff` walks every NAAN root, every ARK, every qualifier anything is
+bound under, and the `?`, `??` and `?info` inflections. Legacy answers a miss by
+redirecting to its own `404.php`, wraps metadata in `<pre>`, and leaves HTML
+entities in both; all three are normalised before comparison. It exits non-zero
+while anything differs, and **separately** if any path could not be fetched — a
+socket failure proves nothing either way. If you see those, lower `--workers`;
+the default of 8 can exhaust local ports when both services are on one host.
+
+`--known review.csv` excuses the handful of ARKs the import already reported as
+impossible to carry over verbatim. Nothing else is excused.
 
 Do not continue until it is clean.
 
@@ -445,6 +448,7 @@ tail -f /var/log/apache2/arkservice-error.log
 | `TRUST_FORWARDED_FOR` | `false` | Set true only behind a proxy that sets it and when gunicorn is unreachable directly |
 | `SESSION_COOKIE_AGE` | `28800` | Eight hours, refreshed on activity |
 | `RESOLUTION_FLUSH_SECONDS` | `60` | How often buffered redirect counts are written |
+| `ARK_PUBLIC_BASE_URL` | empty | Base URL the admin UI shows for an ARK. Empty derives it from the request (correct behind Apache, which preserves the Host and sets `X-Forwarded-Proto`). Set it only when staff reach the admin on a different hostname than the resolver |
 | `BULK_BIND_MAX_BYTES` | `52428800` | Upload ceiling; `DATA_UPLOAD_MAX_MEMORY_SIZE` does **not** cover file parts |
 | `CELERY_RESULT_BACKEND` | same as broker | |
 | `CELERY_TASK_ALWAYS_EAGER` | `false` | `true` runs jobs inline — development only |

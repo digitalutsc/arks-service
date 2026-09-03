@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from django.core.management.base import BaseCommand, CommandError
 
 from core.management.commands._common import get_collection
-from core.verify import compare, iter_check_paths
+from core.verify import base_path, compare, iter_check_paths, read_known_paths
 
 #: Statuses we compare bodies for rather than Location headers.
 BODY_STATUSES = {200}
@@ -46,6 +46,11 @@ class Command(BaseCommand):
         parser.add_argument("--timeout", type=int, default=20)
         parser.add_argument("--out", help="Write differences to this CSV")
         parser.add_argument(
+            "--known",
+            help="An import report CSV. Differences on the ARKs it names are expected, "
+            "and do not hold up the cutover.",
+        )
+        parser.add_argument(
             "--stop-after",
             type=int,
             default=0,
@@ -56,6 +61,13 @@ class Command(BaseCommand):
         legacy_base = options["legacy_base"].rstrip("/")
         new_base = options["new_base"].rstrip("/")
         collection = get_collection(options["collection"]) if options["collection"] else None
+
+        known_paths: set[str] = set()
+        if options["known"]:
+            try:
+                known_paths = read_known_paths(options["known"])
+            except OSError as exc:
+                raise CommandError(f"Could not read {options['known']}: {exc}") from exc
 
         paths = list(
             iter_check_paths(
@@ -93,20 +105,32 @@ class Command(BaseCommand):
                     self.stdout.write(f"Stopping after {len(differences)} difference(s).")
                     break
 
+        def is_known(difference):
+            return base_path(difference.path) in known_paths
+
         if options["out"]:
             with open(options["out"], "w", newline="") as handle:
                 writer = csv.writer(handle)
-                writer.writerow(["path", "legacy_status", "new_status", "legacy", "new", "reason"])
-                writer.writerows(d.as_row() for d in differences)
+                writer.writerow(
+                    ["path", "legacy_status", "new_status", "legacy", "new", "reason", "known"]
+                )
+                writer.writerows(d.as_row() + ["yes" if is_known(d) else ""] for d in differences)
             self.stdout.write(f"Wrote {len(differences)} difference(s) to {options['out']}")
 
         errors = [d for d in differences if d.is_error]
-        real = [d for d in differences if not d.is_error]
+        known = [d for d in differences if not d.is_error and is_known(d)]
+        real = [d for d in differences if not d.is_error and not is_known(d)]
 
         for difference in real[:20]:
             self.stdout.write(f"  {difference.path}: {difference.reason}")
             self.stdout.write(f"      legacy: {difference.legacy[:120]}")
             self.stdout.write(f"      new:    {difference.new[:120]}")
+
+        if known:
+            self.stdout.write(
+                f"{len(known)} path(s) differ on ARKs the import already reported, and are "
+                "not counted against the cutover."
+            )
 
         if errors:
             self.stdout.write(
@@ -126,6 +150,14 @@ class Command(BaseCommand):
             raise CommandError(
                 f"{len(errors)} of {checked:,} paths could not be checked. Re-run before cutting over."
             )
+        if known:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"All {checked:,} paths resolve identically apart from {len(known)} "
+                    "already reported by the import. Safe to cut over."
+                )
+            )
+            return
         self.stdout.write(
             self.style.SUCCESS(f"All {checked:,} paths resolve identically. Safe to cut over.")
         )
