@@ -208,3 +208,16 @@ def test_concurrent_minters_never_produce_the_same_ark():
     assert len(results) == workers * 5
     assert len(set(results)) == workers * 5, "two minters produced the same ARK"
     assert Ark.objects.filter(collection=collection).count() == workers * 5
+
+
+def test_minted_arks_come_back_with_primary_keys():
+    # bulk_create cannot return primary keys on MySQL — the production engine —
+    # so callers that bind to, or remember, what they just minted would get
+    # None. Everything downstream (bulk bind's mint-missing, the fill-in
+    # template download) depends on these.
+    collection = make_collection(".zd", name="pk-check")
+    arks = mint(collection, count=3)
+    assert all(ark.pk is not None for ark in arks)
+    assert sorted(a.pk for a in arks) == sorted(
+        Ark.objects.filter(collection=collection).values_list("id", flat=True)
+    )

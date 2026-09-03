@@ -168,5 +168,20 @@ def mint(collection: Collection, count: int = 1, user=None) -> list[Ark]:
         )
         for sequence in sequences
     ]
-    Ark.objects.bulk_create(arks)
+    Ark.objects.bulk_create(arks, batch_size=1000)
+
+    if any(ark.pk is None for ark in arks):
+        # MySQL — the production engine — cannot return primary keys from a
+        # multi-row insert, so bulk_create leaves them unset. Callers bind to
+        # what they just minted, so read the rows back rather than hand out
+        # objects with pk None.
+        by_identifier = {
+            identifier: pk
+            for pk, identifier in Ark.objects.filter(
+                collection=locked, identifier__in=[a.identifier for a in arks]
+            ).values_list("id", "identifier")
+        }
+        for ark in arks:
+            ark.pk = by_identifier.get(ark.identifier)
+
     return arks
