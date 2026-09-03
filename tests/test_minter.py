@@ -231,3 +231,77 @@ def test_a_single_mint_request_is_capped(settings):
     with pytest.raises(ValueError, match="(?i)at most|10"):
         mint(collection, count=11)
     assert Ark.objects.filter(collection=collection).count() == 0
+
+
+# --- cost must not grow with the collection -------------------------------
+
+
+def _selects_every_identifier(captured) -> list[str]:
+    """Queries that read the whole collection rather than a bounded slice."""
+    offenders = []
+    for query in captured.captured_queries:
+        sql = query["sql"].lower().strip()
+        # Only reads can be unbounded scans; bulk_create's INSERT ... SELECT
+        # UNNEST on PostgreSQL is not one.
+        if not sql.startswith("select") or "core_ark" not in sql:
+            continue
+        if any(token in sql for token in ("count(", "max(", "min(", " in (", "limit")):
+            continue
+        offenders.append(query["sql"][:160])
+    return offenders
+
+
+def test_minting_does_not_read_the_whole_collection():
+    # _used_identifiers pulled every identifier into a Python set on every
+    # mint(), inside the collection lock: ~130 MB at 1M ARKs, OOM at 100M.
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    collection = make_collection(".zd", name="unbounded")
+    Ark.objects.bulk_create(
+        [
+            Ark(collection=collection, naan="61220", identifier=f"utsc{n}", sequence=n)
+            for n in range(500)
+        ]
+    )
+
+    with CaptureQueriesContext(connection) as captured:
+        mint(collection, count=5)
+
+    offenders = _selects_every_identifier(captured)
+    assert not offenders, "mint() read the whole collection:\n" + "\n".join(offenders)
+
+
+def test_minting_cost_is_flat_as_the_collection_grows():
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    small = make_collection(".zd", prefix="sm", name="small")
+    large = make_collection(".zd", prefix="lg", name="large")
+    Ark.objects.bulk_create(
+        [Ark(collection=large, naan="61220", identifier=f"lg{n}", sequence=n) for n in range(2000)]
+    )
+
+    with CaptureQueriesContext(connection) as on_small:
+        mint(small, count=1)
+    with CaptureQueriesContext(connection) as on_large:
+        mint(large, count=1)
+
+    assert len(on_large.captured_queries) <= len(on_small.captured_queries), (
+        "a bigger collection should not cost more queries"
+    )
+
+
+def test_a_random_template_does_not_enumerate_its_whole_space():
+    # _next_random built list(range(capacity)) once the space was half full:
+    # ~2.8 GB for the 70M-identifier .reedeedk template.
+    collection = make_collection(".rdd", prefix="rr", name="dense")  # 100 identifiers
+    Ark.objects.bulk_create(
+        [
+            Ark(collection=collection, naan="61220", identifier=f"rr{n:02d}", sequence=n)
+            for n in range(60)
+        ]
+    )
+    minted = mint(collection, count=5)
+    assert len({a.identifier for a in minted}) == 5
+    assert Ark.objects.filter(collection=collection).count() == 65

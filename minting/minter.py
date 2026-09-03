@@ -18,14 +18,14 @@ from django.conf import settings
 from django.db import transaction
 
 from core.models import Ark, Collection
-from minting.noid import NOLIMIT, TemplateSpec, make_id, parse_template, xdig2n
+from minting.noid import NOLIMIT, TemplateSpec, make_id, parse_template
 
-#: Above this fraction of a random template's space, drawing at random starts
-#: colliding too often; switch to picking from what is actually left.
-_DENSE_FRACTION = 0.5
+#: Identifiers checked against the database per round trip. Bounds both the
+#: SQL IN-list and the memory a mint can use, whatever the collection's size.
+_PROBE_CHUNK = 1000
 
-#: Give up on random draws after this many consecutive collisions.
-_MAX_DRAWS_PER_ID = 64
+#: Rounds of random drawing before falling back to an ordered sweep.
+_MAX_DRAW_ROUNDS = 8
 
 
 class MintError(Exception):
@@ -36,35 +36,31 @@ class TemplateExhausted(MintError):
     """The template has no unused identifiers left."""
 
 
-def _used_identifiers(collection: Collection) -> set[str]:
-    return set(collection.arks.values_list("identifier", flat=True))
-
-
-def _used_sequences(collection: Collection, spec: TemplateSpec) -> set[int]:
+def _taken_identifiers(collection: Collection, identifiers: list[str]) -> set[str]:
     """
-    Every counter value already spoken for in this collection.
+    Which of ``identifiers`` already exist — asked in bounded chunks.
 
-    Rows minted here carry their sequence. Rows that arrived some other way —
-    an import, or a hand-created identifier — are decoded back to the counter
-    value that would have produced them, so they still block that slot.
+    Never reads more of the collection than the candidates being considered, so
+    the cost of minting does not grow with the collection.
     """
-    used: set[int] = set()
-    prefix_length = len(collection.prefix)
-    for identifier, sequence in collection.arks.values_list("identifier", "sequence"):
-        if sequence is not None:
-            used.add(sequence)
-            continue
-        try:
-            used.add(xdig2n(identifier[prefix_length:], spec.mask))
-        except ValueError:
-            # Not an identifier this template could have produced, so it cannot
-            # collide with one we are about to generate.
-            continue
-    return used
+    taken: set[str] = set()
+    for start in range(0, len(identifiers), _PROBE_CHUNK):
+        chunk = identifiers[start : start + _PROBE_CHUNK]
+        taken.update(
+            collection.arks.filter(identifier__in=chunk).values_list("identifier", flat=True)
+        )
+    return taken
 
 
 def _next_sequential(collection: Collection, spec: TemplateSpec, count: int) -> list[int]:
-    """The next ``count`` unused counter values, in order."""
+    """
+    The next ``count`` unused counter values, in order.
+
+    Starts from the highest sequence recorded (an index-only lookup) and probes
+    forward in bounded batches. Gaps left by deleted rows below that point are
+    not reused — identifiers are never reissued anyway, and refilling them would
+    mean reading the whole collection.
+    """
     highest = (
         collection.arks.exclude(sequence=None)
         .order_by("-sequence")
@@ -72,61 +68,105 @@ def _next_sequential(collection: Collection, spec: TemplateSpec, count: int) -> 
         .first()
     )
     candidate = 0 if highest is None else highest + 1
-    used = _used_identifiers(collection)
     capacity = None if spec.total == NOLIMIT else spec.total
 
     chosen: list[int] = []
     while len(chosen) < count:
-        if capacity is not None and candidate >= capacity:
+        wanted = count - len(chosen)
+        batch = []
+        while len(batch) < wanted:
+            if capacity is not None and candidate >= capacity:
+                if not batch:
+                    raise TemplateExhausted(
+                        f"Template {collection.template!r} can mint at most {capacity} identifiers."
+                    )
+                break
+            batch.append(candidate)
+            candidate += 1
+
+        identifiers = {n: _identifier_for(collection, spec, n) for n in batch}
+        taken = _taken_identifiers(collection, list(identifiers.values()))
+        chosen.extend(n for n in batch if identifiers[n] not in taken)
+
+        if capacity is not None and candidate >= capacity and len(chosen) < count:
             raise TemplateExhausted(
                 f"Template {collection.template!r} can mint at most {capacity} identifiers."
             )
-        if _identifier_for(collection, spec, candidate) not in used:
-            chosen.append(candidate)
-        candidate += 1
-    return chosen
+    return chosen[:count]
 
 
 def _next_random(collection: Collection, spec: TemplateSpec, count: int) -> list[int]:
-    """``count`` unused counter values drawn at random from the template space."""
+    """
+    ``count`` unused counter values drawn at random from the template space.
+
+    Draws are checked against the database in bounded batches rather than
+    against an in-memory set of everything already minted; the previous version
+    materialised ``range(capacity)`` once a space was half full, which is 2.8 GB
+    for the 70-million-identifier ``.reedeedk`` template.
+    """
     capacity = spec.total
     if capacity == NOLIMIT:  # pragma: no cover - "z" masks are never random
         raise MintError("A random template must have a bounded space.")
 
-    taken = _used_sequences(collection, spec)
-    remaining = capacity - len(taken)
-    if remaining < count:
+    used = collection.arks.count()
+    if capacity - used < count:
         raise TemplateExhausted(
-            f"Template {collection.template!r} has {remaining} identifiers left, "
+            f"Template {collection.template!r} has {capacity - used} identifiers left, "
             f"but {count} were requested."
         )
 
     chosen: list[int] = []
+    drawn: set[int] = set()
 
-    # Once the space is crowded, random probing wastes more time than simply
-    # listing what is free.
-    if len(taken) >= capacity * _DENSE_FRACTION:
-        free = [n for n in range(capacity) if n not in taken]
-        for _ in range(count):
-            pick = free.pop(secrets.randbelow(len(free)))
-            chosen.append(pick)
-        return chosen
+    for _round in range(_MAX_DRAW_ROUNDS):
+        wanted = count - len(chosen)
+        if not wanted:
+            return chosen
 
-    for _ in range(count):
-        for _attempt in range(_MAX_DRAWS_PER_ID):
+        # Over-draw so one round usually suffices even when the space is busy.
+        candidates: list[int] = []
+        while len(candidates) < min(wanted * 4, _PROBE_CHUNK):
             pick = secrets.randbelow(capacity)
-            if pick not in taken:
-                taken.add(pick)
-                chosen.append(pick)
+            if pick not in drawn:
+                drawn.add(pick)
+                candidates.append(pick)
+            if len(drawn) >= capacity:
                 break
-        else:
-            free = [n for n in range(capacity) if n not in taken]
-            if not free:
-                raise TemplateExhausted(f"Template {collection.template!r} is full.")
-            pick = free[secrets.randbelow(len(free))]
-            taken.add(pick)
-            chosen.append(pick)
-    return chosen
+
+        identifiers = {n: _identifier_for(collection, spec, n) for n in candidates}
+        taken = _taken_identifiers(collection, list(identifiers.values()))
+        for n in candidates:
+            if identifiers[n] not in taken:
+                chosen.append(n)
+                if len(chosen) == count:
+                    return chosen
+
+    # The space is too crowded for random probing to land. Walk it in order and
+    # take what is free — bounded memory, unlike enumerating the whole range.
+    return chosen + _sweep_for_free(collection, spec, capacity, count - len(chosen), drawn)
+
+
+def _sweep_for_free(
+    collection: Collection,
+    spec: TemplateSpec,
+    capacity: int,
+    wanted: int,
+    exclude: set[int],
+) -> list[int]:
+    """Scan the template space in chunks for unused values (crowded spaces)."""
+    found: list[int] = []
+    for start in range(0, capacity, _PROBE_CHUNK):
+        batch = [n for n in range(start, min(start + _PROBE_CHUNK, capacity)) if n not in exclude]
+        if not batch:
+            continue
+        identifiers = {n: _identifier_for(collection, spec, n) for n in batch}
+        taken = _taken_identifiers(collection, list(identifiers.values()))
+        for n in batch:
+            if identifiers[n] not in taken:
+                found.append(n)
+                if len(found) == wanted:
+                    return found
+    raise TemplateExhausted(f"Template {collection.template!r} is full.")
 
 
 def _identifier_for(collection: Collection, spec: TemplateSpec, sequence: int) -> str:

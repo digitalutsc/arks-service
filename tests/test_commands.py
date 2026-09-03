@@ -249,8 +249,8 @@ def test_the_cli_and_the_ui_purge_the_same_way(collection):
         run("bind", f"61220/{ident}", "URL", "https://example.org/x")
         run("bind", f"61220/{ident}/page1", "URL", "https://example.org/x/p1")
 
-    run("unbind", "61220/utsc0", "--all")                       # the CLI
-    unbind_elements(Ark.objects.get(identifier="utsc1"))         # what the UI calls
+    run("unbind", "61220/utsc0", "--all")  # the CLI
+    unbind_elements(Ark.objects.get(identifier="utsc1"))  # what the UI calls
 
     assert not Binding.objects.filter(ark__identifier="utsc0").exists()
     assert not Binding.objects.filter(ark__identifier="utsc1").exists()
