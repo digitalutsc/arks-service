@@ -33,6 +33,22 @@ from minting.noid import TemplateError, parse_template, xdig2n
 #: Rows per round trip when writing in bulk.
 BATCH_SIZE = 2000
 
+#: Legacy rows handled per batch. Each batch is its own unit of work, so memory
+#: stays flat however large the source table is.
+IMPORT_CHUNK = 20_000
+
+
+def _batched(iterable, size):
+    """Yield lists of at most ``size`` items from ``iterable``."""
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) >= size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
 
 class Command(BaseCommand):
     help = "Import collections, ARKs and bindings from a legacy ARK database."
@@ -103,13 +119,31 @@ class Command(BaseCommand):
         totals["organisation"] = 1
 
     def _import_collection(self, reader, table, totals, verbosity):
-        rows = reader.rows(table)
-
+        # Two passes: the reserved rows define the collection and must be known
+        # before any ARK is written, then the element rows stream through in
+        # batches. Holding the whole table in memory needed 4-5 GB per million
+        # ARKs, which is what made a large import impossible rather than slow.
         legacy = LegacyCollection(table=table)
-        elements: list[tuple[str, str, str, str]] = []
-        for key, value in rows:
+        for key, value in reader.rows(table):
             if is_reserved(key):
                 legacy.config[key] = value
+
+        collection = self._upsert_collection(legacy, totals)
+
+        seen = 0
+        for batch in _batched(self._elements(reader, table), IMPORT_CHUNK):
+            self._upsert_arks(collection, legacy, batch, totals)
+            seen += len(batch)
+            if verbosity >= 2:
+                self.stdout.write(f"  {table}: {seen:,} element rows")
+
+        if verbosity and not verbosity >= 2:
+            self.stdout.write(f"  {table}: {seen:,} element rows")
+
+    def _elements(self, reader, table):
+        """Yield the (ark, qualifier, element, value) tuples worth importing."""
+        for key, value in reader.rows(table):
+            if is_reserved(key):
                 continue
             parsed = parse_legacy_key(key)
             if parsed is None:
@@ -117,13 +151,7 @@ class Command(BaseCommand):
             ark_name, qualifier, element = parsed
             if is_bookkeeping(element):
                 continue
-            elements.append((ark_name, qualifier, element, value))
-
-        collection = self._upsert_collection(legacy, totals)
-        self._upsert_arks(collection, legacy, elements, totals)
-
-        if verbosity >= 2:
-            self.stdout.write(f"  {table}: {len(elements)} element rows")
+            yield ark_name, qualifier, element, value
 
     def _upsert_collection(self, legacy: LegacyCollection, totals) -> Collection:
         if not legacy.naan:
@@ -132,11 +160,16 @@ class Command(BaseCommand):
                 "NAAN, and without one nothing in this collection would resolve."
             )
 
-        clash = Collection.objects.filter(prefix=legacy.prefix).exclude(name=legacy.table).first()
+        clash = (
+            Collection.objects.filter(naan=legacy.naan, prefix=legacy.prefix)
+            .exclude(name=legacy.table)
+            .first()
+        )
         if clash is not None:
             raise CommandError(
-                f"Cannot import {legacy.table!r}: its prefix {legacy.prefix!r} is already "
-                f"used by collection {clash.name!r}. Prefixes must be unique."
+                f"Cannot import {legacy.table!r}: prefix {legacy.prefix!r} is already used "
+                f"under NAAN {legacy.naan} by collection {clash.name!r}. A prefix must be "
+                "unique within its NAAN."
             )
 
         collection, created = Collection.objects.update_or_create(
@@ -179,10 +212,10 @@ class Command(BaseCommand):
             ark_name: _split_ark_name(ark_name, collection.naan) for ark_name, _, _, _ in elements
         }
 
-        existing = {
-            (naan, identifier): pk
-            for pk, naan, identifier in collection.arks.values_list("id", "naan", "identifier")
-        }
+        # Look up only the identifiers this batch mentions. Reading the whole
+        # collection here made the import quadratic — every batch re-read every
+        # ARK already imported — and put the collection in memory besides.
+        existing = _existing_arks(collection, {pair[1] for pair in wanted.values()})
         prefix_length = len(collection.prefix)
 
         to_create, planned = [], set()
@@ -202,10 +235,7 @@ class Command(BaseCommand):
         if to_create:
             Ark.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
             totals["arks_created"] += len(to_create)
-            existing = {
-                (naan, identifier): pk
-                for pk, naan, identifier in collection.arks.values_list("id", "naan", "identifier")
-            }
+            existing = _existing_arks(collection, {pair[1] for pair in wanted.values()})
         return {name: existing[pair] for name, pair in wanted.items() if pair in existing}
 
     def _write_bindings(self, collection, elements, ark_pks, totals):
@@ -267,6 +297,19 @@ class Command(BaseCommand):
             "resolutions",
         ):
             self.stdout.write(f"  {label.replace('_', ' '):24} {totals.get(label, 0)}")
+
+
+def _existing_arks(collection, identifiers: set[str]) -> dict[tuple[str, str], int]:
+    """Resolve just these identifiers to primary keys, in bounded batches."""
+    found: dict[tuple[str, str], int] = {}
+    ordered = sorted(identifiers)
+    for start in range(0, len(ordered), BATCH_SIZE):
+        chunk = ordered[start : start + BATCH_SIZE]
+        for pk, naan, identifier in collection.arks.filter(identifier__in=chunk).values_list(
+            "id", "naan", "identifier"
+        ):
+            found[(naan, identifier)] = pk
+    return found
 
 
 def _split_ark_name(name: str, default_naan: str) -> tuple[str, str]:

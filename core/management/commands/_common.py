@@ -7,14 +7,33 @@ from core.models import Ark, Collection
 
 
 def get_collection(reference: str) -> Collection:
-    """Find a collection by prefix, then by name."""
-    collection = Collection.objects.filter(prefix=reference).first()
-    if collection is None:
-        collection = Collection.objects.filter(name=reference).first()
-    if collection is None:
-        known = ", ".join(Collection.objects.values_list("prefix", flat=True)) or "none"
-        raise CommandError(f"No collection with prefix or name {reference!r}. Known: {known}")
-    return collection
+    """
+    Find a collection by name, or by prefix when that is unambiguous.
+
+    A prefix is only unique within a NAAN, so "61220/utsc" also works when two
+    naming authorities share one.
+    """
+    collection = Collection.objects.filter(name=reference).first()
+    if collection is not None:
+        return collection
+
+    if "/" in reference:
+        naan, _, prefix = reference.partition("/")
+        collection = Collection.objects.filter(naan=naan, prefix=prefix).first()
+        if collection is not None:
+            return collection
+
+    matches = list(Collection.objects.filter(prefix=reference)[:2])
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise CommandError(
+            f"More than one collection uses the prefix {reference!r}. "
+            "Name it as <naan>/<prefix>, e.g. 61220/utsc."
+        )
+
+    known = ", ".join(f"{c.naan}/{c.prefix}" for c in Collection.objects.all()) or "none"
+    raise CommandError(f"No collection with prefix or name {reference!r}. Known: {known}")
 
 
 def get_ark(reference: str):

@@ -133,11 +133,21 @@ class LegacyReader:
             if name.lower() not in NON_COLLECTION_TABLES and not name.startswith("sqlite_")
         ]
 
-    def rows(self, table: str):
-        """Every ``(key, value)`` pair in a collection table."""
+    def rows(self, table: str, batch: int = 5000):
+        """
+        Stream ``(key, value)`` pairs from a collection table.
+
+        Yields in batches rather than returning the table: a production import
+        is millions of rows, and fetchall() put every one of them in memory at
+        once before any work started.
+        """
         cursor = self._connection.cursor()
         cursor.execute(f"SELECT _key, _value FROM {self.quote(table)}")
-        return cursor.fetchall()
+        while True:
+            rows = cursor.fetchmany(batch)
+            if not rows:
+                return
+            yield from rows
 
     def system_settings(self) -> dict[str, str]:
         """The legacy ``system`` table: organisation name and website."""

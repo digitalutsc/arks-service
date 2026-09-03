@@ -28,6 +28,10 @@ from core.services import bulk_upsert_bindings, invalidate_targets
 #: Columns offered in the fill-in template after minting.
 TEMPLATE_COLUMNS = ["URL", "PID", "LOCAL_ID", "COLLECTION"]
 
+#: ARK names looked up per round trip. Bounds both the SQL IN-list and the
+#: memory an upload uses, whatever the size of the collection.
+LOOKUP_CHUNK = 2000
+
 #: Row statuses reported back to the operator.
 STATUS_OK = "ok"
 STATUS_MINTED = "minted"
@@ -101,6 +105,25 @@ def _ark_column(fieldnames: list[str]) -> str:
     return next(name for name in fieldnames if name.lower() == ARK_ID_COLUMN.lower())
 
 
+def _ark_name(raw: str) -> str:
+    """The bare ARK a row refers to, without its qualifier."""
+    parsed = parse_ark_path(f"ark:/{(raw or '').strip().lstrip('/')}")
+    return parsed.name if parsed and parsed.identifier else ""
+
+
+def _lookup_arks(collection: Collection, names: set[str]) -> dict[str, int]:
+    """Resolve ARK names to primary keys, in bounded batches."""
+    found: dict[str, int] = {}
+    identifiers = sorted({name.partition("/")[2] for name in names if name})
+    for start in range(0, len(identifiers), LOOKUP_CHUNK):
+        chunk = identifiers[start : start + LOOKUP_CHUNK]
+        for pk, naan, identifier in collection.arks.filter(identifier__in=chunk).values_list(
+            "id", "naan", "identifier"
+        ):
+            found[f"{naan}/{identifier}"] = pk
+    return found
+
+
 @transaction.atomic
 def apply_csv(
     collection: Collection,
@@ -123,10 +146,11 @@ def apply_csv(
     ark_column = _ark_column(fieldnames)
     element_columns = [name for name in fieldnames if name != ark_column and name]
 
-    known = {
-        f"{naan}/{identifier}": pk
-        for pk, naan, identifier in collection.arks.values_list("id", "naan", "identifier")
-    }
+    # Resolve only the ARKs the file actually names. Loading the whole
+    # collection to look up a handful of rows cost gigabytes on a large
+    # collection and grew with the collection rather than the upload.
+    wanted_names = {name for name in (_ark_name(row.get(ark_column, "")) for row in rows) if name}
+    known = _lookup_arks(collection, wanted_names)
 
     result = BulkBindResult()
     planned: dict[tuple[int, str, str], str] = {}
@@ -238,11 +262,13 @@ def _purge(named: set[tuple[int, str]]) -> None:
     """Remove every element under exactly the (ark, qualifier) pairs named."""
     if not named:
         return
-    condition = Q()
-    for ark_pk, qualifier in named:
-        condition |= Q(ark_id=ark_pk, qualifier=qualifier)
-    Binding.objects.filter(condition).delete()
-    invalidate_targets(named)
+    pairs = sorted(named)
+    for start in range(0, len(pairs), LOOKUP_CHUNK):
+        condition = Q()
+        for ark_pk, qualifier in pairs[start : start + LOOKUP_CHUNK]:
+            condition |= Q(ark_id=ark_pk, qualifier=qualifier)
+        Binding.objects.filter(condition).delete()
+    invalidate_targets(pairs)
 
 
 def _write(planned: dict[tuple[int, str, str], str], result: BulkBindResult) -> None:

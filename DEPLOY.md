@@ -238,6 +238,25 @@ better check.
 
 ---
 
+## Health check
+
+`GET /healthz` reports whether this instance can actually serve — it checks the
+database and the cache rather than merely confirming the process started.
+Returns 200 when healthy and 503 when not, so Apache or a load balancer can act
+on it.
+
+```bash
+curl -s http://127.0.0.1:8000/healthz
+# {"status": "ok", "checks": {"database": "ok", "counters": "ok"}}
+```
+
+## Capacity
+
+Measured numbers and what grows with the collection are in
+[SCALE.md](SCALE.md). In short: resolution and minting stay flat at any size,
+substring search and collection statistics scale with the data, and the current
+single-VM shape is comfortable to roughly 10M ARKs.
+
 ## Boot guards
 
 The service refuses to start when `DJANGO_DEBUG` is false and either
@@ -414,13 +433,20 @@ tail -f /var/log/apache2/arkservice-error.log
 | `DJANGO_LOG_LEVEL` | `INFO` | |
 | `DB_CONN_MAX_AGE` | `60` | Seconds |
 | `CELERY_BROKER_URL` | `redis://localhost:6379/0` | |
+| `REDIS_URL` | empty | Cache for the login lockout, target cache and buffered counters. **Set it in production** — without it each gunicorn worker has its own |
+| `LOGIN_MAX_ATTEMPTS` | `5` | Failures before a username+address is locked out |
+| `LOGIN_LOCKOUT_SECONDS` | `900` | How long the lockout lasts |
+| `TRUST_FORWARDED_FOR` | `false` | Set true only behind a proxy that sets it and when gunicorn is unreachable directly |
+| `SESSION_COOKIE_AGE` | `28800` | Eight hours, refreshed on activity |
+| `RESOLUTION_FLUSH_SECONDS` | `60` | How often buffered redirect counts are written |
+| `BULK_BIND_MAX_BYTES` | `52428800` | Upload ceiling; `DATA_UPLOAD_MAX_MEMORY_SIZE` does **not** cover file parts |
 | `CELERY_RESULT_BACKEND` | same as broker | |
 | `CELERY_TASK_ALWAYS_EAGER` | `false` | `true` runs jobs inline — development only |
 | `CELERY_TASK_TIME_LIMIT` | `3600` | Seconds |
 | `MINT_MAX_PER_REQUEST` | `10000` | Largest single mint batch |
 | `BULK_BIND_MAX_ROWS` | `100000` | Largest upload |
 | `DATA_UPLOAD_MAX_MEMORY_SIZE` | `20971520` | 20 MB |
-| `MANIFEST_FETCH_TIMEOUT` | `30` | Seconds, for `/manifest` |
+| `MANIFEST_FETCH_TIMEOUT` | `5` | Seconds. Short by design: the request holds a worker while fetching someone else's server |
 | `MANIFEST_MAX_BYTES` | `10485760` | 10 MB |
 | `MEDIA_ROOT` | `./media` | Uploaded CSVs and results |
 | `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `true` when `DEBUG` false | Set false only for plain-HTTP testing |

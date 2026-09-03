@@ -219,9 +219,16 @@ def test_import_reports_what_it_did(legacy_db, capsys):
 
 
 def test_a_collection_whose_prefix_is_already_taken_is_reported(legacy_db):
-    Collection.objects.create(name="Existing", prefix="utsc", naan="99999", template=".zd")
+    # Same NAAN, same prefix: a genuine clash.
+    Collection.objects.create(name="Existing", prefix="utsc", naan="61220", template=".zd")
     with pytest.raises(Exception, match="(?i)prefix"):
         run_import(legacy_db)
+
+
+def test_the_same_prefix_under_a_different_naan_is_not_a_clash(legacy_db):
+    Collection.objects.create(name="Elsewhere", prefix="utsc", naan="99999", template=".zd")
+    run_import(legacy_db)
+    assert Collection.objects.filter(prefix="utsc").count() == 2
 
 
 def test_import_survives_an_identifier_that_does_not_fit_the_template(tmp_path):
@@ -279,3 +286,52 @@ def test_a_key_with_extra_tab_components_keeps_them_all_in_the_qualifier(tmp_pat
     run_import(path)
     binding = Binding.objects.get(name="URL")
     assert binding.qualifier == "/vol1/page2.jpg"
+
+
+# --- the import must not hold the whole legacy table in memory ------------
+
+
+def test_the_legacy_table_is_read_in_batches(tmp_path):
+    # LegacyReader.rows() did fetchall() on the whole table, and the command
+    # then built two more full copies: 4-5 GB at 1M ARKs, 40-50 GB at 10M, on a
+    # VM that does not have it.
+    from core.legacy import open_legacy
+
+    path = tmp_path / "big.sqlite3"
+    build_legacy_db(
+        path,
+        rows=[(f"61220/utsc{n}{TAB}URL", f"https://example.org/{n}") for n in range(500)],
+    )
+
+    with open_legacy(f"sqlite:///{path}") as reader:
+        stream = reader.rows("ARK_utsc")
+        assert not isinstance(stream, list), "rows() must stream, not materialise"
+        first = next(iter(stream))
+        assert len(first) == 2
+
+
+def test_a_large_import_still_produces_the_right_data(tmp_path):
+    path = tmp_path / "many.sqlite3"
+    rows = []
+    for n in range(400):
+        rows.append((f"61220/utsc{n}{TAB}URL", f"https://example.org/{n}"))
+        rows.append((f"61220/utsc{n}{TAB}PID", f"islandora:{n}"))
+    build_legacy_db(path, rows=rows)
+
+    run_import(path)
+
+    assert Ark.objects.count() == 400
+    assert Binding.objects.count() == 800
+    assert Ark.objects.get(identifier="utsc399").bindings.count() == 2
+
+
+def test_a_large_import_is_idempotent(tmp_path):
+    path = tmp_path / "again.sqlite3"
+    build_legacy_db(
+        path,
+        rows=[(f"61220/utsc{n}{TAB}URL", f"https://example.org/{n}") for n in range(300)],
+    )
+    run_import(path)
+    run_import(path)
+    assert Ark.objects.count() == 300
+    assert Binding.objects.count() == 300

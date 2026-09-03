@@ -444,3 +444,24 @@ def test_bulk_rebinding_takes_effect_immediately(client, ark):
     bulk_upsert_bindings({(ark.pk, "", "URL"): "https://bulk-new.example"})
 
     assert get(client, "/ark:/61220/utsc1")["Location"] == "https://bulk-new.example"
+
+
+def test_the_health_endpoint_reports_ok(client):
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["checks"]["database"] == "ok"
+    assert body["checks"]["counters"] == "ok"
+
+
+def test_the_health_endpoint_reports_a_broken_dependency(client, monkeypatch):
+    from django.core.cache import caches
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("cache is down")
+
+    monkeypatch.setattr(caches["counters"], "set", broken)
+    response = client.get("/healthz")
+    assert response.status_code == 503
+    assert response.json()["status"] == "degraded"

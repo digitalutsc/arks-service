@@ -45,9 +45,8 @@ class Collection(models.Model):
     name = models.CharField(max_length=255, unique=True)
     prefix = models.CharField(
         max_length=64,
-        unique=True,
         blank=True,
-        help_text="Constant string after the NAAN, e.g. 'utsc'. Must be unique.",
+        help_text="Constant string after the NAAN, e.g. 'utsc'. Must be unique within its NAAN.",
     )
     naan = models.CharField("NAAN", max_length=16, help_text="Name Assigning Authority Number.")
     naa = models.TextField(
@@ -64,6 +63,12 @@ class Collection(models.Model):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            # Unique within a NAAN, not across the service: two naming
+            # authorities may each have a "utsc" prefix, and their ARKs are
+            # still told apart by the NAAN.
+            models.UniqueConstraint(fields=["naan", "prefix"], name="unique_prefix_per_naan"),
+        ]
 
     def __str__(self) -> str:
         return self.name

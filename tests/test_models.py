@@ -196,3 +196,39 @@ def test_two_first_time_resolutions_of_the_same_ark_do_not_collide():
 
     assert not errors, errors
     assert Resolution.objects.get(ark=ark, qualifier="").count == workers
+
+
+# --- more than one NAAN ---------------------------------------------------
+
+
+def test_two_naans_may_use_the_same_prefix():
+    # prefix was unique across the whole service, so a second NAAN could never
+    # reuse "utsc" — a real blocker, and one that costs a table rebuild to fix
+    # once the table is large.
+    Collection.objects.create(name="UTSC books", prefix="utsc", naan="61220", template=".zd")
+    Collection.objects.create(name="Other books", prefix="utsc", naan="12345", template=".zd")
+    assert Collection.objects.filter(prefix="utsc").count() == 2
+
+
+def test_one_naan_may_not_reuse_a_prefix():
+    Collection.objects.create(name="UTSC books", prefix="utsc", naan="61220", template=".zd")
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Collection.objects.create(name="UTSC maps", prefix="utsc", naan="61220", template=".zd")
+
+
+def test_arks_from_two_naans_sharing_a_prefix_resolve_apart(client):
+    from core.models import Binding
+
+    first = Collection.objects.create(name="A", prefix="utsc", naan="61220", template=".zd")
+    second = Collection.objects.create(name="B", prefix="utsc", naan="12345", template=".zd")
+    a = Ark.objects.create(collection=first, identifier="utsc1", sequence=1)
+    b = Ark.objects.create(collection=second, identifier="utsc1", sequence=1)
+    Binding.objects.create(ark=a, name="URL", value="https://first.example")
+    Binding.objects.create(ark=b, name="URL", value="https://second.example")
+
+    assert client.get("/ark:/61220/utsc1", RAW_URI="/ark:/61220/utsc1")["Location"] == (
+        "https://first.example"
+    )
+    assert client.get("/ark:/12345/utsc1", RAW_URI="/ark:/12345/utsc1")["Location"] == (
+        "https://second.example"
+    )

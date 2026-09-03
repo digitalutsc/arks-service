@@ -9,6 +9,7 @@ wherever it failed.
 """
 
 import io
+import re
 
 import pytest
 
@@ -287,3 +288,68 @@ def test_a_row_is_only_reported_minted_once_it_really_was(collection, arks):
     assert result.minted == 0
     assert not any(row.status == "minted" for row in result.rows)
     assert Ark.objects.filter(collection=collection).count() == len(arks)
+
+
+# --- cost must follow the file, not the collection ------------------------
+
+
+def test_uploading_two_rows_does_not_read_the_whole_collection(collection):
+    # `known` loaded every ARK in the collection to resolve a handful of names:
+    # ~3 GB at 10M ARKs, for a ten-row CSV, inside the worker.
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    Ark.objects.bulk_create(
+        [
+            Ark(collection=collection, naan="61220", identifier=f"utsc{n}", sequence=n)
+            for n in range(300)
+        ]
+    )
+
+    with CaptureQueriesContext(connection) as captured:
+        apply_csv(
+            collection,
+            csv_file("Ark_ID,URL\n61220/utsc1,https://a.example\n61220/utsc2,https://b.example\n"),
+        )
+
+    for query in captured.captured_queries:
+        sql = query["sql"].lower().strip()
+        if not sql.startswith("select") or "core_ark" not in sql:
+            continue
+        assert any(token in sql for token in (" in (", "count(", "max(", "limit")), (
+            f"unbounded read of the collection: {query['sql'][:140]}"
+        )
+
+
+def test_a_large_file_is_looked_up_in_chunks(collection, settings):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    import jobs.bulkbind as bulkbind
+
+    Ark.objects.bulk_create(
+        [
+            Ark(collection=collection, naan="61220", identifier=f"utsc{n}", sequence=n)
+            for n in range(300)
+        ]
+    )
+    body = "Ark_ID,URL\n" + "".join(f"61220/utsc{n},https://e.example/{n}\n" for n in range(200))
+    # Both layers chunk: bulk bind resolving names, and the shared upsert
+    # reading existing rows. Shrink both so the test exercises the boundary.
+    import core.services as services
+
+    previous = (bulkbind.LOOKUP_CHUNK, services.BATCH_SIZE)
+    bulkbind.LOOKUP_CHUNK, services.BATCH_SIZE = 50, 50
+    try:
+        with CaptureQueriesContext(connection) as captured:
+            result = apply_csv(collection, csv_file(body))
+    finally:
+        bulkbind.LOOKUP_CHUNK, services.BATCH_SIZE = previous
+
+    assert result.failed == 0
+    for query in captured.captured_queries:
+        values = max(
+            (len(m.split(",")) for m in re.findall(r"\bIN \(([^()]*)\)", query["sql"], re.I)),
+            default=0,
+        )
+        assert values <= 60, f"IN-list of {values}: {query['sql'][:120]}"

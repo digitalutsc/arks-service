@@ -101,12 +101,20 @@ def bulk_upsert_bindings(wanted: dict[tuple[int, str, str], str]) -> tuple[int, 
         for (ark_id, qualifier, name), value in wanted.items()
     }
 
-    existing = {
-        (ark_id, qualifier, name): (pk, value)
-        for pk, ark_id, qualifier, name, value in Binding.objects.filter(
-            ark_id__in={key[0] for key in normalised}
-        ).values_list("id", "ark_id", "qualifier", "name", "value")
-    }
+    # Read existing rows in batches: one IN-list holding every ark id exceeds
+    # MySQL's max_allowed_packet somewhere around four million.
+    ark_ids = sorted({key[0] for key in normalised})
+    existing: dict[tuple[int, str, str], tuple[int, str]] = {}
+    for start in range(0, len(ark_ids), BATCH_SIZE):
+        chunk = ark_ids[start : start + BATCH_SIZE]
+        existing.update(
+            {
+                (ark_id, qualifier, name): (pk, value)
+                for pk, ark_id, qualifier, name, value in Binding.objects.filter(
+                    ark_id__in=chunk
+                ).values_list("id", "ark_id", "qualifier", "name", "value")
+            }
+        )
 
     now = timezone.now()
     to_create, to_update = [], []

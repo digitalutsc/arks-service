@@ -13,6 +13,7 @@ anything is switched over.
 | [DEPLOY.md](DEPLOY.md) | Local, Docker, CI and production deployment; cutover runbook; environment variables; troubleshooting |
 | [USAGES.md](USAGES.md) | Every task, in the staff interface and on the command line |
 | [README_EXTENDED.md](README_EXTENDED.md) | Architecture, components, data model and diagrams of every request path |
+| [SCALE.md](SCALE.md) | Measured performance and capacity, what grows and what does not |
 | [deploy/](deploy/) | systemd units and the Apache vhost |
 
 ## Quick start
