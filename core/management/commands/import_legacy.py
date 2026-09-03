@@ -1,0 +1,298 @@
+"""
+Import a legacy ARK database into this system.
+
+Point it at a restored copy of the production dump::
+
+    manage.py import_legacy --legacy-url mysql://user:pw@localhost/ark_legacy
+    manage.py import_legacy --legacy-url mysql://... --dry-run
+
+Idempotent: re-running updates what changed and leaves everything else alone,
+so it can be rehearsed as often as needed before the real cutover.
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
+from django.utils import timezone
+
+from core.legacy import (
+    REDIRECT_ELEMENT,
+    LegacyCollection,
+    is_bookkeeping,
+    is_reserved,
+    open_legacy,
+    parse_legacy_key,
+)
+from core.models import Ark, Binding, Collection, Organisation, Resolution
+from minting.noid import TemplateError, parse_template, xdig2n
+
+#: Rows per round trip when writing in bulk.
+BATCH_SIZE = 2000
+
+
+class Command(BaseCommand):
+    help = "Import collections, ARKs and bindings from a legacy ARK database."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--legacy-url",
+            required=True,
+            help="Database URL of the legacy database, e.g. mysql://user:pw@host/ark",
+        )
+        parser.add_argument(
+            "--table",
+            action="append",
+            dest="tables",
+            help="Import only this collection table (repeatable). Default: all.",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Report what would be imported without writing anything.",
+        )
+
+    def handle(self, *args, **options):
+        legacy_url = options["legacy_url"]
+        dry_run = options["dry_run"]
+        only_tables = options.get("tables")
+        verbosity = options.get("verbosity", 1)
+
+        totals = defaultdict(int)
+        try:
+            legacy_cm = open_legacy(legacy_url)
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
+
+        with legacy_cm as reader:
+            try:
+                tables = reader.collection_tables()
+            except Exception as exc:
+                raise CommandError(f"Could not read the legacy database: {exc}") from exc
+
+            if only_tables:
+                missing = set(only_tables) - set(tables)
+                if missing:
+                    raise CommandError(f"No such collection table(s): {', '.join(sorted(missing))}")
+                tables = [t for t in tables if t in only_tables]
+
+            with transaction.atomic():
+                self._import_organisation(reader, totals)
+                for table in tables:
+                    self._import_collection(reader, table, totals, verbosity)
+
+                if dry_run:
+                    transaction.set_rollback(True)
+
+        if verbosity:
+            self._report(totals, tables, dry_run)
+
+    # --- import -----------------------------------------------------------
+
+    def _import_organisation(self, reader, totals):
+        settings_rows = reader.system_settings()
+        if not settings_rows:
+            return
+        organisation = Organisation.load()
+        organisation.name = settings_rows.get("Organization Name", organisation.name)
+        organisation.website = settings_rows.get("Organization Website", organisation.website)
+        organisation.save()
+        totals["organisation"] = 1
+
+    def _import_collection(self, reader, table, totals, verbosity):
+        rows = reader.rows(table)
+
+        legacy = LegacyCollection(table=table)
+        elements: list[tuple[str, str, str, str]] = []
+        for key, value in rows:
+            if is_reserved(key):
+                legacy.config[key] = value
+                continue
+            parsed = parse_legacy_key(key)
+            if parsed is None:
+                continue
+            ark_name, qualifier, element = parsed
+            if is_bookkeeping(element):
+                continue
+            elements.append((ark_name, qualifier, element, value))
+
+        collection = self._upsert_collection(legacy, totals)
+        self._upsert_arks(collection, legacy, elements, totals)
+
+        if verbosity >= 2:
+            self.stdout.write(f"  {table}: {len(elements)} element rows")
+
+    def _upsert_collection(self, legacy: LegacyCollection, totals) -> Collection:
+        clash = Collection.objects.filter(prefix=legacy.prefix).exclude(name=legacy.table).first()
+        if clash is not None:
+            raise CommandError(
+                f"Cannot import {legacy.table!r}: its prefix {legacy.prefix!r} is already "
+                f"used by collection {clash.name!r}. Prefixes must be unique."
+            )
+
+        collection, created = Collection.objects.update_or_create(
+            name=legacy.table,
+            defaults={
+                "prefix": legacy.prefix,
+                "naan": legacy.naan,
+                "naa": legacy.naa,
+                "template": legacy.template,
+                "term": legacy.term,
+            },
+        )
+        totals["collections_created" if created else "collections_updated"] += 1
+        return collection
+
+    def _upsert_arks(self, collection, legacy, elements, totals):
+        """
+        Write one collection's ARKs, bindings and counters.
+
+        Everything is done in bulk. A row-at-a-time ``update_or_create`` needs
+        two queries per element, which for a 100k-ARK collection is well over
+        800k round trips — seven minutes on a laptop, and far worse across a
+        network to the production database.
+        """
+        try:
+            mask = parse_template(collection.full_template).mask
+        except TemplateError:
+            mask = legacy.mask or ""
+
+        ark_pks = self._create_missing_arks(collection, elements, mask, totals)
+        self._write_bindings(collection, elements, ark_pks, totals)
+
+    def _create_missing_arks(self, collection, elements, mask, totals) -> dict[str, int]:
+        """Ensure every ARK mentioned exists; return {ark name: pk}."""
+        existing = {
+            f"{naan}/{identifier}": pk
+            for pk, naan, identifier in collection.arks.values_list("id", "naan", "identifier")
+        }
+        prefix_length = len(collection.prefix)
+
+        to_create = []
+        for name in sorted({ark_name for ark_name, _, _, _ in elements}):
+            if name in existing:
+                continue
+            naan, _, identifier = name.partition("/")
+            to_create.append(
+                Ark(
+                    collection=collection,
+                    naan=naan,
+                    identifier=identifier,
+                    sequence=_decode_sequence(identifier, prefix_length, mask),
+                )
+            )
+        if to_create:
+            Ark.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
+            totals["arks_created"] += len(to_create)
+            existing.update(
+                {
+                    f"{naan}/{identifier}": pk
+                    for pk, naan, identifier in collection.arks.values_list(
+                        "id", "naan", "identifier"
+                    )
+                }
+            )
+        return existing
+
+    def _write_bindings(self, collection, elements, ark_pks, totals):
+        # Collapse to one row per (ark, qualifier, element); the last value in
+        # the legacy table wins, and the unique constraint is never violated.
+        wanted: dict[tuple[int, str, str], str] = {}
+        counters: dict[tuple[int, str], int] = {}
+        for ark_name, qualifier, element, value in elements:
+            ark_pk = ark_pks.get(ark_name)
+            if ark_pk is None:  # pragma: no cover - defensive
+                continue
+            name = element.strip().upper()
+            if name == REDIRECT_ELEMENT:
+                counters[(ark_pk, qualifier)] = _to_int(value)
+            else:
+                wanted[(ark_pk, qualifier, name)] = value or ""
+
+        existing = {
+            (ark_id, qualifier, name): (pk, value)
+            for pk, ark_id, qualifier, name, value in Binding.objects.filter(
+                ark__collection=collection
+            ).values_list("id", "ark_id", "qualifier", "name", "value")
+        }
+
+        now = timezone.now()
+        to_create, to_update = [], []
+        for (ark_pk, qualifier, name), value in wanted.items():
+            found = existing.get((ark_pk, qualifier, name))
+            if found is None:
+                to_create.append(
+                    Binding(ark_id=ark_pk, qualifier=qualifier, name=name, value=value)
+                )
+            elif found[1] != value:
+                to_update.append(Binding(id=found[0], value=value, updated_at=now))
+
+        if to_create:
+            Binding.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
+            totals["bindings_created"] += len(to_create)
+        if to_update:
+            # bulk_update skips auto_now, so updated_at is set explicitly above.
+            Binding.objects.bulk_update(to_update, ["value", "updated_at"], batch_size=BATCH_SIZE)
+            totals["bindings_updated"] += len(to_update)
+
+        self._write_counters(collection, counters, now, totals)
+
+    def _write_counters(self, collection, counters, now, totals):
+        existing = {
+            (ark_id, qualifier): pk
+            for pk, ark_id, qualifier in Resolution.objects.filter(
+                ark__collection=collection
+            ).values_list("id", "ark_id", "qualifier")
+        }
+        to_create, to_update = [], []
+        for (ark_pk, qualifier), count in counters.items():
+            pk = existing.get((ark_pk, qualifier))
+            if pk is None:
+                to_create.append(
+                    Resolution(ark_id=ark_pk, qualifier=qualifier, count=count, last_at=now)
+                )
+            else:
+                to_update.append(Resolution(id=pk, count=count, last_at=now))
+
+        if to_create:
+            Resolution.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
+        if to_update:
+            Resolution.objects.bulk_update(to_update, ["count", "last_at"], batch_size=BATCH_SIZE)
+        totals["resolutions"] += len(to_create) + len(to_update)
+
+    # --- output -----------------------------------------------------------
+
+    def _report(self, totals, tables, dry_run):
+        if dry_run:
+            self.stdout.write(self.style.WARNING("DRY RUN - nothing was written"))
+        self.stdout.write(f"Collections read: {', '.join(tables) or '(none)'}")
+        for label in (
+            "collections_created",
+            "collections_updated",
+            "arks_created",
+            "bindings_created",
+            "bindings_updated",
+            "resolutions",
+        ):
+            self.stdout.write(f"  {label.replace('_', ' '):24} {totals.get(label, 0)}")
+
+
+def _decode_sequence(identifier: str, prefix_length: int, mask: str) -> int | None:
+    """The counter value that would have produced this identifier, if any."""
+    if not mask:
+        return None
+    try:
+        return xdig2n(identifier[prefix_length:], mask)
+    except ValueError:
+        # Hand-made or otherwise off-template; it still imports, it just does
+        # not tell us where to resume minting.
+        return None
+
+
+def _to_int(value) -> int:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return 0
