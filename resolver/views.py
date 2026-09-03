@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 
+from django.db.models import Q
 from django.http import (
     Http404,
     HttpResponse,
@@ -40,6 +41,20 @@ def _target_url(ark: Ark, qualifier: str) -> str | None:
     return bindings.get(ELEMENT_URL) or bindings.get(ELEMENT_WHERE) or None
 
 
+def _metadata_bindings(ark: Ark, qualifier: str):
+    """
+    The elements an inflection should show for ``qualifier``.
+
+    Legacy matched "<ark>\t[^/]" for a bare ARK — any key whose next component
+    is not a hierarchy — so a variant-only qualifier such as ".image.png" was
+    listed alongside the ARK's own elements, while "/page1" was not. A request
+    that names a qualifier matches that qualifier exactly.
+    """
+    if qualifier:
+        return ark.bindings.filter(qualifier=qualifier)
+    return ark.bindings.filter(Q(qualifier="") | Q(qualifier__startswith="."))
+
+
 def _naa_response(naan: str) -> HttpResponse:
     """A bare NAAN returns the Name Assigning Authority, as the legacy service did."""
     naa = Collection.objects.filter(naan=naan).exclude(naa="").values_list("naa", flat=True).first()
@@ -61,13 +76,18 @@ def resolve(request, *args, **kwargs):
     if ark is None:
         raise Http404(f"Unknown ARK {parsed.name}")
 
+    # An explicit inflection wins over /manifest: legacy only treated a request
+    # as a manifest when the URI *ended* in "/manifest", so a trailing '?' sent
+    # it down the metadata path instead.
+    if parsed.inflection is not Inflection.NONE:
+        body = render_erc(
+            _metadata_bindings(ark, parsed.qualifier),
+            include_support=parsed.inflection is Inflection.FULL,
+        )
+        return HttpResponse(body, content_type="text/plain; charset=utf-8")
+
     if parsed.manifest:
         return _manifest(ark, parsed.qualifier)
-
-    if parsed.inflection is not Inflection.NONE:
-        bindings = ark.bindings.filter(qualifier=parsed.qualifier)
-        body = render_erc(bindings, include_support=parsed.inflection is Inflection.FULL)
-        return HttpResponse(body, content_type="text/plain; charset=utf-8")
 
     target = _target_url(ark, parsed.qualifier)
     if not target:

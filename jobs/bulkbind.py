@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 
 from core.arkpath import parse_ark_path
 from core.models import Ark, Binding, Collection
@@ -128,6 +129,10 @@ def apply_csv(
 
     result = BulkBindResult()
     planned: dict[tuple[int, str, str], str] = {}
+    # Every (ark, qualifier) the file names, whether or not it binds anything.
+    # Purge works from this, so a row with all cells blank still clears what it
+    # names, and a row naming a qualifier never touches the rest of the ARK.
+    named: set[tuple[int, str]] = set()
     seen: set[tuple[str, str, str]] = set()
     to_mint: list[int] = []
 
@@ -166,6 +171,8 @@ def apply_csv(
             )
             continue
 
+        named.add((ark_pk, parsed.qualifier))
+
         duplicate = False
         for column in element_columns:
             value = row.get(column, "")
@@ -196,6 +203,7 @@ def apply_csv(
         by_number = {row.number: row for row in result.rows}
         for number, ark in zip(to_mint, minted, strict=True):
             by_number[number].ark_id = ark.name
+            named.add((ark.pk, ""))
             for column in element_columns:
                 value = (rows[number - 2].get(column) or "").strip()
                 if value:
@@ -211,10 +219,20 @@ def apply_csv(
         return result
 
     if purge_first:
-        Binding.objects.filter(ark_id__in={key[0] for key in planned}).delete()
+        _purge(named)
 
     _write(planned, result)
     return result
+
+
+def _purge(named: set[tuple[int, str]]) -> None:
+    """Remove every element under exactly the (ark, qualifier) pairs named."""
+    if not named:
+        return
+    condition = Q()
+    for ark_pk, qualifier in named:
+        condition |= Q(ark_id=ark_pk, qualifier=qualifier)
+    Binding.objects.filter(condition).delete()
 
 
 def _write(planned: dict[tuple[int, str, str], str], result: BulkBindResult) -> None:

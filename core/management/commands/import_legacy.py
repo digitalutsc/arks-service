@@ -125,6 +125,12 @@ class Command(BaseCommand):
             self.stdout.write(f"  {table}: {len(elements)} element rows")
 
     def _upsert_collection(self, legacy: LegacyCollection, totals) -> Collection:
+        if not legacy.naan:
+            raise CommandError(
+                f"Cannot import {legacy.table!r}: it has no ':/naan' row. Every ARK needs a "
+                "NAAN, and without one nothing in this collection would resolve."
+            )
+
         clash = Collection.objects.filter(prefix=legacy.prefix).exclude(name=legacy.table).first()
         if clash is not None:
             raise CommandError(
@@ -163,18 +169,27 @@ class Command(BaseCommand):
         self._write_bindings(collection, elements, ark_pks, totals)
 
     def _create_missing_arks(self, collection, elements, mask, totals) -> dict[str, int]:
-        """Ensure every ARK mentioned exists; return {ark name: pk}."""
+        """Ensure every ARK mentioned exists; return {key as written: pk}."""
+        # A key is usually "<naan>/<identifier>", but some legacy rows carry the
+        # identifier alone. Those belong to this collection's NAAN; treating the
+        # whole string as a NAAN would create a junk ARK and silently strand
+        # every binding attached to it.
+        wanted = {
+            ark_name: _split_ark_name(ark_name, collection.naan) for ark_name, _, _, _ in elements
+        }
+
         existing = {
-            f"{naan}/{identifier}": pk
+            (naan, identifier): pk
             for pk, naan, identifier in collection.arks.values_list("id", "naan", "identifier")
         }
         prefix_length = len(collection.prefix)
 
-        to_create = []
-        for name in sorted({ark_name for ark_name, _, _, _ in elements}):
-            if name in existing:
+        to_create, planned = [], set()
+        for _, pair in sorted(wanted.items()):
+            if pair in existing or pair in planned:
                 continue
-            naan, _, identifier = name.partition("/")
+            planned.add(pair)
+            naan, identifier = pair
             to_create.append(
                 Ark(
                     collection=collection,
@@ -186,15 +201,11 @@ class Command(BaseCommand):
         if to_create:
             Ark.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
             totals["arks_created"] += len(to_create)
-            existing.update(
-                {
-                    f"{naan}/{identifier}": pk
-                    for pk, naan, identifier in collection.arks.values_list(
-                        "id", "naan", "identifier"
-                    )
-                }
-            )
-        return existing
+            existing = {
+                (naan, identifier): pk
+                for pk, naan, identifier in collection.arks.values_list("id", "naan", "identifier")
+            }
+        return {name: existing[pair] for name, pair in wanted.items() if pair in existing}
 
     def _write_bindings(self, collection, elements, ark_pks, totals):
         # Collapse to one row per (ark, qualifier, element); the last value in
@@ -277,6 +288,14 @@ class Command(BaseCommand):
             "resolutions",
         ):
             self.stdout.write(f"  {label.replace('_', ' '):24} {totals.get(label, 0)}")
+
+
+def _split_ark_name(name: str, default_naan: str) -> tuple[str, str]:
+    """Split a legacy key's ARK part, falling back to the collection's NAAN."""
+    if "/" in name:
+        naan, _, identifier = name.partition("/")
+        return naan, identifier
+    return default_naan, name
 
 
 def _decode_sequence(identifier: str, prefix_length: int, mask: str) -> int | None:

@@ -9,8 +9,10 @@ fetching lives in the ``resolve_diff`` command.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 from core.models import Ark, Binding, Collection
 
@@ -46,7 +48,7 @@ def iter_check_paths(
     *,
     collection: Collection | None = None,
     sample: int | None = None,
-    inflections: bool = False,
+    inflections: bool = True,
 ) -> Iterator[str]:
     """
     Yield every ARK path worth comparing.
@@ -84,32 +86,86 @@ def iter_check_paths(
         if inflections:
             yield f"{base}?"
             yield f"{base}??"
+            yield f"{base}?info"
         for qualifier in sorted(qualifiers.get(ark_id, ())):
             yield f"{base}{qualifier}"
+
+
+#: Legacy answered an unresolvable ARK by redirecting to its own error page.
+LEGACY_NOT_FOUND_PAGE = "404.php"
+
+_TAG = re.compile(r"<[^>]+>")
+
+
+def _is_legacy_miss(status: int, target: str, legacy_base: str | None) -> bool:
+    """True when a legacy 302 is really 'not found' in disguise."""
+    if status not in (301, 302, 303, 307, 308) or not target:
+        return False
+    parsed = urlparse(target)
+    if not parsed.path.rstrip("/").endswith(LEGACY_NOT_FOUND_PAGE):
+        return False
+    if legacy_base:
+        # Only the legacy service's own error page counts; a collection that
+        # genuinely redirects to a page named 404.php is a real target.
+        return parsed.netloc == urlparse(legacy_base).netloc and parsed.path.count("/") <= 1
+    return True
+
+
+def _metadata_lines(body: str) -> set[str]:
+    """
+    The comparable content of a metadata response.
+
+    Legacy wrapped its ERC block in (nested, unbalanced) <pre> tags and returned
+    rows in whatever order MySQL produced; this system emits plain text sorted
+    by element name. Compare the set of non-empty lines instead of the bytes.
+    """
+    text = _TAG.sub("\n", body or "")
+    return {line.strip() for line in text.splitlines() if line.strip()}
 
 
 def compare(
     path: str,
     legacy: tuple[int, str],
     new: tuple[int, str],
+    *,
+    legacy_base: str | None = None,
 ) -> Difference | None:
     """
     Compare one path's outcome on both systems.
 
     Each side is ``(status, target)`` where target is the Location header for a
-    redirect or the body for a metadata response. Returns ``None`` when they
+    redirect or the body for a metadata response. Differences of *expression*
+    are normalised away — a legacy redirect to 404.php is a 404, and legacy's
+    <pre>-wrapped metadata is compared line-wise — so that what remains is a
+    real difference in what the ARK resolves to. Returns ``None`` when the two
     agree.
     """
     legacy_status, legacy_target = legacy
     new_status, new_target = new
+    legacy_target = legacy_target or ""
+    new_target = new_target or ""
 
-    if legacy_status == new_status and (legacy_target or "") == (new_target or ""):
+    if _is_legacy_miss(legacy_status, legacy_target, legacy_base) and new_status == 404:
+        return None
+
+    if legacy_status == 200 and new_status == 200:
+        if _metadata_lines(legacy_target) == _metadata_lines(new_target):
+            return None
+        return Difference(
+            path=path,
+            legacy_status=legacy_status,
+            new_status=new_status,
+            legacy=legacy_target,
+            new=new_target,
+        )
+
+    if legacy_status == new_status and legacy_target == new_target:
         return None
 
     return Difference(
         path=path,
         legacy_status=legacy_status,
         new_status=new_status,
-        legacy=legacy_target or "",
-        new=new_target or "",
+        legacy=legacy_target,
+        new=new_target,
     )

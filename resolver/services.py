@@ -47,8 +47,13 @@ def is_support_element(name: str) -> bool:
 
 
 def format_label(name: str) -> str:
-    """'LOCAL_ID' -> 'Local_id', matching the legacy metadata display."""
-    return name.replace(SUPPORT_MARKER, "").strip().lower().capitalize()
+    """
+    'LOCAL_ID' -> 'Local_id', matching the legacy metadata display.
+
+    Every '?' is removed, not just the '??' support marker, so 'WHERE?' shows as
+    'Where' exactly as legacy rendered it.
+    """
+    return name.replace("?", "").strip().lower().capitalize()
 
 
 def render_erc(bindings: Iterable, include_support: bool) -> str:

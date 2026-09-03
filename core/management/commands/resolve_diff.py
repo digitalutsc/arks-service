@@ -37,7 +37,10 @@ class Command(BaseCommand):
         parser.add_argument("--collection", help="Only check this collection")
         parser.add_argument("--sample", type=int, help="Only check the first N ARKs")
         parser.add_argument(
-            "--inflections", action="store_true", help="Also check the ? and ?? responses"
+            "--no-inflections",
+            action="store_false",
+            dest="inflections",
+            help="Skip the ?, ?? and ?info responses (they are checked by default)",
         )
         parser.add_argument("--workers", type=int, default=8)
         parser.add_argument("--timeout", type=int, default=20)
@@ -72,17 +75,23 @@ class Command(BaseCommand):
         def check(path):
             legacy = _fetch(legacy_base + path, timeout)
             new = _fetch(new_base + path, timeout)
-            return compare(path, legacy, new)
+            return compare(path, legacy, new, legacy_base=legacy_base)
 
-        with ThreadPoolExecutor(max_workers=options["workers"]) as pool:
-            for difference in pool.map(check, paths):
-                checked += 1
-                if difference is not None:
-                    differences.append(difference)
-                    if options["stop_after"] and len(differences) >= options["stop_after"]:
-                        break
-                if checked % 5000 == 0:
-                    self.stdout.write(f"  {checked:,} checked, {len(differences)} differing")
+        stop_after = options["stop_after"]
+        workers = options["workers"]
+        # Submit in batches rather than mapping the whole list: pool.map queues
+        # every path up front, so --stop-after would still fetch all of them.
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for batch in _batched(paths, workers * 8):
+                for difference in pool.map(check, batch):
+                    checked += 1
+                    if difference is not None:
+                        differences.append(difference)
+                    if checked % 5000 == 0:
+                        self.stdout.write(f"  {checked:,} checked, {len(differences)} differing")
+                if stop_after and len(differences) >= stop_after:
+                    self.stdout.write(f"Stopping after {len(differences)} difference(s).")
+                    break
 
         if options["out"]:
             with open(options["out"], "w", newline="") as handle:
@@ -103,6 +112,11 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"All {checked:,} paths resolve identically. Safe to cut over.")
         )
+
+
+def _batched(items, size):
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):

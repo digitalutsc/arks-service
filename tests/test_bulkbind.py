@@ -233,3 +233,43 @@ def test_template_has_the_conventional_columns_ready_to_fill(collection, arks):
 def test_template_rows_are_blank_apart_from_the_ark(collection, arks):
     rows = list(template_csv(arks))
     assert set(rows[1][1:]) == {""}
+
+
+def test_purge_only_clears_the_qualifier_the_row_names(collection, arks):
+    # A row naming /page1 must not destroy the base ARK's binding — that would
+    # stop the ARK itself resolving.
+    apply_csv(collection, csv_file("Ark_ID,URL\n61220/utsc0,https://whole.example\n"))
+    apply_csv(collection, csv_file("Ark_ID,URL\n61220/utsc0/page1,https://p1.example\n"))
+    apply_csv(
+        collection,
+        csv_file("Ark_ID,URL\n61220/utsc0/page1,https://p1-new.example\n"),
+        purge_first=True,
+    )
+    ark = Ark.objects.get(identifier="utsc0")
+    assert ark.bindings.get(qualifier="", name="URL").value == "https://whole.example"
+    assert ark.bindings.get(qualifier="/page1", name="URL").value == "https://p1-new.example"
+
+
+def test_purge_clears_a_row_whose_cells_are_all_blank(collection, arks):
+    # The row names the ARK, so purge must apply even though it binds nothing.
+    apply_csv(collection, csv_file("Ark_ID,URL,PID\n61220/utsc0,https://a.example,islandora:1\n"))
+    apply_csv(collection, csv_file("Ark_ID,URL,PID\n61220/utsc0,,\n"), purge_first=True)
+    assert not Ark.objects.get(identifier="utsc0").bindings.exists()
+
+
+def test_purge_leaves_other_qualifiers_of_the_same_ark_alone(collection, arks):
+    apply_csv(
+        collection,
+        csv_file(
+            "Ark_ID,URL\n"
+            "61220/utsc0/page1,https://p1.example\n"
+            "61220/utsc0/page2,https://p2.example\n"
+        ),
+    )
+    apply_csv(
+        collection,
+        csv_file("Ark_ID,URL\n61220/utsc0/page1,https://p1-new.example\n"),
+        purge_first=True,
+    )
+    ark = Ark.objects.get(identifier="utsc0")
+    assert ark.bindings.get(qualifier="/page2", name="URL").value == "https://p2.example"

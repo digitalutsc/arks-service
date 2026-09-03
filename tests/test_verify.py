@@ -59,8 +59,8 @@ def test_inflections_are_included_when_asked(data):
     assert "/ark:/61220/utsc0??" in paths
 
 
-def test_inflections_are_excluded_by_default(data):
-    assert not any(p.endswith("?") for p in iter_check_paths())
+def test_inflections_can_be_switched_off(data):
+    assert not any("?" in p for p in iter_check_paths(inflections=False))
 
 
 def test_the_naan_root_is_checked(data):
@@ -68,8 +68,11 @@ def test_the_naan_root_is_checked(data):
 
 
 def test_a_sample_limits_how_many_arks_are_checked(data):
-    paths = list(iter_check_paths(sample=1))
-    assert sum(1 for p in paths if p.startswith("/ark:/61220/utsc")) < 4
+    # Counts distinct ARKs, not paths: each ARK contributes several paths once
+    # inflections are included.
+    sampled = {p.split("?")[0] for p in iter_check_paths(sample=1) if p.count("/") > 2}
+    everything = {p.split("?")[0] for p in iter_check_paths() if p.count("/") > 2}
+    assert len(sampled) < len(everything)
 
 
 def test_identical_redirects_are_not_a_difference():
@@ -110,3 +113,67 @@ def test_matching_metadata_bodies_are_not_a_difference():
 
 def test_different_metadata_bodies_are_reported():
     assert compare("/ark:/61220/utsc0?", (200, "erc:\nUrl: x"), (200, "erc:\nUrl: y")) is not None
+
+
+# --- normalising legacy's answers -----------------------------------------
+# The two systems say the same thing in different words. Legacy answers a miss
+# with a 302 to /404.php and wraps metadata in <pre>; without normalising, every
+# unbound ARK and every inflection would report as a difference and the gate
+# would never go green.
+
+
+def test_a_legacy_404_redirect_matches_a_real_404():
+    legacy = (302, "https://ark.example/404.php")
+    assert compare("/ark:/61220/utsc9", legacy, (404, "")) is None
+
+
+def test_a_legacy_404_redirect_still_differs_from_a_real_target():
+    legacy = (302, "https://ark.example/404.php")
+    assert compare("/ark:/61220/utsc9", legacy, (302, "https://example.org/9")) is not None
+
+
+def test_a_real_redirect_to_a_page_called_404_is_not_treated_as_a_miss():
+    # Only the legacy service's own error page counts.
+    legacy = (302, "https://example.org/collections/404.php")
+    difference = compare("/ark:/61220/utsc9", legacy, (404, ""), legacy_base="https://ark.example")
+    assert difference is not None
+
+
+def test_metadata_wrapped_in_pre_matches_plain_text():
+    legacy = (200, "<pre><pre>\nerc:\nWho: Anonymous\nUrl: https://e.example\n</pre><pre/>")
+    new = (200, "erc:\nWho: Anonymous\nUrl: https://e.example\n")
+    assert compare("/ark:/61220/utsc1?", legacy, new) is None
+
+
+def test_metadata_order_does_not_matter():
+    legacy = (200, "<pre>erc:\nUrl: https://e.example\nWho: Anonymous</pre>")
+    new = (200, "erc:\nWho: Anonymous\nUrl: https://e.example\n")
+    assert compare("/ark:/61220/utsc1?", legacy, new) is None
+
+
+def test_a_missing_metadata_line_is_still_reported():
+    legacy = (200, "<pre>erc:\nWho: Anonymous\nUrl: https://e.example</pre>")
+    new = (200, "erc:\nWho: Anonymous\n")
+    difference = compare("/ark:/61220/utsc1?", legacy, new)
+    assert difference is not None
+    assert "https://e.example" in difference.legacy
+
+
+def test_a_changed_metadata_value_is_reported():
+    legacy = (200, "<pre>erc:\nUrl: https://old.example</pre>")
+    new = (200, "erc:\nUrl: https://new.example\n")
+    assert compare("/ark:/61220/utsc1?", legacy, new) is not None
+
+
+def test_inflections_are_checked_by_default():
+    # The gate is worthless if the default run skips the paths most likely to
+    # differ.
+    import inspect
+
+    signature = inspect.signature(iter_check_paths)
+    assert signature.parameters["inflections"].default is True
+
+
+def test_info_inflection_is_checked_too(data):
+    paths = list(iter_check_paths(inflections=True))
+    assert "/ark:/61220/utsc0?info" in paths

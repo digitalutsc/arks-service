@@ -233,3 +233,49 @@ def test_import_survives_an_identifier_that_does_not_fit_the_template(tmp_path):
     ark = Ark.objects.get(identifier="utscZZZ")
     assert ark.sequence is None
     assert ark.bindings.get(name="URL").value == "https://example.org/odd"
+
+
+# --- awkward legacy data --------------------------------------------------
+
+
+def test_a_key_without_a_naan_is_imported_under_the_collection_naan(tmp_path):
+    # Some legacy keys carry only the identifier. Dropping them would lose
+    # bindings silently during a one-shot migration.
+    path = tmp_path / "no-naan.sqlite3"
+    build_legacy_db(path, rows=[(f"utsc7{TAB}URL", "https://example.org/7")])
+    run_import(path)
+    ark = Ark.objects.get(identifier="utsc7")
+    assert ark.naan == "61220"
+    assert ark.name == "61220/utsc7"
+    assert ark.bindings.get(name="URL").value == "https://example.org/7"
+
+
+def test_a_collection_without_a_naan_is_refused(tmp_path):
+    path = tmp_path / "no-naan-cfg.sqlite3"
+    build_legacy_db(
+        path, config={":/naan": ""}, rows=[(f"61220/utsc0{TAB}URL", "https://example.org/0")]
+    )
+    with pytest.raises(Exception, match="(?i)naan"):
+        run_import(path)
+
+
+def test_nothing_is_written_when_a_collection_is_refused(tmp_path):
+    path = tmp_path / "no-naan-cfg2.sqlite3"
+    build_legacy_db(
+        path, config={":/naan": ""}, rows=[(f"61220/utsc0{TAB}URL", "https://example.org/0")]
+    )
+    with pytest.raises(Exception, match="(?i)naan"):
+        run_import(path)
+    assert Collection.objects.count() == 0
+    assert Ark.objects.count() == 0
+
+
+def test_a_key_with_extra_tab_components_keeps_them_all_in_the_qualifier(tmp_path):
+    path = tmp_path / "deep.sqlite3"
+    build_legacy_db(
+        path,
+        rows=[(f"61220/utsc0{TAB}/vol1{TAB}/page2{TAB}.jpg{TAB}URL", "https://example.org/deep")],
+    )
+    run_import(path)
+    binding = Binding.objects.get(name="URL")
+    assert binding.qualifier == "/vol1/page2.jpg"

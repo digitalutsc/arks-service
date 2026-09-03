@@ -282,3 +282,43 @@ def test_manifest_refuses_a_local_file_target(client, ark):
 def test_manifest_refuses_a_link_local_target(client, ark):
     Binding.objects.create(ark=ark, name="URL", value="http://169.254.169.254/latest/meta-data/")
     assert get(client, "/ark:/61220/utsc1/manifest").status_code == 502
+
+
+# --- matching legacy metadata output --------------------------------------
+
+
+def test_brief_metadata_on_a_bare_ark_includes_variant_elements(client, ark):
+    # Legacy's bare-'?' query matched "<ark>\t[^/]", i.e. any key whose next
+    # component is not a hierarchy — which includes a variant-only qualifier
+    # such as ".image.png" (resolver.php, the else branch of getMetdata).
+    Binding.objects.create(ark=ark, name="WHO", value="Whole object")
+    Binding.objects.create(ark=ark, qualifier=".image.png", name="WHO", value="The PNG variant")
+    Binding.objects.create(ark=ark, qualifier="/page1", name="WHO", value="Page one")
+    body = get(client, "/ark:/61220/utsc1?", raw="/ark:/61220/utsc1?").content.decode()
+    assert "Whole object" in body
+    assert "The PNG variant" in body
+    assert "Page one" not in body, "a hierarchy qualifier is excluded, as in legacy"
+
+
+def test_labels_drop_every_question_mark(client, ark):
+    # Legacy stripped all '?' from the field name before display
+    # (resolver.php: trim(str_replace("?", "", $field))), so WHERE? shows as
+    # "Where", not "Where?".
+    Binding.objects.create(ark=ark, name="WHERE?", value="https://fallback.example")
+    body = get(client, "/ark:/61220/utsc1?", raw="/ark:/61220/utsc1?").content.decode()
+    assert "Where: https://fallback.example" in body
+    assert "Where?:" not in body
+
+
+def test_an_inflection_beats_a_manifest_request(client, ark, monkeypatch):
+    # "?" explicitly asks for metadata instead of the resource; legacy's
+    # /manifest test required the URI to *end* in "/manifest", so a trailing '?'
+    # took it down the metadata path.
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
+    monkeypatch.setattr(
+        "resolver.views.fetch_json", lambda *a, **k: pytest.fail("should not fetch")
+    )
+    response = get(client, "/ark:/61220/utsc1/manifest?", raw="/ark:/61220/utsc1/manifest?")
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/plain")
+    assert response.content.decode().startswith("erc:")
