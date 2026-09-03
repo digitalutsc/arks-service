@@ -30,7 +30,8 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    # django.contrib.admin is deliberately absent: it is never routed, and the
+    # staff interface in admin_ui covers everything with its own role checks.
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -165,6 +166,10 @@ CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 # Timeout (seconds) for the server-side fetch behind /manifest.
 MANIFEST_FETCH_TIMEOUT = env.int("MANIFEST_FETCH_TIMEOUT", default=30)
 MANIFEST_MAX_BYTES = env.int("MANIFEST_MAX_BYTES", default=10 * 1024 * 1024)
+
+# Largest batch a single mint request may create. Bigger batches hold the
+# collection lock and build every identifier inside one transaction.
+MINT_MAX_PER_REQUEST = env.int("MINT_MAX_PER_REQUEST", default=10_000)
 
 # Upload guardrails for bulk bind.
 BULK_BIND_MAX_ROWS = env.int("BULK_BIND_MAX_ROWS", default=100_000)

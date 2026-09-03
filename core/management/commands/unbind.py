@@ -3,6 +3,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from core.management.commands._common import get_ark
+from core.services import unbind_elements
 
 
 class Command(BaseCommand):
@@ -15,12 +16,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         ark, qualifier = get_ark(options["ark"])
-        bindings = ark.bindings.filter(qualifier=qualifier)
 
         if options["all"]:
-            removed, _ = bindings.delete()
+            removed = unbind_elements(ark, qualifier=qualifier)
         elif options["element"]:
-            removed, _ = bindings.filter(name=options["element"].strip().upper()).delete()
+            removed = unbind_elements(ark, name=options["element"], qualifier=qualifier)
         else:
             raise CommandError("Give an element name, or --all to remove every element.")
 

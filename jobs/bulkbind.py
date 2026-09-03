@@ -23,6 +23,7 @@ from django.db.models import Q
 from core.arkpath import parse_ark_path
 from core.models import Ark, Binding, Collection
 from core.search import ARK_ID_COLUMN
+from core.services import bulk_upsert_bindings
 
 #: Columns offered in the fill-in template after minting.
 TEMPLATE_COLUMNS = ["URL", "PID", "LOCAL_ID", "COLLECTION"]
@@ -151,7 +152,11 @@ def apply_csv(
                 )
                 continue
             to_mint.append(number)
-            result.rows.append(RowResult(number, "", STATUS_MINTED))
+            # Reported as an error until the mint actually happens below; a file
+            # that fails elsewhere must not claim rows were minted.
+            result.rows.append(
+                RowResult(number, "", STATUS_ERROR, "Not minted: another row in the file failed.")
+            )
             continue
 
         parsed = parse_ark_path(f"ark:/{raw_ark}")
@@ -196,13 +201,17 @@ def apply_csv(
         if not duplicate:
             result.rows.append(RowResult(number, parsed.name + parsed.qualifier, STATUS_OK))
 
-    # Mint the blank rows now that the file is known to be well formed.
-    if to_mint and result.ok:
+    # Mint the blank rows now that the file is known to be well formed. "Well
+    # formed" means no row failed for a reason other than awaiting its mint.
+    blocked = [row for row in result.errors if row.number not in set(to_mint)]
+    if to_mint and not blocked:
         minted = mint(collection, count=len(to_mint), user=user)
         result.minted = len(minted)
         by_number = {row.number: row for row in result.rows}
         for number, ark in zip(to_mint, minted, strict=True):
             by_number[number].ark_id = ark.name
+            by_number[number].status = STATUS_MINTED
+            by_number[number].message = ""
             named.add((ark.pk, ""))
             for column in element_columns:
                 value = (rows[number - 2].get(column) or "").strip()
@@ -236,24 +245,4 @@ def _purge(named: set[tuple[int, str]]) -> None:
 
 
 def _write(planned: dict[tuple[int, str, str], str], result: BulkBindResult) -> None:
-    existing = {
-        (ark_id, qualifier, name): (pk, value)
-        for pk, ark_id, qualifier, name, value in Binding.objects.filter(
-            ark_id__in={key[0] for key in planned}
-        ).values_list("id", "ark_id", "qualifier", "name", "value")
-    }
-
-    to_create, to_update = [], []
-    for (ark_pk, qualifier, name), value in planned.items():
-        found = existing.get((ark_pk, qualifier, name))
-        if found is None:
-            to_create.append(Binding(ark_id=ark_pk, qualifier=qualifier, name=name, value=value))
-        elif found[1] != value:
-            to_update.append(Binding(id=found[0], value=value))
-
-    if to_create:
-        Binding.objects.bulk_create(to_create, batch_size=2000)
-        result.created = len(to_create)
-    if to_update:
-        Binding.objects.bulk_update(to_update, ["value"], batch_size=2000)
-        result.updated = len(to_update)
+    result.created, result.updated = bulk_upsert_bindings(planned)

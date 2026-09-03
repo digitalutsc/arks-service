@@ -9,15 +9,17 @@ commands use, so the two can never drift apart.
 from __future__ import annotations
 
 import csv
+import re
 
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, Exists, OuterRef, Sum
+from django.db.models import Count, Sum
 from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from admin_ui.roles import (
@@ -34,6 +36,7 @@ from admin_ui.roles import (
 )
 from core.models import Ark, Binding, Collection, Organisation, Resolution
 from core.search import export_rows, search_arks
+from core.services import bind_element, collection_stats, unbind_elements
 from jobs.bulkbind import TEMPLATE_COLUMNS, template_csv
 from jobs.models import BulkBindJob
 from jobs.tasks import run_bulk_bind
@@ -100,8 +103,7 @@ def collection_detail(request, pk):
             )
         return redirect("admin_ui:collection_detail", pk=pk)
 
-    arks = Ark.objects.filter(collection=collection)
-    bound = arks.filter(Exists(Binding.objects.filter(ark=OuterRef("pk")))).count()
+    stats = collection_stats(collection)
     try:
         spec = collection.spec
         capacity = "unlimited" if spec.unlimited else f"{spec.total:,}"
@@ -115,14 +117,7 @@ def collection_detail(request, pk):
             "collection": collection,
             "spec": spec,
             "capacity": capacity,
-            "total": arks.count(),
-            "bound": bound,
-            "unbound": arks.count() - bound,
-            "elements": Binding.objects.filter(ark__collection=collection).count(),
-            "redirects": Resolution.objects.filter(ark__collection=collection).aggregate(
-                total=Sum("count")
-            )["total"]
-            or 0,
+            **stats,
             "jobs": collection.bulk_bind_jobs.all()[:5],
         },
     )
@@ -199,19 +194,18 @@ def ark_detail(request, pk):
         qualifier = request.POST.get("qualifier", "").strip()
 
         if action == "bind":
-            name = request.POST.get("name", "").strip().upper()
-            value = request.POST.get("value", "").strip()
-            if name:
-                Binding.objects.update_or_create(
-                    ark=ark, qualifier=qualifier, name=name, defaults={"value": value}
+            try:
+                binding, _ = bind_element(
+                    ark,
+                    request.POST.get("name", ""),
+                    request.POST.get("value", "").strip(),
+                    qualifier,
                 )
-                messages.success(request, f"Bound {name}.")
-            else:
+                messages.success(request, f"Bound {binding.name}.")
+            except ValidationError:
                 messages.error(request, "An element name is required.")
         elif action == "unbind":
-            removed, _ = ark.bindings.filter(
-                qualifier=qualifier, name=request.POST.get("name", "").strip().upper()
-            ).delete()
+            removed = unbind_elements(ark, name=request.POST.get("name", ""), qualifier=qualifier)
             messages.success(request, f"Removed {removed} element(s).")
         return redirect("admin_ui:ark_detail", pk=pk)
 
@@ -231,7 +225,7 @@ def ark_detail(request, pk):
 @require_role(ADMIN)
 def ark_purge(request, pk):
     ark = get_object_or_404(Ark, pk=pk)
-    removed, _ = ark.bindings.all().delete()
+    removed = unbind_elements(ark)
     messages.success(request, f"Purged {removed} element(s) from {ark.name}.")
     return redirect("admin_ui:ark_detail", pk=pk)
 
@@ -277,7 +271,7 @@ def mint_template(request, pk):
 
     stamp = timezone.now().strftime("%Y%m%d-%H%M")
     return _csv_response(
-        template_csv(arks), f"{collection.prefix or 'ark'}-bind-template-{stamp}.csv"
+        template_csv(arks), f"{slugify(collection.prefix) or 'ark'}-bind-template-{stamp}.csv"
     )
 
 
@@ -301,7 +295,10 @@ def _csv_response(rows, filename: str) -> StreamingHttpResponse:
     response = StreamingHttpResponse(
         (writer.writerow(row) for row in rows), content_type="text/csv"
     )
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    # Filenames are built from user-editable text (a collection prefix), so keep
+    # quotes and newlines out of the header.
+    safe = re.sub(r"[^A-Za-z0-9._-]", "-", filename) or "export.csv"
+    response["Content-Disposition"] = f'attachment; filename="{safe}"'
     return response
 
 

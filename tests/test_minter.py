@@ -221,3 +221,13 @@ def test_minted_arks_come_back_with_primary_keys():
     assert sorted(a.pk for a in arks) == sorted(
         Ark.objects.filter(collection=collection).values_list("id", flat=True)
     )
+
+
+def test_a_single_mint_request_is_capped(settings):
+    # Unbounded count would build millions of identifiers inside one
+    # transaction holding the collection lock, blocking every other minter.
+    settings.MINT_MAX_PER_REQUEST = 10
+    collection = make_collection(".zd", name="capped")
+    with pytest.raises(ValueError, match="(?i)at most|10"):
+        mint(collection, count=11)
+    assert Ark.objects.filter(collection=collection).count() == 0

@@ -67,10 +67,6 @@ def has_role(user, minimum: str) -> bool:
     return _RANK[role] >= _RANK[minimum]
 
 
-def can_view(user) -> bool:
-    return has_role(user, VIEWER)
-
-
 def can_edit(user) -> bool:
     return has_role(user, EDITOR)
 

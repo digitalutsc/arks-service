@@ -273,3 +273,17 @@ def test_purge_leaves_other_qualifiers_of_the_same_ark_alone(collection, arks):
     )
     ark = Ark.objects.get(identifier="utsc0")
     assert ark.bindings.get(qualifier="/page2", name="URL").value == "https://p2.example"
+
+
+def test_a_row_is_only_reported_minted_once_it_really_was(collection, arks):
+    # A blank row was marked "minted" during validation, so a file that failed
+    # elsewhere reported rows as minted when nothing had been created.
+    result = apply_csv(
+        collection,
+        csv_file("Ark_ID,URL\n,https://example.org/new\n61220/nope,https://bad.example\n"),
+        mint_missing=True,
+    )
+    assert result.failed >= 1
+    assert result.minted == 0
+    assert not any(row.status == "minted" for row in result.rows)
+    assert Ark.objects.filter(collection=collection).count() == len(arks)

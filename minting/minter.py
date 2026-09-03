@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import secrets
 
+from django.conf import settings
 from django.db import transaction
 
 from core.models import Ark, Collection
@@ -147,6 +148,12 @@ def mint(collection: Collection, count: int = 1, user=None) -> list[Ark]:
     """
     if count < 1:
         raise ValueError("count must be at least 1")
+    limit = getattr(settings, "MINT_MAX_PER_REQUEST", 10_000)
+    if count > limit:
+        raise ValueError(
+            f"Refusing to mint {count:,} identifiers in one go; at most {limit:,} per request. "
+            "Run it as several batches."
+        )
 
     # Serialise minters so two callers cannot choose the same counter value.
     locked = Collection.objects.select_for_update().get(pk=collection.pk)

@@ -69,7 +69,8 @@
 {% if can_administer and bindings %}
 <h2>Danger zone</h2>
 <form method="post" action="{% url 'admin_ui:ark_purge' ark.pk %}" class="panel"
-      onsubmit="return confirm('Remove every element from {{ ark.name }}? The ARK will stop resolving.')">
+      data-confirm="Remove every element from {{ ark.name }}? The ARK will stop resolving."
+      onsubmit="return confirm(this.dataset.confirm)">
   {% csrf_token %}
   <p class="muted">Purging removes every element from this ARK. The ARK itself stays, so the
     identifier is never reissued.</p>

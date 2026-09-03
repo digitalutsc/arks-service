@@ -26,7 +26,8 @@ from core.legacy import (
     open_legacy,
     parse_legacy_key,
 )
-from core.models import Ark, Binding, Collection, Organisation, Resolution
+from core.models import Ark, Collection, Organisation, Resolution
+from core.services import bulk_upsert_bindings, normalise_element_name
 from minting.noid import TemplateError, parse_template, xdig2n
 
 #: Rows per round trip when writing in bulk.
@@ -216,39 +217,17 @@ class Command(BaseCommand):
             ark_pk = ark_pks.get(ark_name)
             if ark_pk is None:  # pragma: no cover - defensive
                 continue
-            name = element.strip().upper()
+            name = normalise_element_name(element)
             if name == REDIRECT_ELEMENT:
                 counters[(ark_pk, qualifier)] = _to_int(value)
             else:
                 wanted[(ark_pk, qualifier, name)] = value or ""
 
-        existing = {
-            (ark_id, qualifier, name): (pk, value)
-            for pk, ark_id, qualifier, name, value in Binding.objects.filter(
-                ark__collection=collection
-            ).values_list("id", "ark_id", "qualifier", "name", "value")
-        }
+        created, updated = bulk_upsert_bindings(wanted)
+        totals["bindings_created"] += created
+        totals["bindings_updated"] += updated
 
-        now = timezone.now()
-        to_create, to_update = [], []
-        for (ark_pk, qualifier, name), value in wanted.items():
-            found = existing.get((ark_pk, qualifier, name))
-            if found is None:
-                to_create.append(
-                    Binding(ark_id=ark_pk, qualifier=qualifier, name=name, value=value)
-                )
-            elif found[1] != value:
-                to_update.append(Binding(id=found[0], value=value, updated_at=now))
-
-        if to_create:
-            Binding.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
-            totals["bindings_created"] += len(to_create)
-        if to_update:
-            # bulk_update skips auto_now, so updated_at is set explicitly above.
-            Binding.objects.bulk_update(to_update, ["value", "updated_at"], batch_size=BATCH_SIZE)
-            totals["bindings_updated"] += len(to_update)
-
-        self._write_counters(collection, counters, now, totals)
+        self._write_counters(collection, counters, timezone.now(), totals)
 
     def _write_counters(self, collection, counters, now, totals):
         existing = {

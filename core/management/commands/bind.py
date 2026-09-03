@@ -3,7 +3,7 @@
 from django.core.management.base import BaseCommand
 
 from core.management.commands._common import get_ark
-from core.models import Binding
+from core.services import bind_element
 
 
 class Command(BaseCommand):
@@ -16,11 +16,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         ark, qualifier = get_ark(options["ark"])
-        binding, created = Binding.objects.update_or_create(
-            ark=ark,
-            qualifier=qualifier,
-            name=options["element"].strip().upper(),
-            defaults={"value": options["value"]},
-        )
+        binding, created = bind_element(ark, options["element"], options["value"], qualifier)
         verb = "Bound" if created else "Rebound"
         self.stdout.write(self.style.SUCCESS(f"{verb} {binding.name} on {ark.name}{qualifier}"))

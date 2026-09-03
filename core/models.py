@@ -15,13 +15,11 @@ from django.utils import timezone
 
 from minting.noid import TemplateError, TemplateSpec, parse_template
 
-#: Element names the resolver and reports understand. Any other name may still
-#: be bound — these are conventions, not a schema.
+#: The two elements the resolver looks for, in order. Any other name may still
+#: be bound — these are conventions, not a schema. The columns offered in the
+#: fill-in template live in jobs.bulkbind.TEMPLATE_COLUMNS.
 ELEMENT_URL = "URL"
 ELEMENT_WHERE = "WHERE?"
-ELEMENT_PID = "PID"
-ELEMENT_LOCAL_ID = "LOCAL_ID"
-CONVENTIONAL_ELEMENTS = (ELEMENT_URL, ELEMENT_PID, ELEMENT_LOCAL_ID, "COLLECTION")
 
 
 class Collection(models.Model):

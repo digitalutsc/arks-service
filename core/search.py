@@ -104,18 +104,25 @@ def export_rows(queryset: QuerySet[Ark]) -> Iterator[list[str]]:
         }
         rows: dict[tuple[int, str], list[str]] = {}
 
+        bound: set[int] = set()
         for ark_id, qualifier, name, value in (
             Binding.objects.filter(ark_id__in=chunk)
             .order_by("ark_id", "qualifier", "name")
             .values_list("ark_id", "qualifier", "name", "value")
         ):
+            column = index.get(name)
+            if column is None:
+                # Bound after the header was computed; a streaming response is
+                # already on the wire, so skip rather than abort the download.
+                continue
             row = rows.setdefault((ark_id, qualifier), [""] * width)
             row[0] = arks[ark_id] + qualifier
-            row[index[name]] = value
+            row[column] = value
+            bound.add(ark_id)
 
         # Keep unbound ARKs in the output so they can be filled in.
         for ark_id in chunk:
-            if not any(key[0] == ark_id for key in rows):
+            if ark_id not in bound:
                 row = [""] * width
                 row[0] = arks[ark_id]
                 rows[(ark_id, "")] = row
