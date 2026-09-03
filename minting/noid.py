@@ -307,3 +307,41 @@ def make_id(firstpart: str, mask: str, num: int, repertoire: str = "e") -> str |
     if mask.endswith("k"):
         return check_char(identifier, repertoire)
     return identifier
+
+
+def xdig2n(variable_part: str, mask: str) -> int:
+    """
+    Recover the counter value that :func:`n2xdig` turned into ``variable_part``.
+
+    ``variable_part`` is the identifier with the firstpart (NAAN and prefix)
+    already stripped; a trailing check character, if the mask has one, is
+    ignored. Raises :class:`ValueError` for a malformed mask or a character
+    outside the mask's alphabet.
+
+    Only meaningful below the mask's capacity: fixed-width ``r``/``s`` masks
+    silently truncate once their space is exhausted, so the mapping stops being
+    injective there.
+    """
+    if not mask or not _MASK_RE.match(mask):
+        raise ValueError(f"Malformed mask: {mask!r}")
+
+    body = variable_part[:-1] if mask.endswith("k") else variable_part
+
+    # Line the mask's repertoires up against the digits, right to left, in the
+    # same order n2xdig consumed them.
+    mask_chars = [c for c in mask if c in ALPHABETS]
+    if mask.startswith("z") and mask_chars:
+        # A "z" mask repeats its most significant repertoire as it grows.
+        mask_chars = [mask_chars[0]] * (len(body) - len(mask_chars)) + mask_chars
+
+    if len(body) != len(mask_chars):
+        raise ValueError(f"{variable_part!r} does not fit mask {mask!r}")
+
+    number = 0
+    for char, repertoire in zip(body, mask_chars, strict=True):
+        alphabet = ALPHABETS[repertoire]
+        index = alphabet.find(char)
+        if index < 0:
+            raise ValueError(f"{char!r} is not in repertoire {repertoire!r}")
+        number = number * len(alphabet) + index
+    return number

@@ -23,6 +23,7 @@ from minting.noid import (
     make_id,
     n2xdig,
     parse_template,
+    xdig2n,
 )
 
 VECTORS = json.loads((Path(__file__).parent / "fixtures" / "noid_vectors.json").read_text())
@@ -154,3 +155,50 @@ def test_production_template_mints_the_expected_ark():
 def test_ids_with_check_characters_round_trip():
     minted = make_id("61220/f5", "reedeedk", 12345)
     assert check_char(minted, "e") == minted
+
+
+# --- decoding (the inverse of n2xdig) -------------------------------------
+# Needed by the legacy import: to keep minting where production left off, an
+# existing identifier must be turned back into the counter value that made it.
+
+
+def _capacity(mask):
+    total = 1
+    for char in mask:
+        if char in ALPHABETS:
+            total *= len(ALPHABETS[char])
+    return total
+
+
+@pytest.mark.parametrize(
+    "case",
+    [c for c in VECTORS["n2xdig"] if c["expected"]],
+    ids=_ids([c for c in VECTORS["n2xdig"] if c["expected"]], "mask", "num"),
+)
+def test_xdig2n_inverts_n2xdig(case):
+    mask, num = case["mask"], case["num"]
+    # Fixed-width masks silently truncate once the space is exhausted, so a
+    # round trip is only meaningful below capacity.
+    if not mask.startswith("z") and num >= _capacity(mask):
+        pytest.skip("beyond the capacity of a fixed-width mask")
+    assert xdig2n(case["expected"], mask) == num
+
+
+def test_xdig2n_ignores_a_check_character():
+    assert xdig2n("000001+", "reedeedk") == 1
+    assert xdig2n("000001r", "reedeedk") == 1
+
+
+def test_xdig2n_rejects_characters_outside_the_alphabet():
+    with pytest.raises(ValueError):
+        xdig2n("00!", "zeee")
+
+
+def test_xdig2n_rejects_a_malformed_mask():
+    with pytest.raises(ValueError):
+        xdig2n("123", "nonsense")
+
+
+def test_identifier_variable_part_is_recovered_from_a_full_ark():
+    # The production case: strip the firstpart, decode what is left.
+    assert xdig2n("10", "zd") == 10

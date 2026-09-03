@@ -91,6 +91,12 @@ class Ark(models.Model):
     identifier = models.CharField(
         max_length=255, help_text="Everything after the NAAN, including the prefix."
     )
+    sequence = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="Counter value this identifier was generated from; lets minting "
+        "continue where a previous run (or an import) left off.",
+    )
     minted_at = models.DateTimeField(default=timezone.now)
     minted_by = models.ForeignKey(
         "auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="minted_arks"
@@ -104,6 +110,7 @@ class Ark(models.Model):
         indexes = [
             models.Index(fields=["collection", "identifier"], name="ark_collection_ident_idx"),
             models.Index(fields=["minted_at"], name="ark_minted_at_idx"),
+            models.Index(fields=["collection", "sequence"], name="ark_collection_seq_idx"),
         ]
         ordering = ["naan", "identifier"]
 
