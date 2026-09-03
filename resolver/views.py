@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 
+from django.core.cache import cache
 from django.db.models import Q
 from django.http import (
     Http404,
@@ -20,7 +21,9 @@ from django.http import (
 from django.shortcuts import render
 
 from core.arkpath import Inflection, parse_ark_path
-from core.models import ELEMENT_URL, ELEMENT_WHERE, Ark, Collection, Organisation, Resolution
+from core.cachekeys import TARGET_CACHE_SECONDS, target_cache_key
+from core.counters import record_resolution
+from core.models import ELEMENT_URL, ELEMENT_WHERE, Ark, Collection, Organisation
 from resolver.services import (
     TargetTooLarge,
     UnsafeTarget,
@@ -33,12 +36,27 @@ logger = logging.getLogger(__name__)
 
 
 def _target_url(ark: Ark, qualifier: str) -> str | None:
-    """The redirect target for an exact (ark, qualifier), or None."""
+    """
+    The redirect target for an exact (ark, qualifier), or None.
+
+    Cached: an ARK's target changes rarely and is read constantly, and the
+    lookup is the bulk of the work in a redirect. Every write path invalidates
+    the entry (see core.services.invalidate_target), so a rebind takes effect at
+    once rather than after a timeout — pointing people at a stale URL would be
+    worse than the database load.
+    """
+    key = target_cache_key(ark.pk, qualifier)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached or None
+
     bindings = {
         b.name: b.value
         for b in ark.bindings.filter(qualifier=qualifier, name__in=[ELEMENT_URL, ELEMENT_WHERE])
     }
-    return bindings.get(ELEMENT_URL) or bindings.get(ELEMENT_WHERE) or None
+    target = bindings.get(ELEMENT_URL) or bindings.get(ELEMENT_WHERE) or None
+    cache.set(key, target or "", TARGET_CACHE_SECONDS)
+    return target
 
 
 def _metadata_bindings(ark: Ark, qualifier: str):
@@ -93,7 +111,8 @@ def resolve(request, *args, **kwargs):
     if not target:
         raise Http404(f"Nothing bound to {parsed.name}{parsed.qualifier}")
 
-    Resolution.record(ark, parsed.qualifier)
+    # Buffered, so a redirect stays a pure read: see core.counters.
+    record_resolution(ark.pk, parsed.qualifier)
     return HttpResponseRedirect(target)
 
 

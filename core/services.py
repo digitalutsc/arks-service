@@ -12,14 +12,34 @@ own copy, and the copies had already drifted over whether to touch
 
 from __future__ import annotations
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef, Sum
 from django.utils import timezone
 
+from core.cachekeys import target_cache_key
 from core.models import Ark, Binding, Collection, Resolution
 
 #: Rows per round trip when writing in bulk.
 BATCH_SIZE = 2000
+
+
+def invalidate_target(ark_id: int, qualifier: str = "") -> None:
+    """
+    Forget a cached redirect target.
+
+    Called by every write path. A rebind that did not invalidate would keep
+    sending people to the old URL until the entry expired, which is the one
+    kind of staleness this service cannot tolerate.
+    """
+    cache.delete(target_cache_key(ark_id, qualifier))
+
+
+def invalidate_targets(pairs) -> None:
+    """Forget many at once, for the bulk paths."""
+    keys = [target_cache_key(ark_id, qualifier) for ark_id, qualifier in pairs]
+    if keys:
+        cache.delete_many(keys)
 
 
 def normalise_element_name(name: str) -> str:
@@ -37,9 +57,11 @@ def bind_element(ark: Ark, name: str, value: str, qualifier: str = "") -> tuple[
     element = normalise_element_name(name)
     if not element:
         raise ValidationError({"name": "An element name is required."})
-    return Binding.objects.update_or_create(
+    result = Binding.objects.update_or_create(
         ark=ark, qualifier=qualifier, name=element, defaults={"value": value or ""}
     )
+    invalidate_target(ark.pk, qualifier)
+    return result
 
 
 def unbind_elements(ark: Ark, name: str | None = None, qualifier: str | None = None) -> int:
@@ -54,7 +76,10 @@ def unbind_elements(ark: Ark, name: str | None = None, qualifier: str | None = N
         bindings = bindings.filter(qualifier=qualifier)
     if name is not None:
         bindings = bindings.filter(name=normalise_element_name(name))
+    # Collect the qualifiers before deleting, so the right entries are dropped.
+    qualifiers = set(bindings.values_list("qualifier", flat=True))
     removed, _ = bindings.delete()
+    invalidate_targets((ark.pk, q) for q in qualifiers)
     return removed
 
 
@@ -98,6 +123,7 @@ def bulk_upsert_bindings(wanted: dict[tuple[int, str, str], str]) -> tuple[int, 
         # bulk_update skips auto_now fields, so updated_at is set explicitly.
         Binding.objects.bulk_update(to_update, ["value", "updated_at"], batch_size=BATCH_SIZE)
 
+    invalidate_targets((ark_id, qualifier) for ark_id, qualifier, _ in normalised)
     return len(to_create), len(to_update)
 
 

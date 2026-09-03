@@ -23,7 +23,7 @@ from django.db.models import Q
 from core.arkpath import parse_ark_path
 from core.models import Ark, Binding, Collection
 from core.search import ARK_ID_COLUMN
-from core.services import bulk_upsert_bindings
+from core.services import bulk_upsert_bindings, invalidate_targets
 
 #: Columns offered in the fill-in template after minting.
 TEMPLATE_COLUMNS = ["URL", "PID", "LOCAL_ID", "COLLECTION"]
@@ -242,6 +242,7 @@ def _purge(named: set[tuple[int, str]]) -> None:
     for ark_pk, qualifier in named:
         condition |= Q(ark_id=ark_pk, qualifier=qualifier)
     Binding.objects.filter(condition).delete()
+    invalidate_targets(named)
 
 
 def _write(planned: dict[tuple[int, str, str], str], result: BulkBindResult) -> None:

@@ -10,7 +10,9 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/arkservice
 EnvironmentFile=/var/www/arkservice/.env
-ExecStart=/var/www/arkservice/.venv/bin/celery -A arkservice worker \
+# --beat runs the periodic redirect-counter flush alongside the worker. With
+# more than one worker host, run beat on exactly one of them instead.
+ExecStart=/var/www/arkservice/.venv/bin/celery -A arkservice worker --beat \
     --loglevel=info --concurrency=2 --logfile=/var/log/arkservice/worker.log
 Restart=on-failure
 RestartSec=5s

@@ -95,20 +95,34 @@ def test_a_qualifier_without_its_own_binding_does_not_fall_back_to_the_parent(cl
 
 
 def test_each_redirect_is_counted(client, ark):
+    from core.counters import flush_counters
+
     Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
     get(client, "/ark:/61220/utsc1")
     get(client, "/ark:/61220/utsc1")
+    flush_counters()  # counting is buffered so a redirect stays a pure read
     assert Resolution.objects.get(ark=ark, qualifier="").count == 2
 
 
 def test_counts_are_kept_per_qualifier(client, ark):
+    from core.counters import flush_counters
+
     Binding.objects.create(ark=ark, name="URL", value="https://example.org/whole")
     Binding.objects.create(ark=ark, qualifier="/page1", name="URL", value="https://example.org/p1")
     get(client, "/ark:/61220/utsc1")
     get(client, "/ark:/61220/utsc1/page1")
     get(client, "/ark:/61220/utsc1/page1")
+    flush_counters()
     assert Resolution.objects.get(ark=ark, qualifier="").count == 1
     assert Resolution.objects.get(ark=ark, qualifier="/page1").count == 2
+
+
+def test_counts_lag_until_they_are_flushed(client, ark):
+    # The documented trade: a redirect performs no write, so the counter is
+    # behind by up to one flush interval and a cache outage loses that window.
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
+    get(client, "/ark:/61220/utsc1")
+    assert not Resolution.objects.filter(ark=ark).exists()
 
 
 def test_a_metadata_request_is_not_counted_as_a_redirect(client, ark):
@@ -347,3 +361,86 @@ def test_full_metadata_omits_the_support_block_when_there_is_none(client, ark):
     body = get(client, "/ark:/61220/utsc1??", raw="/ark:/61220/utsc1??").content.decode()
     assert "erc:" in body
     assert "erc-support:" not in body
+
+
+# --- the resolver hot path ------------------------------------------------
+
+
+def test_resolving_does_not_write(client, ark):
+    # Every redirect used to UPDATE the counter. Resolution must be a read, so
+    # it can be served from a replica and cannot lock on a popular ARK.
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
+
+    with CaptureQueriesContext(connection) as captured:
+        assert get(client, "/ark:/61220/utsc1").status_code == 302
+
+    writes = [
+        q["sql"]
+        for q in captured.captured_queries
+        if not q["sql"].lower().lstrip().startswith(("select", "savepoint", "release"))
+    ]
+    assert not writes, f"resolution wrote to the database: {writes[:1]}"
+
+
+def test_hits_still_reach_the_counter(client, ark):
+    from core.counters import flush_counters
+
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
+    for _ in range(3):
+        get(client, "/ark:/61220/utsc1")
+    flush_counters()
+    assert Resolution.objects.get(ark=ark, qualifier="").count == 3
+
+
+def test_a_repeat_resolution_is_served_without_re_reading_the_bindings(client, ark):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
+    get(client, "/ark:/61220/utsc1")  # warm
+
+    with CaptureQueriesContext(connection) as captured:
+        response = get(client, "/ark:/61220/utsc1")
+
+    assert response["Location"] == "https://example.org/1"
+    assert len(captured.captured_queries) <= 1, (
+        f"a cached target should cost at most one query, got {len(captured.captured_queries)}"
+    )
+
+
+def test_rebinding_takes_effect_immediately(client, ark):
+    from core.services import bind_element
+
+    Binding.objects.create(ark=ark, name="URL", value="https://old.example")
+    assert get(client, "/ark:/61220/utsc1")["Location"] == "https://old.example"
+
+    bind_element(ark, "URL", "https://new.example")
+
+    assert get(client, "/ark:/61220/utsc1")["Location"] == "https://new.example", (
+        "a stale cached target would send people to the wrong place"
+    )
+
+
+def test_unbinding_stops_resolution_immediately(client, ark):
+    from core.services import unbind_elements
+
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
+    get(client, "/ark:/61220/utsc1")
+
+    unbind_elements(ark)
+
+    assert get(client, "/ark:/61220/utsc1").status_code == 404
+
+
+def test_bulk_rebinding_takes_effect_immediately(client, ark):
+    from core.services import bulk_upsert_bindings
+
+    Binding.objects.create(ark=ark, name="URL", value="https://old.example")
+    get(client, "/ark:/61220/utsc1")
+
+    bulk_upsert_bindings({(ark.pk, "", "URL"): "https://bulk-new.example"})
+
+    assert get(client, "/ark:/61220/utsc1")["Location"] == "https://bulk-new.example"

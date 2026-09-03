@@ -79,3 +79,19 @@ def run_bulk_bind(self, job_id: int) -> dict:
         "minted": result.minted,
         "failed": result.failed,
     }
+
+
+@shared_task
+def flush_resolution_counters() -> int:
+    """
+    Move buffered redirect counts into the database.
+
+    Scheduled by Celery beat; also runnable by hand as
+    `manage.py flush_counters` if the schedule is not wanted.
+    """
+    from core.counters import flush_counters
+
+    moved = flush_counters()
+    if moved:
+        logger.info("flushed %s buffered resolution(s)", moved)
+    return moved

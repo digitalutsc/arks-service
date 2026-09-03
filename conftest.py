@@ -15,8 +15,10 @@ def _clear_caches():
 
     Without clearing, one test's data would answer another test's lookup.
     """
-    from django.core.cache import cache
+    from django.core.cache import caches
 
-    cache.clear()
+    for each in caches.all(initialized_only=False):
+        each.clear()
     yield
-    cache.clear()
+    for each in caches.all(initialized_only=False):
+        each.clear()

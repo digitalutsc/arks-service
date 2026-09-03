@@ -51,7 +51,7 @@ services:
 
   worker:
     build: .
-    command: celery -A arkservice worker --loglevel=info --concurrency=2
+    command: celery -A arkservice worker --beat --loglevel=info --concurrency=2
     environment: *env
     volumes: [media:/data/media]
     depends_on:

@@ -156,20 +156,40 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
 
 # --- Cache ----------------------------------------------------------------
-# Redis in production: the login lockout counter and the element-name list are
-# only shared between gunicorn workers if the cache is. Falls back to
-# per-process memory so development needs no Redis.
+# Redis in production: the login lockout counter, the element-name list and the
+# resolved-target cache are only shared between gunicorn workers if the cache
+# is. Falls back to per-process memory so development needs no Redis.
+#
+# Two caches, because they have different tolerance for eviction. "default" is
+# memoisation and may drop anything at any time. "counters" holds redirect hits
+# that have not reached the database yet, so evicting an entry loses counts —
+# Django's local-memory cache culls at 300 entries by default, which silently
+# discarded them on any busy service.
 REDIS_URL = env.str("REDIS_URL", default="")
 if REDIS_URL:
     CACHES = {
-        "default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": REDIS_URL}
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        },
+        "counters": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "counters",
+        },
     }
 else:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "arkservice",
-        }
+            "OPTIONS": {"MAX_ENTRIES": 10_000},
+        },
+        "counters": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "arkservice-counters",
+            "OPTIONS": {"MAX_ENTRIES": 1_000_000, "CULL_FREQUENCY": 0},
+        },
     }
 
 # --- Sign-in --------------------------------------------------------------
@@ -189,6 +209,16 @@ CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_TIME_LIMIT = env.int("CELERY_TASK_TIME_LIMIT", default=3600)
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+
+# Redirect counts are buffered in the cache and written periodically, so that
+# resolving stays a pure read. This is how often they land.
+RESOLUTION_FLUSH_SECONDS = env.int("RESOLUTION_FLUSH_SECONDS", default=60)
+CELERY_BEAT_SCHEDULE = {
+    "flush-resolution-counters": {
+        "task": "jobs.tasks.flush_resolution_counters",
+        "schedule": RESOLUTION_FLUSH_SECONDS,
+    },
+}
 
 # --- Resolver -------------------------------------------------------------
 # Timeout (seconds) for the server-side fetch behind /manifest.
