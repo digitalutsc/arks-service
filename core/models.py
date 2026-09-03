@@ -11,9 +11,21 @@ from __future__ import annotations
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
+from django.db.models.functions import Lower, Substr
 from django.utils import timezone
 
 from minting.noid import TemplateError, TemplateSpec, parse_template
+
+#: How much of a value is copied into the indexed prefix column. 191 keeps the
+#: (name, value_prefix) index inside MySQL's 3072-byte utf8mb4 limit alongside
+#: a 255-character name.
+VALUE_PREFIX_LENGTH = 191
+
+
+def value_prefix(value: str | None) -> str:
+    """The indexed, case-folded leading part of a bound value."""
+    return (value or "")[:VALUE_PREFIX_LENGTH].lower()
+
 
 #: The two elements the resolver looks for, in order. Any other name may still
 #: be bound — these are conventions, not a schema. The columns offered in the
@@ -139,6 +151,16 @@ class Binding(models.Model):
     qualifier = models.CharField(max_length=255, blank=True, default="")
     name = models.CharField(max_length=255)
     value = models.TextField(blank=True)
+    #: Maintained by the database, not by application code. TEXT cannot be
+    #: indexed on MySQL without a prefix length, so exact and starts-with
+    #: lookups go through this column and then re-check `value`. Making it
+    #: generated means no bulk writer can forget it and quietly create rows
+    #: that search cannot find.
+    value_prefix = models.GeneratedField(
+        expression=Lower(Substr("value", 1, VALUE_PREFIX_LENGTH)),
+        output_field=models.CharField(max_length=VALUE_PREFIX_LENGTH),
+        db_persist=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -152,7 +174,7 @@ class Binding(models.Model):
             # `value` is unbounded TEXT, which MySQL cannot index without a
             # prefix length, so search filters on name and scans values (see
             # README: LIKE is the portable baseline).
-            models.Index(fields=["name"], name="binding_name_idx"),
+            models.Index(fields=["name", "value_prefix"], name="binding_name_value_idx"),
             models.Index(fields=["ark", "qualifier"], name="binding_ark_qualifier_idx"),
         ]
         ordering = ["name"]

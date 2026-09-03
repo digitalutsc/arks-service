@@ -1,10 +1,10 @@
-<p class="muted">{{ page.paginator.count }} ARK{{ page.paginator.count|pluralize }}
-  {% if page.paginator.count %}
+<p class="muted">{{ total }}{% if capped %}+{% endif %} ARK{{ total|pluralize }}
+  {% if total %}
     · <a href="{% url 'admin_ui:export' %}?{{ query.urlencode }}">Export these as CSV</a>
   {% endif %}
 </p>
 
-{% if page.object_list %}
+{% if arks %}
 <div class="table-wrap">
 <table>
   <thead><tr><th>ARK</th><th>Elements</th><th>Redirects</th><th>Minted</th></tr></thead>
@@ -29,14 +29,14 @@
 </div>
 
 <div class="pager">
-  {% if page.has_previous %}
-    <a class="btn ghost" hx-get="?{{ query.urlencode }}&page={{ page.previous_page_number }}"
-       hx-target="#results" href="?{{ query.urlencode }}&page={{ page.previous_page_number }}">Previous</a>
+  {% if has_previous %}
+    <a class="btn ghost" hx-get="?{{ query.urlencode }}&page={{ page_number|add:'-1' }}"
+       hx-target="#results" href="?{{ query.urlencode }}&page={{ page_number|add:'-1' }}">Previous</a>
   {% endif %}
-  <span class="muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
-  {% if page.has_next %}
-    <a class="btn ghost" hx-get="?{{ query.urlencode }}&page={{ page.next_page_number }}"
-       hx-target="#results" href="?{{ query.urlencode }}&page={{ page.next_page_number }}">Next</a>
+  <span class="muted">Page {{ page_number }}</span>
+  {% if has_next %}
+    <a class="btn ghost" hx-get="?{{ query.urlencode }}&page={{ page_number|add:'1' }}"
+       hx-target="#results" href="?{{ query.urlencode }}&page={{ page_number|add:'1' }}">Next</a>
   {% endif %}
 </div>
 {% else %}

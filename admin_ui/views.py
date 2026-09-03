@@ -15,7 +15,6 @@ from datetime import datetime, time
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.paginator import Paginator
 from django.db.models import Count, Sum
 from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -37,7 +36,7 @@ from admin_ui.roles import (
     set_role,
 )
 from core.models import Ark, Binding, Collection, Organisation, Resolution
-from core.search import export_rows, search_arks
+from core.search import counted, element_names, export_rows, search_arks
 from core.services import bind_element, collection_stats, unbind_elements
 from jobs.bulkbind import TEMPLATE_COLUMNS, template_csv
 from jobs.models import BulkBindJob
@@ -166,9 +165,19 @@ def _as_datetime(value):
 @require_role(VIEWER)
 def ark_list(request):
     collection, queryset = _search_from_request(request)
-    page = Paginator(queryset, PAGE_SIZE).get_page(request.GET.get("page"))
 
-    arks = list(page.object_list)
+    # Paginator would run COUNT(*) over the filtered set on every page view —
+    # a full index scan on a large table, and with a free-text filter it runs
+    # the whole LIKE plan a second time just to render a number.
+    total, capped = counted(queryset)
+    try:
+        number = max(1, int(request.GET.get("page") or 1))
+    except (TypeError, ValueError):
+        number = 1
+    offset = (number - 1) * PAGE_SIZE
+    arks = list(queryset[offset : offset + PAGE_SIZE + 1])
+    has_next = len(arks) > PAGE_SIZE
+    arks = arks[:PAGE_SIZE]
     bindings: dict[int, list] = {}
     for binding in Binding.objects.filter(ark__in=arks).order_by("qualifier", "name"):
         bindings.setdefault(binding.ark_id, []).append(binding)
@@ -180,12 +189,18 @@ def ark_list(request):
         ark.redirect_count = counters.get(ark.id, 0)
 
     context = {
-        "page": page,
+        "total": total,
+        "capped": capped,
+        "page_number": number,
+        "has_next": has_next,
+        "has_previous": number > 1,
         "arks": arks,
         "collections": Collection.objects.all(),
         "selected_collection": collection,
         "query": request.GET,
-        "element_names": Binding.objects.values_list("name", flat=True).distinct().order_by("name"),
+        # Cached and collection-scoped: an unscoped DISTINCT over every binding
+        # name is a full index scan on each page view.
+        "element_names": element_names(collection.pk if collection else None),
     }
     template = (
         "admin_ui/_ark_table.html"
@@ -292,9 +307,9 @@ def mint_template(request, pk):
 
 @require_role(VIEWER)
 def export(request):
-    _, queryset = _search_from_request(request)
+    collection, queryset = _search_from_request(request)
     stamp = timezone.now().strftime("%Y%m%d-%H%M")
-    return _csv_response(export_rows(queryset), f"arks-{stamp}.csv")
+    return _csv_response(export_rows(queryset, collection), f"arks-{stamp}.csv")
 
 
 class _Echo:

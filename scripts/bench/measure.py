@@ -122,9 +122,7 @@ def main(label: str, mint_count: int) -> None:
         collection_stats(collection)
 
     with measured("export first 5,000 rows"):
-        rows = 0
-        for _ in export_rows(search_arks(collection=collection)):
-            rows += 1
+        for rows, _ in enumerate(export_rows(search_arks(collection=collection)), start=1):
             if rows >= 5000:
                 break
 

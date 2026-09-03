@@ -34,8 +34,9 @@ class Command(BaseCommand):
         elif options["unbound"]:
             bound = False
 
+        collection = get_collection(options["collection"]) if options["collection"] else None
         queryset = search_arks(
-            collection=get_collection(options["collection"]) if options["collection"] else None,
+            collection=collection,
             text=options["text"],
             element=options["element"],
             value=options["value"],
@@ -47,10 +48,10 @@ class Command(BaseCommand):
 
         if options["out"]:
             with open(options["out"], "w", newline="") as handle:
-                count = _write(handle, queryset)
+                count = _write(handle, queryset, collection)
             self.stdout.write(self.style.SUCCESS(f"Wrote {count} rows to {options['out']}"))
         else:
-            _write(sys.stdout, queryset)
+            _write(sys.stdout, queryset, collection)
 
 
 def _as_date(value, flag):
@@ -65,10 +66,10 @@ def _as_date(value, flag):
     return timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
 
 
-def _write(handle, queryset) -> int:
+def _write(handle, queryset, collection=None) -> int:
     writer = csv.writer(handle)
     count = 0
-    for row in export_rows(queryset):
+    for row in export_rows(queryset, collection):
         writer.writerow(row)
         count += 1
     return max(count - 1, 0)
