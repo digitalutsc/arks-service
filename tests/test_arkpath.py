@@ -129,6 +129,13 @@ def test_inflection_does_not_leak_into_the_qualifier():
         assert parsed.qualifier == "/page1"
 
 
+def test_an_ordinary_query_string_is_not_an_inflection():
+    parsed = parse_ark_path("ark:/61220/utsc1?utm_source=x")
+    assert parsed.identifier == "utsc1"
+    assert parsed.inflection is Inflection.NONE
+    assert parsed.redirects is True
+
+
 def test_an_inflected_ark_is_not_redirected():
     assert parse_ark_path("ark:/61220/utsc1?").redirects is False
     assert parse_ark_path("ark:/61220/utsc1").redirects is True

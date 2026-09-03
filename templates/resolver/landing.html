@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ organisation.name|default:"ARK Service" }}{% endblock %}
+{% block body %}
+<main class="landing">
+  <h1>{{ organisation.name|default:"ARK identifier service" }}</h1>
+  {% if organisation.website %}
+    <p><a href="{{ organisation.website }}">{{ organisation.website }}</a></p>
+  {% endif %}
+
+  <p>
+    This service resolves
+    <a href="https://arks.org/about/">ARK identifiers</a> of the form
+    <code>/ark:/&lt;naan&gt;/&lt;identifier&gt;</code>.
+  </p>
+
+  {% if collections %}
+    <h2>Name assigning authorities</h2>
+    <ul>
+      {% for collection in collections %}
+        <li><code>{{ collection.naan }}</code> — {{ collection.naa|default:collection.name }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</main>
+{% endblock %}

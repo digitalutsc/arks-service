@@ -74,16 +74,23 @@ def _split_qualifier(qualifier: str) -> tuple[str, str]:
 
 
 def _detect_inflection(raw: str) -> tuple[str, Inflection]:
-    """Strip a trailing '?', '??' or '?info' and report which was present."""
-    # Order matters: '??' and '?info' both mean FULL, and '??' also ends in '?'.
-    for suffix, inflection in (
-        ("?info", Inflection.FULL),
-        ("??", Inflection.FULL),
-        ("?", Inflection.BRIEF),
-    ):
-        if raw.endswith(suffix):
-            return raw[: -len(suffix)], inflection
-    return raw, Inflection.NONE
+    """
+    Split ``raw`` at the first '?' and classify what followed it.
+
+    A bare '?' asks for brief metadata, '??' and '?info' for the full record.
+    Anything else is an ordinary query string and is discarded, exactly as the
+    legacy rewrite did (it passed only the path through to the resolver).
+    """
+    index = raw.find("?")
+    if index == -1:
+        return raw, Inflection.NONE
+
+    path, query = raw[:index], raw[index + 1 :]
+    if query == "":
+        return path, Inflection.BRIEF
+    if query in ("?", "info"):
+        return path, Inflection.FULL
+    return path, Inflection.NONE
 
 
 def parse_ark_path(path: str) -> ArkPath | None:
