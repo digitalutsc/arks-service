@@ -28,7 +28,14 @@ class Difference:
     new: str
 
     @property
+    def is_error(self) -> bool:
+        """True when one side could not be fetched at all, so nothing was proved."""
+        return self.legacy_status == 0 or self.new_status == 0
+
+    @property
     def reason(self) -> str:
+        if self.is_error:
+            return "fetch failed"
         if self.legacy_status != self.new_status:
             return f"status {self.legacy_status} -> {self.new_status}"
         return "different target"

@@ -177,3 +177,20 @@ def test_inflections_are_checked_by_default():
 def test_info_inflection_is_checked_too(data):
     paths = list(iter_check_paths(inflections=True))
     assert "/ark:/61220/utsc0?info" in paths
+
+
+def test_a_fetch_error_is_reported_as_an_error_not_a_difference():
+    # A socket failure means "unknown", not "these resolve differently"; an
+    # operator needs to re-run those rather than investigate them as findings.
+    difference = compare(
+        "/ark:/61220/utsc1", (0, "error: connection refused"), (302, "https://e.example")
+    )
+    assert difference is not None
+    assert difference.is_error is True
+
+
+def test_a_genuine_difference_is_not_an_error():
+    difference = compare(
+        "/ark:/61220/utsc1", (302, "https://old.example"), (302, "https://new.example")
+    )
+    assert difference.is_error is False

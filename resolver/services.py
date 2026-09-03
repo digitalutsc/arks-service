@@ -71,9 +71,12 @@ def render_erc(bindings: Iterable, include_support: bool) -> str:
 
     if include_support:
         support = [b for b in shown if is_support_element(b.name)]
-        lines.append("")
-        lines.append("erc-support:")
-        lines += [f"{format_label(b.name)}: {b.value}" for b in support]
+        # Legacy printed nothing at all when no element carried '??', so a bare
+        # header here would make every ?? and ?info path differ at cutover.
+        if support:
+            lines.append("")
+            lines.append("erc-support:")
+            lines += [f"{format_label(b.name)}: {b.value}" for b in support]
 
     return "\n".join(lines) + "\n"
 

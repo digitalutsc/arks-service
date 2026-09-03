@@ -2,8 +2,11 @@
 
 import csv
 import sys
+from datetime import datetime, time
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 
 from core.management.commands._common import get_collection
 from core.search import export_rows, search_arks
@@ -20,6 +23,8 @@ class Command(BaseCommand):
         parser.add_argument("--unbound", action="store_true", help="Only ARKs with no elements")
         parser.add_argument("--bound", action="store_true", help="Only ARKs with elements")
         parser.add_argument("--min-redirects", type=int, dest="min_redirects")
+        parser.add_argument("--minted-after", help="Only ARKs minted on or after this date")
+        parser.add_argument("--minted-before", help="Only ARKs minted on or before this date")
         parser.add_argument("--out", help="Write here instead of standard output")
 
     def handle(self, *args, **options):
@@ -36,6 +41,8 @@ class Command(BaseCommand):
             value=options["value"],
             bound=bound,
             min_redirects=options["min_redirects"],
+            minted_after=_as_date(options["minted_after"], "--minted-after"),
+            minted_before=_as_date(options["minted_before"], "--minted-before"),
         )
 
         if options["out"]:
@@ -44,6 +51,18 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Wrote {count} rows to {options['out']}"))
         else:
             _write(sys.stdout, queryset)
+
+
+def _as_date(value, flag):
+    """Parse a YYYY-MM-DD argument into an aware datetime."""
+    if not value:
+        return None
+    parsed = parse_datetime(value) or parse_date(value)
+    if parsed is None:
+        raise CommandError(f"{flag} must be a date such as 2026-01-31.")
+    if not isinstance(parsed, datetime):
+        parsed = datetime.combine(parsed, time.min)
+    return timezone.make_aware(parsed) if timezone.is_naive(parsed) else parsed
 
 
 def _write(handle, queryset) -> int:

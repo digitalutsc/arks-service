@@ -192,3 +192,25 @@ def test_stats_summarises_each_collection(collection):
     output = run("ark_stats")
     assert "utsc" in output
     assert "3" in output
+
+
+def test_export_can_filter_by_minted_date(collection, tmp_path):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    run("mint", "utsc", "2")
+    old = Ark.objects.get(identifier="utsc0")
+    old.minted_at = timezone.now() - timedelta(days=30)
+    old.save()
+
+    target = tmp_path / "out.csv"
+    run(
+        "export_arks",
+        "--minted-after",
+        (timezone.now() - timedelta(days=1)).date().isoformat(),
+        "--out",
+        str(target),
+    )
+    body = [r[0] for r in list(csv.reader(target.open()))[1:]]
+    assert body == ["61220/utsc1"]

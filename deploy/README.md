@@ -56,7 +56,8 @@ curl -sI 'https://ark.digital.utsc.utoronto.ca/ark:/61220/utsc1?' | head -1
 # expect: HTTP/1.1 200  (text/plain metadata)   NOT a 302
 ```
 
-`resolve_diff --inflections` covers this too, and is the better check.
+`resolve_diff` covers this too (inflections are checked by default) and is the
+better check.
 
 ## Cutover
 
@@ -91,9 +92,22 @@ ARK is proven to resolve identically.
        --new-base http://127.0.0.1:8000 --sample 500
    .venv/bin/python manage.py resolve_diff \
        --legacy-base https://ark.digital.utsc.utoronto.ca \
-       --new-base http://127.0.0.1:8000 --inflections --out cutover-diff.csv
+       --new-base http://127.0.0.1:8000 --out cutover-diff.csv
    ```
-   It exits non-zero while anything differs. Do not continue until it is clean.
+   It exits non-zero while anything differs, and separately if any path could
+   not be fetched — a socket failure proves nothing either way, so those are
+   reported apart from real differences rather than counted as passes. If you
+   see them, lower `--workers`; the default of 8 can exhaust local ports when
+   both services are on one host.
+
+   Legacy answers a miss by redirecting to its own `404.php` and wraps metadata
+   in `<pre>`, so those idioms are normalised before comparison; what remains is
+   a real difference in what an ARK resolves to. Rehearsed against a stand-in
+   legacy service over 2,000 ARKs, their qualifiers and variants, and all three
+   inflections — 8,343 paths, clean — and confirmed to still fail when a single
+   binding is changed.
+
+   Do not continue until it is clean.
 
 5. **Flip the vhost:**
    ```bash
@@ -124,6 +138,26 @@ awk '$7 ~ /rest\.php/ {print $1}' /var/log/apache2/*access*.log | sort | uniq -c
 If real integrations show up, they need converting to a management command run
 locally, or the decision to add a read-only API needs revisiting.
 
+## Things that will bite
+
+**`.env` must be complete.** The service refuses to start when `DJANGO_DEBUG`
+is false and either `DJANGO_SECRET_KEY` or `DATABASE_URL` is missing, and says
+which. That is deliberate: without the check it would come up against an empty
+SQLite file, 404 every ARK, and use a well-known key that makes session cookies
+forgeable.
+
+**systemd `EnvironmentFile` is not dotenv.** systemd keeps everything after the
+`=`, including inline `#` comments and trailing spaces, where python-dotenv
+would strip them. A value written `DJANGO_SECRET_KEY=abc # note` differs between
+the service and a manual `manage.py` run, and sessions minted under one are
+invalid under the other. Keep values bare and unquoted, with no trailing
+comments.
+
+**MySQL cannot return primary keys from a bulk insert.** Anything that mints and
+then immediately uses the new rows has to read them back; `mint()` does. Worth
+remembering before adding another bulk write path — and worth running the test
+suite against MySQL, not just SQLite, before believing it.
+
 ## Routine operations
 
 ```bash
@@ -139,6 +173,17 @@ locally, or the decision to add a read-only API needs revisiting.
 # export everything in a collection
 .venv/bin/python manage.py export_arks --collection utsc --out /tmp/utsc.csv
 ```
+
+## Accepted deviations from the original design note
+
+- **Uniqueness is `(naan, identifier)`**, not `(collection, identifier)` as the
+  design note said. Stricter, and it is what makes resolution unambiguous.
+- **`bindings` is indexed on `name` only.** `value` is unbounded TEXT, which
+  MySQL cannot index without a prefix length, so value search is a scan. At
+  current scale that is about a quarter of a second over 418k rows.
+- **NAA lives on the collection**, mirroring the legacy `:/naa` row, rather than
+  on the organisation. Where several collections share a NAAN, `/ark:/<naan>/`
+  answers with the lowest collection name, deterministically.
 
 ## Backups
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import re
+from datetime import datetime, time
 
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -19,6 +20,7 @@ from django.db.models import Count, Sum
 from django.http import Http404, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
@@ -148,7 +150,17 @@ def _search_from_request(request):
         value=request.GET.get("value", "").strip(),
         bound=bound,
         min_redirects=min_redirects,
+        minted_after=_as_datetime(request.GET.get("minted_after")),
+        minted_before=_as_datetime(request.GET.get("minted_before")),
     )
+
+
+def _as_datetime(value):
+    """Parse a YYYY-MM-DD filter value, ignoring anything unparseable."""
+    parsed = parse_date(value) if value else None
+    if parsed is None:
+        return None
+    return timezone.make_aware(datetime.combine(parsed, time.min))
 
 
 @require_role(VIEWER)

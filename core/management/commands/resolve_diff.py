@@ -100,14 +100,31 @@ class Command(BaseCommand):
                 writer.writerows(d.as_row() for d in differences)
             self.stdout.write(f"Wrote {len(differences)} difference(s) to {options['out']}")
 
-        for difference in differences[:20]:
+        errors = [d for d in differences if d.is_error]
+        real = [d for d in differences if not d.is_error]
+
+        for difference in real[:20]:
             self.stdout.write(f"  {difference.path}: {difference.reason}")
             self.stdout.write(f"      legacy: {difference.legacy[:120]}")
             self.stdout.write(f"      new:    {difference.new[:120]}")
 
-        if differences:
+        if errors:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"{len(errors)} path(s) could not be fetched from one side and prove nothing "
+                    "either way — re-run them, and lower --workers if the host ran out of sockets."
+                )
+            )
+            for difference in errors[:5]:
+                self.stdout.write(f"  {difference.path}: {difference.legacy or difference.new}")
+
+        if real:
             raise CommandError(
-                f"{len(differences)} of {checked:,} paths differ. Do not flip the vhost yet."
+                f"{len(real)} of {checked:,} paths differ. Do not flip the vhost yet."
+            )
+        if errors:
+            raise CommandError(
+                f"{len(errors)} of {checked:,} paths could not be checked. Re-run before cutting over."
             )
         self.stdout.write(
             self.style.SUCCESS(f"All {checked:,} paths resolve identically. Safe to cut over.")

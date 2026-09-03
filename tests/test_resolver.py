@@ -322,3 +322,28 @@ def test_an_inflection_beats_a_manifest_request(client, ark, monkeypatch):
     assert response.status_code == 200
     assert response["Content-Type"].startswith("text/plain")
     assert response.content.decode().startswith("erc:")
+
+
+def test_the_naa_for_a_naan_is_chosen_deterministically(client):
+    # Two collections can share a NAAN; whichever answers must not depend on
+    # database row order, or the same request gives different answers.
+    Collection.objects.create(
+        name="Zed maps", prefix="zmap", naan="61220", naa="Zed NAA", template=".zd"
+    )
+    Collection.objects.create(
+        name="Alpha books", prefix="abook", naan="61220", naa="Alpha NAA", template=".zd"
+    )
+    first = get(client, "/ark:/61220/").content.decode()
+    second = get(client, "/ark:/61220/").content.decode()
+    assert first == second
+    assert "Alpha NAA" in first, "the lowest collection name wins, so it is predictable"
+
+
+def test_full_metadata_omits_the_support_block_when_there_is_none(client, ark):
+    # Legacy's getMetdata returned false when no element carried '??', and the
+    # caller printed nothing, so the output was just the erc: block. Emitting a
+    # bare "erc-support:" header made every ?? and ?info path differ.
+    Binding.objects.create(ark=ark, name="WHO", value="Anonymous")
+    body = get(client, "/ark:/61220/utsc1??", raw="/ark:/61220/utsc1??").content.decode()
+    assert "erc:" in body
+    assert "erc-support:" not in body

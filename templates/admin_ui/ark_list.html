@@ -30,6 +30,10 @@
       </select></div>
     <div class="field"><label for="min_redirects">Min redirects</label>
       <input id="min_redirects" name="min_redirects" type="number" min="0" value="{{ query.min_redirects|default:'' }}"></div>
+    <div class="field"><label for="minted_after">Minted after</label>
+      <input id="minted_after" name="minted_after" type="date" value="{{ query.minted_after|default:'' }}"></div>
+    <div class="field"><label for="minted_before">Minted before</label>
+      <input id="minted_before" name="minted_before" type="date" value="{{ query.minted_before|default:'' }}"></div>
     <div class="field" style="flex:0 0 auto">
       <button type="submit">Search</button></div>
   </div>
