@@ -3,8 +3,17 @@
 Minting, binding and resolution of [ARK identifiers](https://arks.org/),
 replacing the legacy PHP service in `../legacy/`. Django 5.2 LTS on Python 3.12+.
 
-Every ARK already in circulation keeps resolving; see `deploy/README.md` for how
-the cutover is verified before anything is switched over.
+Every ARK already in circulation keeps resolving; the cutover is verified before
+anything is switched over.
+
+## Documentation
+
+| | |
+|---|---|
+| [DEPLOY.md](DEPLOY.md) | Local, Docker, CI and production deployment; cutover runbook; environment variables; troubleshooting |
+| [USAGES.md](USAGES.md) | Every task, in the staff interface and on the command line |
+| [README_EXTENDED.md](README_EXTENDED.md) | Architecture, components, data model and diagrams of every request path |
+| [deploy/](deploy/) | systemd units and the Apache vhost |
 
 ## Quick start
 
@@ -25,7 +34,7 @@ docker compose up
 ```
 
 The image carries no data. Production does **not** use Docker; it runs bare on
-the LAMP VM against the existing MySQL server (`deploy/README.md`).
+the LAMP VM against the existing MySQL server ([DEPLOY.md](DEPLOY.md)).
 
 ## How it fits together
 
@@ -57,7 +66,7 @@ NAA response for a bare NAAN.
 
 **No HTTP API.** The admin UI talks to the ORM directly; scripts use management
 commands. Legacy `admin/rest.php` goes away at cutover — check your access logs
-for callers first (`deploy/README.md`).
+for callers first ([DEPLOY.md](DEPLOY.md#step-0--find-out-who-calls-the-old-rest-endpoint)).
 
 ## Command line
 

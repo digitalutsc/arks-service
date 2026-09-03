@@ -214,3 +214,43 @@ def test_export_can_filter_by_minted_date(collection, tmp_path):
     )
     body = [r[0] for r in list(csv.reader(target.open()))[1:]]
     assert body == ["61220/utsc1"]
+
+
+def test_unbind_all_on_a_bare_ark_retires_it_completely(collection):
+    # "Retire this ARK" must leave nothing resolving, including its parts —
+    # and must match what the UI's "Purge all elements" does.
+    run("mint", "utsc", "1")
+    run("bind", "61220/utsc0", "URL", "https://example.org/0")
+    run("bind", "61220/utsc0/page1", "URL", "https://example.org/0/p1")
+    run("bind", "61220/utsc0/page1.image.png", "URL", "https://example.org/0/p1.png")
+
+    run("unbind", "61220/utsc0", "--all")
+
+    assert not Binding.objects.filter(ark__identifier="utsc0").exists()
+    assert Ark.objects.filter(identifier="utsc0").exists(), "the identifier is never reissued"
+
+
+def test_unbind_all_under_a_qualifier_only_clears_that_qualifier(collection):
+    run("mint", "utsc", "1")
+    run("bind", "61220/utsc0", "URL", "https://example.org/0")
+    run("bind", "61220/utsc0/page1", "URL", "https://example.org/0/p1")
+
+    run("unbind", "61220/utsc0/page1", "--all")
+
+    assert Binding.objects.filter(ark__identifier="utsc0", qualifier="").exists()
+    assert not Binding.objects.filter(ark__identifier="utsc0", qualifier="/page1").exists()
+
+
+def test_the_cli_and_the_ui_purge_the_same_way(collection):
+    from core.services import unbind_elements
+
+    run("mint", "utsc", "2")
+    for ident in ("utsc0", "utsc1"):
+        run("bind", f"61220/{ident}", "URL", "https://example.org/x")
+        run("bind", f"61220/{ident}/page1", "URL", "https://example.org/x/p1")
+
+    run("unbind", "61220/utsc0", "--all")                       # the CLI
+    unbind_elements(Ark.objects.get(identifier="utsc1"))         # what the UI calls
+
+    assert not Binding.objects.filter(ark__identifier="utsc0").exists()
+    assert not Binding.objects.filter(ark__identifier="utsc1").exists()

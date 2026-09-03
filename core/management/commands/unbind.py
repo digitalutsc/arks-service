@@ -12,13 +12,21 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("ark")
         parser.add_argument("element", nargs="?", help="Element name; omit with --all")
-        parser.add_argument("--all", action="store_true", help="Remove every element")
+        parser.add_argument(
+            "--all",
+            action="store_true",
+            help="Remove every element. On a bare ARK that means every qualifier too, "
+            "so the ARK stops resolving entirely; name a qualifier to scope it.",
+        )
 
     def handle(self, *args, **options):
         ark, qualifier = get_ark(options["ark"])
 
         if options["all"]:
-            removed = unbind_elements(ark, qualifier=qualifier)
+            # A bare ARK means the whole ARK, parts included — otherwise
+            # "retire this ARK" would leave its parts resolving, and the command
+            # would disagree with the UI's "Purge all elements".
+            removed = unbind_elements(ark, qualifier=qualifier or None)
         elif options["element"]:
             removed = unbind_elements(ark, name=options["element"], qualifier=qualifier)
         else:
