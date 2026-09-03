@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}ARKs{% endblock %}
+{% block body %}
+<h1>ARKs</h1>
+<p class="sub">Free text searches identifiers and every bound value, whatever the element is called.</p>
+
+<form class="panel" method="get" action="{% url 'admin_ui:ark_list' %}"
+      hx-get="{% url 'admin_ui:ark_list' %}" hx-target="#results" hx-push-url="true"
+      hx-trigger="submit, change from:select, change from:input[type=number]">
+  <div class="row">
+    <div class="field"><label for="q">Free text</label>
+      <input id="q" name="q" value="{{ query.q|default:'' }}" placeholder="identifier or any value"></div>
+    <div class="field"><label for="collection">Collection</label>
+      <select id="collection" name="collection">
+        <option value="">All</option>
+        {% for c in collections %}
+          <option value="{{ c.pk }}" {% if selected_collection and selected_collection.pk == c.pk %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select></div>
+    <div class="field"><label for="element">Element</label>
+      <input id="element" name="element" list="element-names" value="{{ query.element|default:'' }}" placeholder="any">
+      <datalist id="element-names">{% for name in element_names %}<option value="{{ name }}">{% endfor %}</datalist></div>
+    <div class="field"><label for="value">Exact value</label>
+      <input id="value" name="value" value="{{ query.value|default:'' }}"></div>
+    <div class="field"><label for="bound">Bound</label>
+      <select id="bound" name="bound">
+        <option value="">Any</option>
+        <option value="yes" {% if query.bound == 'yes' %}selected{% endif %}>Bound</option>
+        <option value="no" {% if query.bound == 'no' %}selected{% endif %}>Unbound</option>
+      </select></div>
+    <div class="field"><label for="min_redirects">Min redirects</label>
+      <input id="min_redirects" name="min_redirects" type="number" min="0" value="{{ query.min_redirects|default:'' }}"></div>
+    <div class="field" style="flex:0 0 auto">
+      <button type="submit">Search</button></div>
+  </div>
+</form>
+
+<div id="results">{% include "admin_ui/_ark_table.html" %}</div>
+{% endblock %}

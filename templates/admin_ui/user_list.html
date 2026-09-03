@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block body %}
+<h1>Users and roles</h1>
+<p class="sub">Accounts are created with <code>manage.py createsuperuser</code> or the Django admin.
+  A user with no role can sign in but do nothing.</p>
+
+<div class="table-wrap"><table>
+  <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Change to</th></tr></thead>
+  <tbody>
+  {% for person in people %}
+    <tr>
+      <td>{{ person.user.username }}{% if person.user.is_superuser %} <span class="pill">superuser</span>{% endif %}</td>
+      <td class="muted">{{ person.user.get_full_name|default:"—" }}</td>
+      <td>{{ person.role|default:"—" }}</td>
+      <td>
+        <form method="post" style="display:flex;gap:.4rem">{% csrf_token %}
+          <input type="hidden" name="user" value="{{ person.user.pk }}">
+          <select name="role">
+            {% for role in roles %}<option value="{{ role }}" {% if person.role == role %}selected{% endif %}>{{ role }}</option>{% endfor %}
+            <option value="none">No role</option>
+          </select>
+          <button class="ghost" type="submit">Save</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+
+<div class="panel">
+  <h2 style="margin-top:0">What each role can do</h2>
+  <table><tbody>
+    <tr><td><strong>Admin</strong></td><td>Everything: collections, purging, users.</td></tr>
+    <tr><td><strong>Editor</strong></td><td>Mint, bind, unbind, bulk bind, export.</td></tr>
+    <tr><td><strong>Viewer</strong></td><td>Search and export only.</td></tr>
+  </tbody></table>
+</div>
+{% endblock %}

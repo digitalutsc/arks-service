@@ -1,0 +1,44 @@
+<p class="muted">{{ page.paginator.count }} ARK{{ page.paginator.count|pluralize }}
+  {% if page.paginator.count %}
+    · <a href="{% url 'admin_ui:export' %}?{{ query.urlencode }}">Export these as CSV</a>
+  {% endif %}
+</p>
+
+{% if page.object_list %}
+<div class="table-wrap">
+<table>
+  <thead><tr><th>ARK</th><th>Elements</th><th>Redirects</th><th>Minted</th></tr></thead>
+  <tbody>
+  {% for ark in arks %}
+    <tr>
+      <td><a class="mono" href="{% url 'admin_ui:ark_detail' ark.pk %}">{{ ark.name }}</a></td>
+      <td>
+        {% for binding in ark.loaded_bindings|slice:":4" %}
+          <div><span class="qual">{{ binding.qualifier }}</span>
+            <strong>{{ binding.name }}</strong> {{ binding.value|truncatechars:70 }}</div>
+        {% empty %}<span class="muted">—</span>{% endfor %}
+        {% if ark.loaded_bindings|length > 4 %}
+          <div class="muted">+{{ ark.loaded_bindings|length|add:"-4" }} more</div>{% endif %}
+      </td>
+      <td>{{ ark.redirect_count }}</td>
+      <td class="muted">{{ ark.minted_at|date:"Y-m-d" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="pager">
+  {% if page.has_previous %}
+    <a class="btn ghost" hx-get="?{{ query.urlencode }}&page={{ page.previous_page_number }}"
+       hx-target="#results" href="?{{ query.urlencode }}&page={{ page.previous_page_number }}">Previous</a>
+  {% endif %}
+  <span class="muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}
+    <a class="btn ghost" hx-get="?{{ query.urlencode }}&page={{ page.next_page_number }}"
+       hx-target="#results" href="?{{ query.urlencode }}&page={{ page.next_page_number }}">Next</a>
+  {% endif %}
+</div>
+{% else %}
+<div class="panel"><p class="muted">Nothing matches those filters.</p></div>
+{% endif %}

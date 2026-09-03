@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Bulk bind #{{ job.pk }}{% endblock %}
+{% block body %}
+<h1>Bulk bind #{{ job.pk }}</h1>
+<p class="sub"><a href="{% url 'admin_ui:collection_detail' job.collection.pk %}">{{ job.collection.name }}</a>
+  · uploaded {{ job.created_at|date:"Y-m-d H:i" }}{% if job.created_by %} by {{ job.created_by.username }}{% endif %}</p>
+
+<div id="status"
+     {% if not job.is_finished %}hx-get="{% url 'admin_ui:job_detail' job.pk %}"
+     hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  {% include "admin_ui/_job_status.html" %}
+</div>
+{% endblock %}

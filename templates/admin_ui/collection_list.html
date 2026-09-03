@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Collections{% endblock %}
+{% block body %}
+<h1>Collections</h1>
+<p class="sub">Each collection is a minter with its own prefix, NAAN and noid template.</p>
+
+{% if can_administer %}
+  <p><a class="btn" href="{% url 'admin_ui:collection_create' %}">New collection</a></p>
+{% endif %}
+
+{% if collections %}
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Name</th><th>Prefix</th><th>NAAN</th><th>Template</th><th>ARKs</th><th></th></tr></thead>
+  <tbody>
+  {% for collection in collections %}
+    <tr>
+      <td><a href="{% url 'admin_ui:collection_detail' collection.pk %}">{{ collection.name }}</a></td>
+      <td><code>{{ collection.prefix|default:"—" }}</code></td>
+      <td><code>{{ collection.naan }}</code></td>
+      <td><code>{{ collection.template }}</code></td>
+      <td>{{ collection.ark_count|default:0 }}</td>
+      <td><a href="{% url 'admin_ui:ark_list' %}?collection={{ collection.pk }}">Browse</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+  <div class="panel"><p class="muted">No collections yet.
+  {% if can_administer %}Create one to start minting.{% else %}An administrator needs to create one.{% endif %}</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Mint · {{ collection.name }}{% endblock %}
+{% block body %}
+<h1>Mint ARKs</h1>
+<p class="sub">{{ collection.name }} · <code>{{ collection.firstpart }}</code> · template <code>{{ collection.template }}</code></p>
+
+<form method="post" class="panel">{% csrf_token %}
+  <div class="row">
+    <div class="field"><label for="count">How many</label>
+      <input id="count" name="count" type="number" min="1" value="1" required autofocus></div>
+    <div class="field" style="flex:0 0 auto"><button type="submit">Mint</button></div>
+  </div>
+</form>
+
+{% if minted %}
+<h2>{{ minted|length }} new ARK{{ minted|length|pluralize }}</h2>
+<div class="panel">
+  <p>Download the fill-in template, add your fields in a spreadsheet, then upload it on the
+     <a href="{% url 'admin_ui:bulk_bind' collection.pk %}">bulk bind</a> page.</p>
+  <p><a class="btn" href="{% url 'admin_ui:mint_template' collection.pk %}">Download template CSV</a></p>
+  <p class="muted">Columns: Ark_ID{% for c in columns %}, {{ c }}{% endfor %} — add any others you need.</p>
+</div>
+<div class="table-wrap"><table>
+  <thead><tr><th>ARK</th><th>Counter</th></tr></thead>
+  <tbody>{% for ark in minted %}
+    <tr><td class="mono"><a href="{% url 'admin_ui:ark_detail' ark.pk %}">{{ ark.name }}</a></td>
+        <td class="muted">{{ ark.sequence }}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% endif %}
+{% endblock %}

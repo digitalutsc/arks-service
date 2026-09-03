@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ collection.name }}{% endblock %}
+{% block body %}
+<h1>{{ collection.name }}</h1>
+<p class="sub"><code>{{ collection.firstpart }}</code> · template <code>{{ collection.template }}</code>
+  {% if spec %}· {{ spec.gen_type }} · capacity {{ capacity }}{% endif %}</p>
+
+<div class="grid">
+  <div class="stat"><div class="n">{{ total }}</div><div class="l">ARKs</div></div>
+  <div class="stat"><div class="n">{{ bound }}</div><div class="l">Bound</div></div>
+  <div class="stat"><div class="n">{{ unbound }}</div><div class="l">Unbound</div></div>
+  <div class="stat"><div class="n">{{ elements }}</div><div class="l">Elements</div></div>
+  <div class="stat"><div class="n">{{ redirects }}</div><div class="l">Redirects</div></div>
+</div>
+
+<p style="margin-top:1rem">
+  <a class="btn" href="{% url 'admin_ui:ark_list' %}?collection={{ collection.pk }}">Browse ARKs</a>
+  {% if can_edit %}
+    <a class="btn" href="{% url 'admin_ui:mint' collection.pk %}">Mint</a>
+    <a class="btn" href="{% url 'admin_ui:bulk_bind' collection.pk %}">Bulk bind</a>
+  {% endif %}
+  <a class="btn ghost" href="{% url 'admin_ui:export' %}?collection={{ collection.pk }}">Export CSV</a>
+</p>
+
+{% if can_administer %}
+<div class="panel">
+  <h2 style="margin-top:0">Settings</h2>
+  <form method="post">{% csrf_token %}
+    <div class="field"><label for="name">Name</label>
+      <input id="name" name="name" value="{{ collection.name }}" style="width:100%"></div>
+    <div class="field"><label for="naa">Name Assigning Authority</label>
+      <input id="naa" name="naa" value="{{ collection.naa }}" style="width:100%"></div>
+    <p class="muted">The prefix, NAAN and template cannot be changed once ARKs exist — doing so would
+      break identifiers already in circulation.</p>
+    <button type="submit">Save</button>
+  </form>
+</div>
+{% endif %}
+
+{% if jobs %}
+<h2>Recent bulk binds</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>When</th><th>Status</th><th>Created</th><th>Updated</th><th>Failed</th><th></th></tr></thead>
+  <tbody>
+  {% for job in jobs %}
+    <tr>
+      <td>{{ job.created_at|date:"Y-m-d H:i" }}</td>
+      <td><span class="pill {% if job.status == 'finished' and not job.had_errors %}ok{% elif job.had_errors %}bad{% else %}run{% endif %}">{{ job.get_status_display }}</span></td>
+      <td>{{ job.created }}</td><td>{{ job.updated }}</td><td>{{ job.failed }}</td>
+      <td><a href="{% url 'admin_ui:job_detail' job.pk %}">Details</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+{% endblock %}

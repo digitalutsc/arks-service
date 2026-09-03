@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block body %}
+<div style="max-width:340px;margin:4rem auto">
+  <h1>Sign in</h1>
+  <p class="sub">{{ organisation.name|default:"ARK identifier service" }}</p>
+  {% if form.errors %}<div class="msg error">That username and password did not match.</div>{% endif %}
+  <form method="post" class="panel">{% csrf_token %}
+    <div class="field"><label for="id_username">Username</label>{{ form.username }}</div>
+    <div class="field"><label for="id_password">Password</label>{{ form.password }}</div>
+    <button type="submit">Sign in</button>
+  </form>
+</div>
+{% endblock %}

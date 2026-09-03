@@ -4,9 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ARK Service{% endblock %}</title>
-  <link rel="stylesheet" href="{% load static %}{% static 'css/app.css' %}">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
 </head>
 <body>
+{% if user.is_authenticated %}
+<header class="top">
+  <a class="brand" href="{% url 'admin_ui:collection_list' %}">{{ organisation.name|default:"ARK Service" }}</a>
+  <nav>
+    <a href="{% url 'admin_ui:collection_list' %}">Collections</a>
+    <a href="{% url 'admin_ui:ark_list' %}">ARKs</a>
+    {% if can_administer %}<a href="{% url 'admin_ui:user_list' %}">Users</a>{% endif %}
+    <span class="role">{{ user.username }} · {{ user_role|default:"no role" }}</span>
+    <form method="post" action="{% url 'admin_ui:logout' %}">{% csrf_token %}
+      <button class="ghost" type="submit">Sign out</button>
+    </form>
+  </nav>
+</header>
+{% endif %}
+<main>
+  {% if messages %}{% for message in messages %}
+    <div class="msg {{ message.tags }}">{{ message }}</div>
+  {% endfor %}{% endif %}
   {% block body %}{% endblock %}
+</main>
 </body>
 </html>

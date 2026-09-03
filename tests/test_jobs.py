@@ -1,6 +1,5 @@
 """Bulk-bind jobs: the record staff watch while an upload is processed."""
 
-
 import pytest
 from django.core.files.base import ContentFile
 
