@@ -9,6 +9,8 @@ from django.core.files.base import ContentFile
 from django.db import models
 from django.utils import timezone
 
+from core.search import csv_safe
+
 
 class BulkBindJob(models.Model):
     """One uploaded CSV, and what became of it."""
@@ -95,7 +97,9 @@ class BulkBindJob(models.Model):
         writer = csv.writer(buffer)
         writer.writerow(["row", "ark_id", "status", "message"])
         for row in result.rows:
-            writer.writerow([row.number, row.ark_id, row.status, row.message])
+            writer.writerow(
+                [row.number, csv_safe(row.ark_id), csv_safe(row.status), csv_safe(row.message)]
+            )
         self.results.save(
             f"job-{self.pk}-results.csv", ContentFile(buffer.getvalue().encode()), save=False
         )

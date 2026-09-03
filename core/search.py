@@ -25,6 +25,17 @@ from core.models import Ark, Binding, Resolution, value_prefix
 #: First column of an export; also the column bulk bind reads.
 ARK_ID_COLUMN = "Ark_ID"
 
+#: Leading characters that make Excel and LibreOffice treat a cell as a formula.
+#: Values are stored verbatim and escaped only on the way out.
+FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
+
+
+def csv_safe(value: str) -> str:
+    """Neutralise a value that a spreadsheet would otherwise execute."""
+    text = "" if value is None else str(value)
+    return "'" + text if text.startswith(FORMULA_LEAD) else text
+
+
 #: Rows pulled from the database at a time when exporting.
 EXPORT_CHUNK = 2000
 
@@ -153,7 +164,7 @@ def export_rows(queryset: QuerySet[Ark], collection=None) -> Iterator[list[str]]
                 continue
             row = rows.setdefault((ark_id, qualifier), [""] * width)
             row[0] = arks[ark_id] + qualifier
-            row[column] = value
+            row[column] = csv_safe(value)
             bound.add(ark_id)
 
         # Keep unbound ARKs in the output so they can be filled in.

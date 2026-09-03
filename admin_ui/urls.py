@@ -2,11 +2,12 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from admin_ui import views
+from admin_ui.auth_views import ThrottledLoginView
 
 app_name = "admin_ui"
 
 urlpatterns = [
-    path("login/", auth_views.LoginView.as_view(template_name="admin_ui/login.html"), name="login"),
+    path("login/", ThrottledLoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("", views.collection_list, name="collection_list"),
     path("collections/new/", views.collection_create, name="collection_create"),

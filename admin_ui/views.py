@@ -9,9 +9,11 @@ commands use, so the two can never drift apart.
 from __future__ import annotations
 
 import csv
+import logging
 import re
 from datetime import datetime, time
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -30,7 +32,9 @@ from admin_ui.roles import (
     VIEWER,
     can_administer,
     can_edit,
+    clear_role,
     ensure_groups,
+    is_last_administrator,
     require_role,
     role_of,
     set_role,
@@ -44,7 +48,13 @@ from jobs.tasks import run_bulk_bind
 from minting.minter import MintError, mint
 from minting.noid import TemplateError
 
+logger = logging.getLogger(__name__)
+
 PAGE_SIZE = 50
+
+#: Deep pages cost the database an ever larger OFFSET for no practical gain;
+#: past this, filter instead.
+MAX_PAGE = 1000
 
 
 # --- collections ----------------------------------------------------------
@@ -127,10 +137,27 @@ def collection_detail(request, pk):
 # --- searching ------------------------------------------------------------
 
 
+def as_int(value) -> int | None:
+    """
+    Parse a request parameter as an integer, or None.
+
+    `str.isdigit()` is not enough: it is True for superscripts such as "²",
+    which int() then refuses, so the caller would 500 on a crafted query string.
+    """
+    text = (value or "").strip()
+    if not text.isascii() or not text.isdigit():
+        return None
+    try:
+        return int(text)
+    except ValueError:  # pragma: no cover - unreachable after the guard
+        return None
+
+
 def _search_from_request(request):
     collection = None
-    if request.GET.get("collection"):
-        collection = Collection.objects.filter(pk=request.GET["collection"]).first()
+    collection_pk = as_int(request.GET.get("collection"))
+    if collection_pk is not None:
+        collection = Collection.objects.filter(pk=collection_pk).first()
 
     bound = None
     if request.GET.get("bound") == "yes":
@@ -138,9 +165,7 @@ def _search_from_request(request):
     elif request.GET.get("bound") == "no":
         bound = False
 
-    min_redirects = None
-    if (request.GET.get("min_redirects") or "").isdigit():
-        min_redirects = int(request.GET["min_redirects"])
+    min_redirects = as_int(request.GET.get("min_redirects"))
 
     return collection, search_arks(
         collection=collection,
@@ -170,10 +195,7 @@ def ark_list(request):
     # a full index scan on a large table, and with a free-text filter it runs
     # the whole LIKE plan a second time just to render a number.
     total, capped = counted(queryset)
-    try:
-        number = max(1, int(request.GET.get("page") or 1))
-    except (TypeError, ValueError):
-        number = 1
+    number = max(1, min(as_int(request.GET.get("page")) or 1, MAX_PAGE))
     offset = (number - 1) * PAGE_SIZE
     arks = list(queryset[offset : offset + PAGE_SIZE + 1])
     has_next = len(arks) > PAGE_SIZE
@@ -277,7 +299,7 @@ def mint_view(request, pk):
                 minted = mint(collection, count=count, user=request.user)
                 messages.success(request, f"Minted {len(minted)} ARK(s).")
                 request.session["last_minted"] = [a.pk for a in minted]
-            except (MintError, TemplateError) as exc:
+            except (MintError, TemplateError, ValueError) as exc:
                 messages.error(request, str(exc))
 
     return render(
@@ -332,14 +354,30 @@ def _csv_response(rows, filename: str) -> StreamingHttpResponse:
 # --- bulk bind ------------------------------------------------------------
 
 
+def _upload_problem(upload) -> str | None:
+    """Why this upload cannot be accepted, or None. Checked before any work."""
+    if not upload:
+        return "Choose a CSV file to upload."
+    limit = getattr(settings, "BULK_BIND_MAX_BYTES", 50 * 1024 * 1024)
+    if upload.size > limit:
+        return (
+            f"That file is {upload.size / 1e6:.1f} MB; the limit is {limit / 1e6:.0f} MB. "
+            "Split it into smaller uploads."
+        )
+    if not (upload.name or "").lower().endswith(".csv"):
+        return "Only .csv files can be uploaded."
+    return None
+
+
 @require_role(EDITOR)
 def bulk_bind(request, pk):
     collection = get_object_or_404(Collection, pk=pk)
 
     if request.method == "POST":
         upload = request.FILES.get("file")
-        if not upload:
-            messages.error(request, "Choose a CSV file to upload.")
+        problem = _upload_problem(upload)
+        if problem:
+            messages.error(request, problem)
         else:
             job = BulkBindJob.objects.create(
                 collection=collection,
@@ -348,7 +386,17 @@ def bulk_bind(request, pk):
                 purge_first=bool(request.POST.get("purge_first")),
                 created_by=request.user,
             )
-            run_bulk_bind.delay(job.pk)
+            try:
+                run_bulk_bind.delay(job.pk)
+            except Exception:
+                # Redis unreachable: say so and mark the job, rather than
+                # leaving it pending forever behind a 500.
+                logger.exception("could not queue bulk bind job %s", job.pk)
+                job.mark_failed(
+                    "Could not be queued — the job runner is unreachable. "
+                    "Ask an administrator to check the worker, then upload again."
+                )
+                messages.error(request, "The job runner is unavailable; nothing was applied.")
             return redirect("admin_ui:job_detail", pk=job.pk)
 
     return render(
@@ -387,15 +435,23 @@ def user_list(request):
     ensure_groups()
 
     if request.method == "POST":
-        target = User.objects.filter(pk=request.POST.get("user")).first()
+        target_pk = as_int(request.POST.get("user"))
+        target = User.objects.filter(pk=target_pk).first() if target_pk else None
         role = request.POST.get("role")
-        if target and role in ROLES:
+        if target is None:
+            messages.error(request, "No such user.")
+            return redirect("admin_ui:user_list")
+        if role != ADMIN and role_of(target) == ADMIN and is_last_administrator(target):
+            messages.error(
+                request,
+                f"{target.username} is the only Admin. Give someone else the Admin role first, "
+                "or nobody will be able to manage this service.",
+            )
+        elif role in ROLES:
             set_role(target, role)
             messages.success(request, f"{target.username} is now {role}.")
-        elif target and role == "none":
-            from django.contrib.auth.models import Group
-
-            target.groups.remove(*Group.objects.filter(name__in=ROLES))
+        elif role == "none":
+            clear_role(target)
             messages.success(request, f"{target.username} has no role.")
         return redirect("admin_ui:user_list")
 

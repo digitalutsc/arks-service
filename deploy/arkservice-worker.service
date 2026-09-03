@@ -17,8 +17,23 @@ RestartSec=5s
 
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=full
 ProtectHome=true
+# Hardening. The service needs to write only its logs and MEDIA_ROOT.
+ProtectSystem=strict
+ReadWritePaths=/var/log/arkservice /var/www/arkservice/media
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+MemoryMax=2G
+
 
 [Install]
 WantedBy=multi-user.target

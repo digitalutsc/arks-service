@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import http.client
 import ipaddress
 import socket
 import urllib.request
 from collections.abc import Iterable
+from dataclasses import dataclass
 from urllib.parse import quote, urlparse
 
 from django.conf import settings
@@ -96,13 +98,67 @@ class _NoRedirects(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def check_fetch_target(url: str) -> None:
+@dataclass(frozen=True)
+class FetchTarget:
+    """A vetted target: the address to connect to, and the host to ask for."""
+
+    url: str
+    host: str
+    address: str
+    port: int
+
+
+def resolve_host(host: str, port: int | None) -> list[str]:
+    """Every address ``host`` resolves to. Separated out so tests can steer it."""
+    try:
+        return [entry[4][0] for entry in socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)]
+    except OSError as exc:
+        raise UnsafeTarget(f"Could not resolve {host!r}.") from exc
+
+
+#: NAT64 ranges. An IPv6 address here carries an IPv4 address in its low 32
+#: bits, and Python reports the wrapper as global however private the address
+#: inside it is — so 64:ff9b::7f00:1 would otherwise pass as public loopback.
+_NAT64_PREFIXES = (
+    ipaddress.ip_network("64:ff9b::/96"),
+    ipaddress.ip_network("64:ff9b:1::/48"),
+)
+
+
+def _unwrap(address):
+    """Follow IPv4-mapped and NAT64 wrappers down to the address really used."""
+    if not isinstance(address, ipaddress.IPv6Address):
+        return address
+    if address.ipv4_mapped:
+        return address.ipv4_mapped
+    for prefix in _NAT64_PREFIXES:
+        if address in prefix:
+            return ipaddress.ip_address(int(address) & 0xFFFFFFFF)
+    return address
+
+
+def _is_reachable(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     """
-    Raise :class:`UnsafeTarget` unless ``url`` is safe to fetch server-side.
+    True only for addresses on the public internet.
+
+    ``is_global`` does most of the work — it excludes private, loopback,
+    link-local, reserved, multicast and shared address space in one check, where
+    testing ranges one at a time keeps missing new ones — but it is applied to
+    the unwrapped address so a tunnel cannot smuggle a private one through.
+    """
+    return _unwrap(address).is_global
+
+
+def safe_target(url: str) -> FetchTarget:
+    """
+    Vet ``url`` and return the exact address to connect to.
 
     The target of a /manifest request comes from a binding, which any Editor or
-    bulk-bind CSV can set, and the endpoint is public. Without this the resolver
-    is a fetch proxy into the host and its private network.
+    bulk-bind CSV can set, and the endpoint is public. Returning the address —
+    rather than just approving the URL — is what closes DNS rebinding: checking
+    the hostname and then letting the HTTP client resolve it again lets a
+    server answer with a public address for the check and a loopback address
+    for the fetch.
     """
     parsed = urlparse(url or "")
     if parsed.scheme not in ("http", "https"):
@@ -113,27 +169,73 @@ def check_fetch_target(url: str) -> None:
     if not parsed.hostname:
         raise UnsafeTarget("The target URL has no host.")
 
-    try:
-        resolved = socket.getaddrinfo(
-            parsed.hostname, parsed.port or None, proto=socket.IPPROTO_TCP
-        )
-    except OSError as exc:
-        raise UnsafeTarget(f"Could not resolve {parsed.hostname!r}.") from exc
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    addresses = resolve_host(parsed.hostname, port)
+    if not addresses:
+        raise UnsafeTarget(f"Could not resolve {parsed.hostname!r}.")
 
-    for entry in resolved:
-        address = ipaddress.ip_address(entry[4][0])
-        if (
-            address.is_private
-            or address.is_loopback
-            or address.is_link_local
-            or address.is_reserved
-            or address.is_multicast
-            or address.is_unspecified
-        ):
+    for raw in addresses:
+        address = ipaddress.ip_address(raw)
+        if not _is_reachable(address):
+            # Any non-public answer disqualifies the host: a rebinding server
+            # can otherwise return one good address among several.
             raise UnsafeTarget(
                 f"{parsed.hostname} resolves to the internal address {address}, "
                 "which this service will not fetch."
             )
+
+    return FetchTarget(url=url, host=parsed.hostname, address=addresses[0], port=port)
+
+
+def check_fetch_target(url: str) -> None:
+    """Raise :class:`UnsafeTarget` unless ``url`` is safe to fetch server-side."""
+    safe_target(url)
+
+
+class _PinnedHTTPConnection(http.client.HTTPConnection):
+    """Connects to a vetted address while still presenting the real Host."""
+
+    pinned_address: str = ""
+
+    def connect(self):
+        self.sock = socket.create_connection(
+            (self.pinned_address, self.port), self.timeout, self.source_address
+        )
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    pinned_address: str = ""
+
+    def connect(self):
+        sock = socket.create_connection(
+            (self.pinned_address, self.port), self.timeout, self.source_address
+        )
+        # server_hostname stays the real host so certificate validation is
+        # still against the name, not the pinned address.
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+
+
+def _pinned_opener(target: FetchTarget):
+    """An opener that connects only to the address already vetted."""
+
+    class _HTTPHandler(urllib.request.HTTPHandler):
+        def http_open(self, req):
+            return self.do_open(_connection_factory(http_class=_PinnedHTTPConnection), req)
+
+    class _HTTPSHandler(urllib.request.HTTPSHandler):
+        def https_open(self, req):
+            return self.do_open(_connection_factory(http_class=_PinnedHTTPSConnection), req)
+
+    def _connection_factory(http_class):
+        def build(host, timeout=None, **kwargs):
+            kwargs.pop("context", None)
+            connection = http_class(host, timeout=timeout, **kwargs)
+            connection.pinned_address = target.address
+            return connection
+
+        return build
+
+    return urllib.request.build_opener(_NoRedirects, _HTTPHandler, _HTTPSHandler)
 
 
 def fetch_json(url: str, timeout: int | None = None, max_bytes: int | None = None) -> bytes:
@@ -142,15 +244,15 @@ def fetch_json(url: str, timeout: int | None = None, max_bytes: int | None = Non
 
     Used only by the /manifest inflection, which proxies a target's JSON (a IIIF
     manifest in practice) instead of redirecting to it. Redirects are refused,
-    since following one would bypass :func:`check_fetch_target`.
+    since following one would bypass the address check.
     """
     timeout = timeout if timeout is not None else settings.MANIFEST_FETCH_TIMEOUT
     max_bytes = max_bytes if max_bytes is not None else settings.MANIFEST_MAX_BYTES
 
-    check_fetch_target(url)
+    target = safe_target(url)
 
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
-    opener = urllib.request.build_opener(_NoRedirects)
+    opener = _pinned_opener(target)
     with opener.open(request, timeout=timeout) as response:
         # Read one byte past the limit so truncation is detectable; a silently
         # truncated body would otherwise surface as an unexplained parse error.

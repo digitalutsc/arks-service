@@ -47,6 +47,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "arkservice.middleware.SecurityHeadersMiddleware",
     # Serves static files straight from gunicorn, so the Docker image and a
     # bare gunicorn run need no separate web server. Apache can still take
     # over /static/ in production if preferred.
@@ -154,6 +155,33 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
 
+# --- Cache ----------------------------------------------------------------
+# Redis in production: the login lockout counter and the element-name list are
+# only shared between gunicorn workers if the cache is. Falls back to
+# per-process memory so development needs no Redis.
+REDIS_URL = env.str("REDIS_URL", default="")
+if REDIS_URL:
+    CACHES = {
+        "default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": REDIS_URL}
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "arkservice",
+        }
+    }
+
+# --- Sign-in --------------------------------------------------------------
+LOGIN_MAX_ATTEMPTS = env.int("LOGIN_MAX_ATTEMPTS", default=5)
+LOGIN_LOCKOUT_SECONDS = env.int("LOGIN_LOCKOUT_SECONDS", default=15 * 60)
+# Only true when a reverse proxy sets X-Forwarded-For and nothing else can
+# reach gunicorn directly; otherwise the header is attacker-controlled.
+TRUST_FORWARDED_FOR = env.bool("TRUST_FORWARDED_FOR", default=False)
+
+SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=8 * 60 * 60)
+SESSION_SAVE_EVERY_REQUEST = True
+
 # --- Celery ---------------------------------------------------------------
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
@@ -164,16 +192,24 @@ CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 
 # --- Resolver -------------------------------------------------------------
 # Timeout (seconds) for the server-side fetch behind /manifest.
-MANIFEST_FETCH_TIMEOUT = env.int("MANIFEST_FETCH_TIMEOUT", default=30)
+# Short by design: a /manifest request parks a worker on someone else's server,
+# and the endpoint is public and unauthenticated. 30s meant a handful of slow
+# targets could occupy every worker at once.
+MANIFEST_FETCH_TIMEOUT = env.int("MANIFEST_FETCH_TIMEOUT", default=5)
 MANIFEST_MAX_BYTES = env.int("MANIFEST_MAX_BYTES", default=10 * 1024 * 1024)
 
 # Largest batch a single mint request may create. Bigger batches hold the
 # collection lock and build every identifier inside one transaction.
 MINT_MAX_PER_REQUEST = env.int("MINT_MAX_PER_REQUEST", default=10_000)
 
-# Upload guardrails for bulk bind.
+# Upload guardrails for bulk bind. DATA_UPLOAD_MAX_MEMORY_SIZE does NOT cover
+# multipart file parts, so an explicit byte ceiling is needed as well as a row
+# ceiling — without it a multi-gigabyte upload fills the disk and then the
+# worker's memory before the row check is ever reached.
 BULK_BIND_MAX_ROWS = env.int("BULK_BIND_MAX_ROWS", default=100_000)
+BULK_BIND_MAX_BYTES = env.int("BULK_BIND_MAX_BYTES", default=50 * 1024 * 1024)
 DATA_UPLOAD_MAX_MEMORY_SIZE = env.int("DATA_UPLOAD_MAX_MEMORY_SIZE", default=20 * 1024 * 1024)
+FILE_UPLOAD_MAX_MEMORY_SIZE = env.int("FILE_UPLOAD_MAX_MEMORY_SIZE", default=5 * 1024 * 1024)
 
 LOGGING = {
     "version": 1,

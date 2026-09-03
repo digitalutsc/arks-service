@@ -19,6 +19,8 @@ from functools import wraps
 
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.db.models import Q
 
 ADMIN = "Admin"
 EDITOR = "Editor"
@@ -55,8 +57,34 @@ def set_role(user, role: str) -> None:
     if role not in ROLES:
         raise ValueError(f"Unknown role: {role!r}")
     ensure_groups()
-    user.groups.remove(*Group.objects.filter(name__in=ROLES))
-    user.groups.add(Group.objects.get(name=role))
+    # One transaction: a concurrent request must never see the user between
+    # losing the old role and gaining the new one.
+    with transaction.atomic():
+        user.groups.remove(*Group.objects.filter(name__in=ROLES))
+        user.groups.add(Group.objects.get(name=role))
+
+
+def clear_role(user) -> None:
+    """Take every role away, leaving an account that can sign in but do nothing."""
+    with transaction.atomic():
+        user.groups.remove(*Group.objects.filter(name__in=ROLES))
+
+
+def is_last_administrator(user) -> bool:
+    """
+    True when demoting ``user`` would leave nobody able to administer.
+
+    Superusers count, since they are Admins whatever their groups say.
+    """
+    from django.contrib.auth import get_user_model
+
+    others = (
+        get_user_model()
+        .objects.filter(is_active=True)
+        .exclude(pk=user.pk)
+        .filter(Q(is_superuser=True) | Q(groups__name=ADMIN))
+    )
+    return not others.exists()
 
 
 def has_role(user, minimum: str) -> bool:
