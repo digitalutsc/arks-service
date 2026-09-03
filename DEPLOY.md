@@ -198,11 +198,17 @@ sudo systemctl enable --now arkservice arkservice-worker
 sudo systemctl status arkservice arkservice-worker
 ```
 
-- `arkservice` — gunicorn on `127.0.0.1:8000`, 3 workers.
-- `arkservice-worker` — Celery, concurrency 2, for bulk-bind uploads.
+- `arkservice` — gunicorn on `127.0.0.1:8000`, 3 processes × 8 threads. Threads
+  matter: `/manifest` parks a worker on someone else's server, and with plain
+  processes a few slow targets stalled the whole service.
+- `arkservice-worker` — Celery with `--beat`, concurrency 2. Beat runs the
+  periodic redirect-counter flush; with more than one worker host, run beat on
+  exactly one of them.
 
-Both run as `www-data` with `NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=full`
-and `ProtectHome`.
+Both run as `www-data` under `ProtectSystem=strict` with explicit
+`ReadWritePaths`, `NoNewPrivileges`, `PrivateTmp`, `PrivateDevices`, kernel and
+cgroup protection, `RestrictAddressFamilies`, an empty `CapabilityBoundingSet`,
+a syscall filter and a memory ceiling.
 
 ### 4.5 Apache
 
