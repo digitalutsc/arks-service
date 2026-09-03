@@ -39,7 +39,10 @@ TAB = "\t"
             ("61220/utsc1", "/page1.image.png", "URL"),
         ),
         (f"61220/utsc1{TAB}.image.png{TAB}URL", ("61220/utsc1", ".image.png", "URL")),
-        (f"61220/utsc1{TAB}/vol1/page3{TAB}.jpg{TAB}WHO", ("61220/utsc1", "/vol1/page3.jpg", "WHO")),
+        (
+            f"61220/utsc1{TAB}/vol1/page3{TAB}.jpg{TAB}WHO",
+            ("61220/utsc1", "/vol1/page3.jpg", "WHO"),
+        ),
     ],
 )
 def test_legacy_keys_split_into_ark_qualifier_and_element(key, expected):
@@ -78,7 +81,9 @@ def build_legacy_db(path, rows=None, config=None):
     connection.execute("CREATE TABLE `user` (id INTEGER PRIMARY KEY, username TEXT)")
     connection.execute("CREATE TABLE `ARK_utsc` (_key TEXT PRIMARY KEY, _value TEXT)")
     connection.execute("INSERT INTO `system` VALUES ('Organization Name', 'UTSC DSU')")
-    connection.execute("INSERT INTO `system` VALUES ('Organization Website', 'https://dsu.example')")
+    connection.execute(
+        "INSERT INTO `system` VALUES ('Organization Website', 'https://dsu.example')"
+    )
 
     payload = list(defaults.items()) + list(rows or [])
     connection.executemany("INSERT OR REPLACE INTO `ARK_utsc` VALUES (?, ?)", payload)
