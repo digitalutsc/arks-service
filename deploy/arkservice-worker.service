@@ -1,0 +1,24 @@
+# /etc/systemd/system/arkservice-worker.service
+[Unit]
+Description=ARK identifier service (celery worker for bulk binds)
+After=network.target redis-server.service mysql.service
+Wants=redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/arkservice
+EnvironmentFile=/var/www/arkservice/.env
+ExecStart=/var/www/arkservice/.venv/bin/celery -A arkservice worker \
+    --loglevel=info --concurrency=2 --logfile=/var/log/arkservice/worker.log
+Restart=on-failure
+RestartSec=5s
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

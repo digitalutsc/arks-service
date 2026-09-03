@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --extra postgres
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    # Both engines are first-class: production runs MySQL, dev runs Postgres.
+    # The schema is kept inside the portable subset, and this is what proves it.
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [postgres, mysql]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ark
+          POSTGRES_PASSWORD: ark
+          POSTGRES_DB: ark
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ark" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ark
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -proot" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MySQL client headers
+        run: sudo apt-get update && sudo apt-get install -y libmysqlclient-dev pkg-config
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --extra postgres --extra mysql
+
+      - name: Run the suite on ${{ matrix.engine }}
+        env:
+          DATABASE_URL: ${{ matrix.engine == 'postgres'
+            && 'postgres://ark:ark@127.0.0.1:5432/ark'
+            || 'mysql://root:root@127.0.0.1:3306/ark' }}
+        run: uv run pytest -q
+
+  conformance:
+    # The noid vectors are generated from the legacy PHP. Regenerating them here
+    # catches any drift between the fixture in the repo and what the original
+    # implementation actually does.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: new
+      - name: Check out the legacy service for its noid library
+        uses: actions/checkout@v4
+        continue-on-error: true
+        id: legacy
+        with:
+          repository: digitalutsc/arks-service
+          path: legacy
+      - uses: shivammathur/setup-php@v2
+        if: steps.legacy.outcome == 'success'
+        with:
+          php-version: '8.3'
+      - name: Regenerate the vectors and compare
+        if: steps.legacy.outcome == 'success'
+        working-directory: new
+        run: |
+          NOIDLIB=../legacy/admin/NoidLib \
+            php tests/fixtures/generate_vectors.php > /tmp/fresh.json
+          python - <<'PY'
+          import json
+          a = json.load(open('tests/fixtures/noid_vectors.json'))
+          b = json.load(open('/tmp/fresh.json'))
+          for key in ('alphabets', 'n2xdig', 'check_char', 'parse_template', 'sequences'):
+              assert a[key] == b[key], f'{key} drifted from the legacy implementation'
+          print('noid vectors still match the legacy PHP')
+          PY

@@ -1,0 +1,30 @@
+# /etc/systemd/system/arkservice.service
+[Unit]
+Description=ARK identifier service (gunicorn)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/arkservice
+EnvironmentFile=/var/www/arkservice/.env
+ExecStart=/var/www/arkservice/.venv/bin/gunicorn \
+    arkservice.wsgi:application \
+    --bind 127.0.0.1:8000 \
+    --workers 3 \
+    --timeout 60 \
+    --access-logfile /var/log/arkservice/access.log \
+    --error-logfile /var/log/arkservice/error.log
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
