@@ -1,12 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Too many attempts{% endblock %}
+{% block shell_class %}shell--bare{% endblock %}
 {% block body %}
-<div style="max-width:420px;margin:4rem auto">
-  <h1>Too many sign-in attempts</h1>
-  <div class="msg error">
-    <p>This account has been temporarily locked after too many failed attempts.</p>
-    <p class="muted">Wait a few minutes and try again. If you have forgotten your password,
-      ask an administrator to reset it — they cannot look it up, only replace it.</p>
-  </div>
+<span class="bare-brand">
+  <span class="brand-mark" aria-hidden="true">ark</span>
+  <span>{{ organisation.name|default:"ARK identifier service" }}</span>
+</span>
+<h1>Too many sign-in attempts</h1>
+<div class="msg error">
+  <p>This account has been temporarily locked after too many failed attempts.</p>
+</div>
+<div class="card">
+  <p class="muted">Wait a few minutes and try again. If you have forgotten your password,
+    ask an administrator to reset it — they cannot look it up, only replace it.</p>
 </div>
 {% endblock %}

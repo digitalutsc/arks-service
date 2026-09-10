@@ -1,15 +1,20 @@
 {% extends "base.html" %}
 {% block title %}ARKs{% endblock %}
 {% block body %}
-<h1>ARKs</h1>
-<p class="sub">Free text searches identifiers and every bound value, whatever the element is called.</p>
+<div class="page-header">
+  <div class="titles">
+    <span class="eyebrow">Browse</span>
+    <h1>ARKs{% if selected_collection %} · {{ selected_collection.name }}{% endif %}</h1>
+    <p class="sub">Free text searches identifiers and every bound value, whatever the element is called.</p>
+  </div>
+</div>
 
-<form class="panel" method="get" action="{% url 'admin_ui:ark_list' %}"
+<form class="card" method="get" action="{% url 'admin_ui:ark_list' %}"
       hx-get="{% url 'admin_ui:ark_list' %}" hx-target="#results" hx-push-url="true"
       hx-trigger="submit, change from:select, change from:input[type=number]">
-  <div class="row">
-    <div class="field"><label for="q">Free text</label>
-      <input id="q" name="q" value="{{ query.q|default:'' }}" placeholder="identifier or any value"></div>
+  <div class="form-grid">
+    <div class="field grow"><label for="q">Free text</label>
+      <input id="q" name="q" value="{{ query.q|default:'' }}"></div>
     <div class="field"><label for="collection">Collection</label>
       <select id="collection" name="collection">
         <option value="">All</option>
@@ -18,7 +23,7 @@
         {% endfor %}
       </select></div>
     <div class="field"><label for="element">Element</label>
-      <input id="element" name="element" list="element-names" value="{{ query.element|default:'' }}" placeholder="any">
+      <input id="element" name="element" list="element-names" value="{{ query.element|default:'' }}">
       <datalist id="element-names">{% for name in element_names %}<option value="{{ name }}">{% endfor %}</datalist></div>
     <div class="field"><label for="value">Exact value</label>
       <input id="value" name="value" value="{{ query.value|default:'' }}"></div>
@@ -34,8 +39,12 @@
       <input id="minted_after" name="minted_after" type="date" value="{{ query.minted_after|default:'' }}"></div>
     <div class="field"><label for="minted_before">Minted before</label>
       <input id="minted_before" name="minted_before" type="date" value="{{ query.minted_before|default:'' }}"></div>
-    <div class="field" style="flex:0 0 auto">
-      <button type="submit">Search</button></div>
+  </div>
+  <div class="form-actions">
+    <button type="submit">Search</button>
+    {% if query.urlencode %}
+      <a class="btn subtle" href="{% url 'admin_ui:ark_list' %}">Clear filters</a>
+    {% endif %}
   </div>
 </form>
 

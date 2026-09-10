@@ -142,6 +142,15 @@ class Ark(models.Model):
         """The ARK itself, e.g. ``61220/utsc1``."""
         return f"{self.naan}/{self.identifier}"
 
+    @property
+    def path(self) -> str:
+        """The resolver path for this ARK, e.g. ``ark:/61220/utsc1``.
+
+        Relative on purpose: the host belongs to the environment, not to the
+        identifier (see ``admin_ui.context_processors.environment``).
+        """
+        return f"ark:/{self.name}"
+
 
 class Binding(models.Model):
     """

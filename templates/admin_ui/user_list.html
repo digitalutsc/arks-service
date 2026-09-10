@@ -1,9 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Users{% endblock %}
 {% block body %}
-<h1>Users and roles</h1>
-<p class="sub">Accounts are created with <code>manage.py createsuperuser</code> or the Django admin.
-  A user with no role can sign in but do nothing.</p>
+<div class="page-header">
+  <div class="titles">
+    <span class="eyebrow">Access</span>
+    <h1>Users and roles</h1>
+    <p class="sub">Accounts are created with <code>manage.py createsuperuser</code> or the Django admin.
+      A user with no role can sign in but do nothing.</p>
+  </div>
+</div>
 
 <div class="table-wrap"><table>
   <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Change to</th></tr></thead>
@@ -14,13 +19,13 @@
       <td class="muted">{{ person.user.get_full_name|default:"—" }}</td>
       <td>{{ person.role|default:"—" }}</td>
       <td>
-        <form method="post" style="display:flex;gap:.4rem">{% csrf_token %}
+        <form class="form-row" method="post">{% csrf_token %}
           <input type="hidden" name="user" value="{{ person.user.pk }}">
-          <select name="role">
+          <select name="role" aria-label="Role for {{ person.user.username }}">
             {% for role in roles %}<option value="{{ role }}" {% if person.role == role %}selected{% endif %}>{{ role }}</option>{% endfor %}
             <option value="none">No role</option>
           </select>
-          <button class="ghost" type="submit">Save</button>
+          <button class="secondary" type="submit">Save</button>
         </form>
       </td>
     </tr>
@@ -28,8 +33,8 @@
   </tbody>
 </table></div>
 
-<div class="panel">
-  <h2 style="margin-top:0">What each role can do</h2>
+<div class="card">
+  <p class="card-title">What each role can do</p>
   <table><tbody>
     <tr><td><strong>Admin</strong></td><td>Everything: collections, purging, users.</td></tr>
     <tr><td><strong>Editor</strong></td><td>Mint, bind, unbind, bulk bind, export.</td></tr>

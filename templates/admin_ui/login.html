@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Sign in{% endblock %}
+{% block shell_class %}shell--bare{% endblock %}
 {% block body %}
-<div style="max-width:340px;margin:4rem auto">
-  <h1>Sign in</h1>
-  <p class="sub">{{ organisation.name|default:"ARK identifier service" }}</p>
-  {% if form.errors %}<div class="msg error">That username and password did not match.</div>{% endif %}
-  <form method="post" class="panel">{% csrf_token %}
-    <div class="field"><label for="id_username">Username</label>{{ form.username }}</div>
-    <div class="field"><label for="id_password">Password</label>{{ form.password }}</div>
-    <button type="submit">Sign in</button>
-  </form>
-</div>
+<span class="bare-brand">
+  <span class="brand-mark" aria-hidden="true">ark</span>
+  <span>{{ organisation.name|default:"ARK identifier service" }}</span>
+</span>
+<h1>Sign in</h1>
+<p class="sub">Staff access to minting, binding and reports.</p>
+{% if form.errors %}<div class="msg error">That username and password did not match.</div>{% endif %}
+<form method="post" class="card">{% csrf_token %}
+  <div class="field"><label for="id_username">Username</label>{{ form.username }}</div>
+  <div class="field"><label for="id_password">Password</label>{{ form.password }}</div>
+  <div class="form-actions"><button class="wide" type="submit">Sign in</button></div>
+</form>
 {% endblock %}

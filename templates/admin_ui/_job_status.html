@@ -1,29 +1,39 @@
+{% load humanize %}
+{% comment %}
+Also served on its own to htmx while a job runs, which is why the polling
+attributes and the #status wrapper live here rather than in job.html.
+{% endcomment %}
 <div id="status"
      {% if not job.is_finished %}hx-get="{% url 'admin_ui:job_detail' job.pk %}"
      hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
 
-  <p><span class="pill {% if job.had_errors %}bad{% elif job.is_finished %}ok{% else %}run{% endif %}">
-    {{ job.get_status_display }}</span></p>
-
   {% if job.status == 'failed' %}
-    <div class="msg error"><strong>The file could not be processed.</strong><br>{{ job.error }}</div>
+    <span class="pill bad">{{ job.get_status_display }}</span>
+    <div class="msg error"><p><strong>The file could not be processed.</strong></p>
+      <p>{{ job.error }}</p></div>
   {% elif job.is_finished %}
-    <div class="grid">
-      <div class="stat"><div class="n">{{ job.created }}</div><div class="l">Created</div></div>
-      <div class="stat"><div class="n">{{ job.updated }}</div><div class="l">Updated</div></div>
-      <div class="stat"><div class="n">{{ job.minted }}</div><div class="l">Minted</div></div>
-      <div class="stat"><div class="n">{{ job.failed }}</div><div class="l">Failed</div></div>
+    <div class="stats">
+      <div class="stat"><div class="n">{{ job.created|intcomma:False }}</div><span class="l">Created</span></div>
+      <div class="stat"><div class="n">{{ job.updated|intcomma:False }}</div><span class="l">Updated</span></div>
+      <div class="stat"><div class="n">{{ job.minted|intcomma:False }}</div><span class="l">Minted</span></div>
+      <div class="stat {% if job.failed %}is-bad{% endif %}"><div class="n">{{ job.failed|intcomma:False }}</div>
+        <span class="l">Failed</span></div>
     </div>
     {% if job.failed %}
-      <div class="msg error" style="margin-top:1rem">
-        {{ job.failed }} row{{ job.failed|pluralize }} failed, so <strong>nothing was written</strong>.
+      <div class="msg error">
+        {{ job.failed|intcomma:False }} row{{ job.failed|pluralize }} failed, so <strong>nothing was written</strong>.
         Download the results below, fix those rows and upload the file again.
       </div>
     {% endif %}
     {% if job.results %}
-      <p style="margin-top:1rem"><a class="btn" href="{% url 'admin_ui:job_results' job.pk %}">Download per-row results</a></p>
+      <div class="form-actions">
+        <a class="btn" href="{% url 'admin_ui:job_results' job.pk %}">Download per-row results</a>
+      </div>
     {% endif %}
   {% else %}
-    <p class="muted">Working… this page updates itself. You can close the tab and come back.</p>
+    <div class="card">
+      <p class="card-title"><span class="pill run">{{ job.get_status_display }}</span></p>
+      <p class="muted">Working… this page updates itself. You can close the tab and come back.</p>
+    </div>
   {% endif %}
 </div>

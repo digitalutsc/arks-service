@@ -1,30 +1,39 @@
 {% extends "base.html" %}
 {% block title %}{{ ark.name }}{% endblock %}
 {% block body %}
-<h1 class="mono">{{ ark.name }}</h1>
-<p class="sub">
-  <a href="{% url 'admin_ui:collection_detail' ark.collection.pk %}">{{ ark.collection.name }}</a>
-  · minted {{ ark.minted_at|date:"Y-m-d H:i" }}{% if ark.minted_by %} by {{ ark.minted_by.username }}{% endif %}
-  {% if ark.sequence is not None %}· counter {{ ark.sequence }}{% endif %}
-</p>
+<div class="page-header">
+  <div class="titles">
+    <span class="eyebrow">ARK</span>
+    <h1 class="mono">{% include "admin_ui/_ark.html" with ark=ark plain=True %}</h1>
+    <p class="sub">
+      <a href="{% url 'admin_ui:collection_detail' ark.collection.pk %}">{{ ark.collection.name }}</a>
+      · minted {{ ark.minted_at|date:"Y-m-d H:i" }}{% if ark.minted_by %} by {{ ark.minted_by.username }}{% endif %}
+      {% if ark.sequence is not None %}· counter {{ ark.sequence }}{% endif %}
+    </p>
+  </div>
+  <div class="actions">
+    <a class="ark-url" href="{{ ark_base_url }}{{ ark.path }}" target="_blank" rel="noopener">{{ ark_base_url }}{{ ark.path }}</a>
+    <button class="copy" type="button" data-copy="{{ ark_base_url }}{{ ark.path }}">Copy</button>
+  </div>
+</div>
 
 <h2>Bound elements</h2>
 {% if bindings %}
 <div class="table-wrap"><table>
-  <thead><tr><th>Qualifier</th><th>Element</th><th>Value</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+  <thead><tr><th>Qualifier</th><th>Element</th><th class="stretch">Value</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
   <tbody>
   {% for binding in bindings %}
     <tr>
       <td class="mono qual">{{ binding.qualifier|default:"—" }}</td>
       <td><strong>{{ binding.name }}</strong></td>
-      <td style="word-break:break-all">{{ binding.value }}</td>
+      <td class="break">{{ binding.value }}</td>
       {% if can_edit %}
-      <td>
-        <form method="post" style="display:inline">{% csrf_token %}
+      <td class="acts">
+        <form class="inline" method="post">{% csrf_token %}
           <input type="hidden" name="action" value="unbind">
           <input type="hidden" name="name" value="{{ binding.name }}">
           <input type="hidden" name="qualifier" value="{{ binding.qualifier }}">
-          <button class="ghost" type="submit">Remove</button>
+          <button class="secondary" type="submit">Remove</button>
         </form>
       </td>
       {% endif %}
@@ -33,47 +42,50 @@
   </tbody>
 </table></div>
 {% else %}
-<div class="panel"><p class="muted">Nothing is bound yet, so this ARK does not resolve.</p></div>
+<div class="empty"><p>Nothing is bound yet, so this ARK does not resolve.</p></div>
 {% endif %}
 
 {% if can_edit %}
 <h2>Bind an element</h2>
-<form method="post" class="panel">{% csrf_token %}
+<form method="post" class="card">{% csrf_token %}
   <input type="hidden" name="action" value="bind">
-  <div class="row">
+  <div class="form-grid">
     <div class="field"><label for="qualifier">Qualifier</label>
-      <input id="qualifier" name="qualifier" placeholder="/page1.image.png (optional)"></div>
+      <input id="qualifier" name="qualifier" class="mono">
+      <span class="hint">Optional, e.g. <code>/page1.image.png</code></span></div>
     <div class="field"><label for="name">Element</label>
       <input id="name" name="name" list="suggested" required>
       <datalist id="suggested">{% for name in suggested %}<option value="{{ name }}">{% endfor %}</datalist></div>
-    <div class="field" style="flex:2 1 260px"><label for="value">Value</label>
+    <div class="field grow"><label for="value">Value</label>
       <input id="value" name="value"></div>
-    <div class="field" style="flex:0 0 auto"><button type="submit">Bind</button></div>
   </div>
-  <p class="muted" style="margin:.6rem 0 0">Any element name is allowed. The resolver redirects to
-    <code>URL</code>, falling back to <code>WHERE?</code>.</p>
+  <div class="form-actions">
+    <button type="submit">Bind</button>
+    <span class="hint">The resolver redirects to <code>URL</code>, falling back to <code>WHERE?</code>.
+      Any element name is allowed.</span>
+  </div>
 </form>
 {% endif %}
 
 {% if resolutions %}
 <h2>Resolutions</h2>
 <div class="table-wrap"><table>
-  <thead><tr><th>Qualifier</th><th>Redirects</th><th>Last</th></tr></thead>
+  <thead><tr><th>Qualifier</th><th class="num">Redirects</th><th>Last</th></tr></thead>
   <tbody>{% for r in resolutions %}
-    <tr><td class="mono qual">{{ r.qualifier|default:"—" }}</td><td>{{ r.count }}</td>
-        <td class="muted">{{ r.last_at|date:"Y-m-d H:i"|default:"—" }}</td></tr>
+    <tr><td class="mono qual">{{ r.qualifier|default:"—" }}</td><td class="num">{{ r.count }}</td>
+        <td class="muted nowrap">{{ r.last_at|date:"Y-m-d H:i"|default:"—" }}</td></tr>
   {% endfor %}</tbody>
 </table></div>
 {% endif %}
 
 {% if can_administer and bindings %}
 <h2>Danger zone</h2>
-<form method="post" action="{% url 'admin_ui:ark_purge' ark.pk %}" class="panel"
-      data-confirm="Remove every element from {{ ark.name }}? The ARK will stop resolving."
-      onsubmit="return confirm(this.dataset.confirm)">
+<form method="post" action="{% url 'admin_ui:ark_purge' ark.pk %}" class="card danger"
+      data-confirm="Remove every element from {{ ark.name }}? The ARK will stop resolving.">
   {% csrf_token %}
-  <p class="muted">Purging removes every element from this ARK. The ARK itself stays, so the
-    identifier is never reissued.</p>
+  <p class="card-title">Purge every element</p>
+  <p class="muted">The ARK itself stays, so the identifier is never reissued — but it stops
+    resolving until something is bound again.</p>
   <button class="danger" type="submit">Purge all elements</button>
 </form>
 {% endif %}

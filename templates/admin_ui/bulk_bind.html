@@ -1,29 +1,37 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}Bulk bind · {{ collection.name }}{% endblock %}
 {% block body %}
-<h1>Bulk bind</h1>
-<p class="sub">{{ collection.name }}</p>
+<div class="page-header">
+  <div class="titles">
+    <span class="eyebrow"><a href="{% url 'admin_ui:collection_detail' collection.pk %}">{{ collection.name }}</a></span>
+    <h1>Bulk bind</h1>
+    <p class="sub">Upload a CSV to bind elements to many ARKs at once.</p>
+  </div>
+</div>
 
-<form method="post" enctype="multipart/form-data" class="panel">{% csrf_token %}
+<form method="post" enctype="multipart/form-data" class="card">{% csrf_token %}
   <div class="field"><label for="file">CSV file</label>
     <input id="file" name="file" type="file" accept=".csv,text/csv" required></div>
   <div class="field">
-    <label><input type="checkbox" name="mint_missing" value="1" style="width:auto"> Mint new ARKs for rows with a blank Ark_ID</label>
+    <label class="check"><input type="checkbox" name="mint_missing" value="1">
+      Mint new ARKs for rows with a blank Ark_ID</label>
   </div>
   <div class="field">
-    <label><input type="checkbox" name="purge_first" value="1" style="width:auto"> Remove existing elements from these ARKs first</label>
+    <label class="check"><input type="checkbox" name="purge_first" value="1">
+      Remove existing elements from these ARKs first</label>
   </div>
-  <button type="submit">Upload and run</button>
+  <div class="form-actions"><button type="submit">Upload and run</button></div>
 </form>
 
-<div class="panel">
-  <h2 style="margin-top:0">What the file needs</h2>
+<div class="card">
+  <p class="card-title">What the file needs</p>
   <p>An <code>Ark_ID</code> column plus one column per element. Every other column becomes an
      element with that name — there is no fixed list.</p>
-  <pre class="mono">Ark_ID,URL,PID,LOCAL_ID
+  <pre>Ark_ID,URL,PID,LOCAL_ID
 61220/utsc0,https://example.org/0,islandora:0,obj-0
 61220/utsc1/page1,https://example.org/1/p1,,</pre>
-  <p class="muted">An Ark_ID may carry a qualifier such as <code>/page1</code> or
+  <p class="hint">An Ark_ID may carry a qualifier such as <code>/page1</code> or
      <code>/page1.image.png</code>. An empty cell leaves any existing value alone. The whole file is
      checked before anything is written, so a bad row cannot half-apply.</p>
 </div>
@@ -31,14 +39,16 @@
 {% if jobs %}
 <h2>Recent uploads</h2>
 <div class="table-wrap"><table>
-  <thead><tr><th>When</th><th>By</th><th>Status</th><th>Created</th><th>Updated</th><th>Minted</th><th>Failed</th><th></th></tr></thead>
+  <thead><tr><th>When</th><th>By</th><th>Status</th><th class="num">Created</th>
+    <th class="num">Updated</th><th class="num">Minted</th><th class="num">Failed</th><th></th></tr></thead>
   <tbody>{% for job in jobs %}
     <tr>
-      <td>{{ job.created_at|date:"Y-m-d H:i" }}</td>
+      <td class="nowrap">{{ job.created_at|date:"Y-m-d H:i" }}</td>
       <td class="muted">{{ job.created_by.username|default:"—" }}</td>
       <td><span class="pill {% if job.had_errors %}bad{% elif job.is_finished %}ok{% else %}run{% endif %}">{{ job.get_status_display }}</span></td>
-      <td>{{ job.created }}</td><td>{{ job.updated }}</td><td>{{ job.minted }}</td><td>{{ job.failed }}</td>
-      <td><a href="{% url 'admin_ui:job_detail' job.pk %}">Details</a></td>
+      <td class="num">{{ job.created|intcomma:False }}</td><td class="num">{{ job.updated|intcomma:False }}</td>
+      <td class="num">{{ job.minted|intcomma:False }}</td><td class="num">{{ job.failed|intcomma:False }}</td>
+      <td class="acts"><a href="{% url 'admin_ui:job_detail' job.pk %}">Details</a></td>
     </tr>
   {% endfor %}</tbody>
 </table></div>

@@ -1,25 +1,31 @@
 {% extends "base.html" %}
 {% block title %}{{ organisation.name|default:"ARK Service" }}{% endblock %}
+{% block shell_class %}shell--bare wide{% endblock %}
 {% block body %}
-<main class="landing">
-  <h1>{{ organisation.name|default:"ARK identifier service" }}</h1>
-  {% if organisation.website %}
-    <p><a href="{{ organisation.website }}">{{ organisation.website }}</a></p>
-  {% endif %}
+<span class="bare-brand">
+  <span class="brand-mark" aria-hidden="true">ark</span>
+  <span>{{ organisation.name|default:"ARK identifier service" }}</span>
+</span>
+<h1>{{ organisation.name|default:"ARK identifier service" }}</h1>
+{% if organisation.website %}
+  <p class="sub"><a href="{{ organisation.website }}">{{ organisation.website }}</a></p>
+{% endif %}
 
-  <p>
-    This service resolves
-    <a href="https://arks.org/about/">ARK identifiers</a> of the form
-    <code>/ark:/&lt;naan&gt;/&lt;identifier&gt;</code>.
-  </p>
+<div class="card">
+  <p>This service resolves <a href="https://arks.org/about/">ARK identifiers</a> of the form
+    <code>/ark:/&lt;naan&gt;/&lt;identifier&gt;</code>.</p>
+</div>
 
-  {% if collections %}
-    <h2>Name assigning authorities</h2>
-    <ul>
+{% if collections %}
+  <h2>Name assigning authorities</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>NAAN</th><th>Authority</th></tr></thead>
+    <tbody>
       {% for collection in collections %}
-        <li><code>{{ collection.naan }}</code> — {{ collection.naa|default:collection.name }}</li>
+        <tr><td><code>{{ collection.naan }}</code></td>
+            <td>{{ collection.naa|default:collection.name }}</td></tr>
       {% endfor %}
-    </ul>
-  {% endif %}
-</main>
+    </tbody>
+  </table></div>
+{% endif %}
 {% endblock %}

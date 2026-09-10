@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     "django_htmx",
     "core",
     "minting",
@@ -74,6 +75,8 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "admin_ui.context_processors.organisation",
+                "admin_ui.context_processors.environment",
+                "admin_ui.context_processors.navigation",
             ],
         },
     },
@@ -221,6 +224,14 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # --- Resolver -------------------------------------------------------------
+# Public base URL the admin UI uses when it shows an ARK's resolvable address.
+# Empty means "derive it from the request", which is right whenever staff reach
+# the admin on the same hostname the resolver answers on: Apache preserves the
+# Host header and sets X-Forwarded-Proto, so the request already knows. Set it
+# only when the two differ (an admin-only hostname, or a staging box whose ARKs
+# should still be advertised under the production domain).
+ARK_PUBLIC_BASE_URL = env.str("ARK_PUBLIC_BASE_URL", default="")
+
 # Timeout (seconds) for the server-side fetch behind /manifest.
 # Short by design: a /manifest request parks a worker on someone else's server,
 # and the endpoint is public and unauthenticated. 30s meant a handful of slow

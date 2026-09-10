@@ -65,6 +65,43 @@ _MASK_RE = re.compile(rf"^[rsz][{REPERTOIRES}]+k?$")
 _TEMPLATE_RE = re.compile(rf"^([^.]*)\.([rsz][{REPERTOIRES}]+k?)$")
 _DE_MASK_RE = re.compile(r"^.[de]+k$")
 
+#: The templates the admin UI offers, in the order the legacy UI listed them.
+#: Descriptions paraphrase the noid manual; capacity is computed, not stated,
+#: so it can never disagree with the minter (see :func:`template_choices`).
+TEMPLATE_CATALOGUE: tuple[tuple[str, str], ...] = (
+    (".rddd", "Random 3-digit numbers."),
+    (".sdddddd", "Sequential 6-digit numbers."),
+    (".zd", "Sequential numbers without limit; new digits are added as needed."),
+    (".rdddd", "Random 4-digit numbers."),
+    (".sdd", "Sequential 2-digit numbers."),
+    (".se", "Sequential single extended digits (0-9 and bcdfghjkmnpqrstvwxz)."),
+    (".reee", "Random 3-extended-digit numbers."),
+    (".zeee", "Sequential numbers without limit, at least 3 extended digits."),
+    (".rdedeedd", "Random 7-character numbers, extended digits at positions 2, 4 and 5."),
+    (".zededede", "Mixed digits without limit; new extended digits are added as needed."),
+    (".sdede", "Sequential 4-mixed-digit numbers."),
+    (
+        ".rdedk",
+        "Random 3 mixed digits plus a final computed check character. Prefix limited to 0-9 and bcdfghjkmnpqrstvwxz.",
+    ),
+    (
+        ".sdeeedk",
+        "5 sequential mixed digits plus a final extended-digit check character. Prefix limited to 0-9 and bcdfghjkmnpqrstvwxz.",
+    ),
+    (
+        ".zdeek",
+        "Sequential digits plus a check character, without limit. Prefix limited to 0-9 and bcdfghjkmnpqrstvwxz.",
+    ),
+    (
+        ".redek",
+        "Random 4 mixed digits, the last one a check character. Prefix limited to 0-9 and bcdfghjkmnpqrstvwxz.",
+    ),
+    (
+        ".reedeedk",
+        "Random 7 mixed digits plus a check character. Prefix limited to 0-9 and bcdfghjkmnpqrstvwxz.",
+    ),
+)
+
 
 class TemplateError(ValueError):
     """Raised when a template cannot mint identifiers."""
@@ -345,3 +382,19 @@ def xdig2n(variable_part: str, mask: str) -> int:
             raise ValueError(f"{char!r} is not in repertoire {repertoire!r}")
         number = number * len(alphabet) + index
     return number
+
+
+def template_choices() -> list[dict[str, str]]:
+    """
+    :data:`TEMPLATE_CATALOGUE` with each template's capacity worked out.
+
+    The capacity is formatted for display: ``"unlimited"`` for the ``z``
+    masks, otherwise the number with thousands separators.
+    """
+    choices = []
+    for value, description in TEMPLATE_CATALOGUE:
+        # The prefix does not affect capacity; any non-empty one parses.
+        spec = parse_template("x" + value)
+        capacity = "unlimited" if spec.unlimited else f"{spec.total:,}"
+        choices.append({"value": value, "description": description, "capacity": capacity})
+    return choices

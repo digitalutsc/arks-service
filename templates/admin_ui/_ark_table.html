@@ -1,4 +1,5 @@
-<p class="muted">{{ total }}{% if capped %}+{% endif %} ARK{{ total|pluralize }}
+{% load humanize %}
+<p class="meta">{{ total|intcomma:False }}{% if capped %}+{% endif %} ARK{{ total|pluralize }}
   {% if total %}
     · <a href="{% url 'admin_ui:export' %}?{{ query.urlencode }}">Export these as CSV</a>
   {% endif %}
@@ -7,21 +8,31 @@
 {% if arks %}
 <div class="table-wrap">
 <table>
-  <thead><tr><th>ARK</th><th>Elements</th><th>Redirects</th><th>Minted</th></tr></thead>
+  <thead><tr>
+    <th>ARK</th><th>Public URL</th><th class="stretch">Elements</th>
+    <th class="num">Redirects</th><th>Minted</th>
+  </tr></thead>
   <tbody>
   {% for ark in arks %}
     <tr>
-      <td><a class="mono" href="{% url 'admin_ui:ark_detail' ark.pk %}">{{ ark.name }}</a></td>
+      <td>{% include "admin_ui/_ark.html" with ark=ark %}</td>
+      <td class="url-cell">
+        <a class="ark-url" href="{{ ark_base_url }}{{ ark.path }}" target="_blank" rel="noopener">{{ ark_base_url }}{{ ark.path }}</a>
+        <button class="copy" type="button" data-copy="{{ ark_base_url }}{{ ark.path }}">Copy</button>
+      </td>
       <td>
+        <div class="elements">
         {% for binding in ark.loaded_bindings|slice:":4" %}
           <div><span class="qual">{{ binding.qualifier }}</span>
-            <strong>{{ binding.name }}</strong> {{ binding.value|truncatechars:70 }}</div>
-        {% empty %}<span class="muted">—</span>{% endfor %}
+            <span class="el-name">{{ binding.name }}</span>
+            <span class="el-value">{{ binding.value|truncatechars:60 }}</span></div>
+        {% empty %}<span class="muted">Not bound</span>{% endfor %}
         {% if ark.loaded_bindings|length > 4 %}
           <div class="muted">+{{ ark.loaded_bindings|length|add:"-4" }} more</div>{% endif %}
+        </div>
       </td>
-      <td>{{ ark.redirect_count }}</td>
-      <td class="muted">{{ ark.minted_at|date:"Y-m-d" }}</td>
+      <td class="num">{{ ark.redirect_count|intcomma:False }}</td>
+      <td class="muted nowrap">{{ ark.minted_at|date:"Y-m-d" }}</td>
     </tr>
   {% endfor %}
   </tbody>
@@ -30,15 +41,15 @@
 
 <div class="pager">
   {% if has_previous %}
-    <a class="btn ghost" hx-get="?{{ query.urlencode }}&page={{ page_number|add:'-1' }}"
+    <a class="btn secondary" hx-get="?{{ query.urlencode }}&page={{ page_number|add:'-1' }}"
        hx-target="#results" href="?{{ query.urlencode }}&page={{ page_number|add:'-1' }}">Previous</a>
   {% endif %}
-  <span class="muted">Page {{ page_number }}</span>
+  <span class="page-of">Page {{ page_number }}</span>
   {% if has_next %}
-    <a class="btn ghost" hx-get="?{{ query.urlencode }}&page={{ page_number|add:'1' }}"
+    <a class="btn secondary" hx-get="?{{ query.urlencode }}&page={{ page_number|add:'1' }}"
        hx-target="#results" href="?{{ query.urlencode }}&page={{ page_number|add:'1' }}">Next</a>
   {% endif %}
 </div>
 {% else %}
-<div class="panel"><p class="muted">Nothing matches those filters.</p></div>
+<div class="empty"><p>Nothing matches those filters.</p></div>
 {% endif %}

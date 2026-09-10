@@ -1,38 +1,44 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}{{ collection.name }}{% endblock %}
 {% block body %}
-<h1>{{ collection.name }}</h1>
-<p class="sub"><code>{{ collection.firstpart }}</code> · template <code>{{ collection.template }}</code>
-  {% if spec %}· {{ spec.gen_type }} · capacity {{ capacity }}{% endif %}</p>
-
-<div class="grid">
-  <div class="stat"><div class="n">{{ total }}</div><div class="l">ARKs</div></div>
-  <div class="stat"><div class="n">{{ bound }}</div><div class="l">Bound</div></div>
-  <div class="stat"><div class="n">{{ unbound }}</div><div class="l">Unbound</div></div>
-  <div class="stat"><div class="n">{{ elements }}</div><div class="l">Elements</div></div>
-  <div class="stat"><div class="n">{{ redirects }}</div><div class="l">Redirects</div></div>
+<div class="page-header">
+  <div class="titles">
+    <span class="eyebrow">Collection</span>
+    <h1>{{ collection.name }}</h1>
+    <p class="sub"><code>{{ collection.firstpart }}</code> · template <code>{{ collection.template }}</code>
+      {% if spec %}· {{ spec.gen_type }} · capacity {{ capacity }}{% endif %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'admin_ui:ark_list' %}?collection={{ collection.pk }}">Browse ARKs</a>
+    {% if can_edit %}
+      <a class="btn secondary" href="{% url 'admin_ui:mint' collection.pk %}">Mint</a>
+      <a class="btn secondary" href="{% url 'admin_ui:bulk_bind' collection.pk %}">Bulk bind</a>
+    {% endif %}
+    <a class="btn subtle" href="{% url 'admin_ui:export' %}?collection={{ collection.pk }}">Export CSV</a>
+  </div>
 </div>
 
-<p style="margin-top:1rem">
-  <a class="btn" href="{% url 'admin_ui:ark_list' %}?collection={{ collection.pk }}">Browse ARKs</a>
-  {% if can_edit %}
-    <a class="btn" href="{% url 'admin_ui:mint' collection.pk %}">Mint</a>
-    <a class="btn" href="{% url 'admin_ui:bulk_bind' collection.pk %}">Bulk bind</a>
-  {% endif %}
-  <a class="btn ghost" href="{% url 'admin_ui:export' %}?collection={{ collection.pk }}">Export CSV</a>
-</p>
+<div class="stats">
+  <div class="stat"><div class="n">{{ total|intcomma:False }}</div><span class="l">ARKs</span></div>
+  <div class="stat"><div class="n">{{ bound|intcomma:False }}</div><span class="l">Bound</span></div>
+  <div class="stat {% if unbound %}is-warn{% endif %}"><div class="n">{{ unbound|intcomma:False }}</div><span class="l">Unbound</span></div>
+  <div class="stat"><div class="n">{{ elements|intcomma:False }}</div><span class="l">Elements</span></div>
+  <div class="stat"><div class="n">{{ redirects|intcomma:False }}</div><span class="l">Redirects</span></div>
+</div>
 
 {% if can_administer %}
-<div class="panel">
-  <h2 style="margin-top:0">Settings</h2>
+<div class="card">
+  <p class="card-title">Settings</p>
   <form method="post">{% csrf_token %}
-    <div class="field"><label for="name">Name</label>
-      <input id="name" name="name" value="{{ collection.name }}" style="width:100%"></div>
-    <div class="field"><label for="naa">Name Assigning Authority</label>
-      <input id="naa" name="naa" value="{{ collection.naa }}" style="width:100%"></div>
-    <p class="muted">The prefix, NAAN and template cannot be changed once ARKs exist — doing so would
+    <div class="field"><label for="name">Collection name</label>
+      <input id="name" name="name" class="wide" value="{{ collection.name }}"></div>
+    <div class="field"><label for="naa">Name Assigning Authority (NAA)</label>
+      <textarea id="naa" name="naa" class="wide" rows="3">{{ collection.naa }}</textarea>
+      <span class="hint">Returned for <code>/ark:/&lt;naan&gt;/</code> when no identifier is given.</span></div>
+    <p class="hint">The prefix, NAAN and template cannot be changed once ARKs exist — doing so would
       break identifiers already in circulation.</p>
-    <button type="submit">Save</button>
+    <div class="form-actions"><button type="submit">Save changes</button></div>
   </form>
 </div>
 {% endif %}
@@ -40,14 +46,16 @@
 {% if jobs %}
 <h2>Recent bulk binds</h2>
 <div class="table-wrap"><table>
-  <thead><tr><th>When</th><th>Status</th><th>Created</th><th>Updated</th><th>Failed</th><th></th></tr></thead>
+  <thead><tr><th>When</th><th>Status</th><th class="num">Created</th><th class="num">Updated</th>
+    <th class="num">Failed</th><th></th></tr></thead>
   <tbody>
   {% for job in jobs %}
     <tr>
-      <td>{{ job.created_at|date:"Y-m-d H:i" }}</td>
+      <td class="nowrap">{{ job.created_at|date:"Y-m-d H:i" }}</td>
       <td><span class="pill {% if job.status == 'finished' and not job.had_errors %}ok{% elif job.had_errors %}bad{% else %}run{% endif %}">{{ job.get_status_display }}</span></td>
-      <td>{{ job.created }}</td><td>{{ job.updated }}</td><td>{{ job.failed }}</td>
-      <td><a href="{% url 'admin_ui:job_detail' job.pk %}">Details</a></td>
+      <td class="num">{{ job.created|intcomma:False }}</td><td class="num">{{ job.updated|intcomma:False }}</td>
+      <td class="num">{{ job.failed|intcomma:False }}</td>
+      <td class="acts"><a href="{% url 'admin_ui:job_detail' job.pk %}">Details</a></td>
     </tr>
   {% endfor %}
   </tbody>

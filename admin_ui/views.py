@@ -46,7 +46,7 @@ from jobs.bulkbind import TEMPLATE_COLUMNS, template_csv
 from jobs.models import BulkBindJob
 from jobs.tasks import run_bulk_bind
 from minting.minter import MintError, mint
-from minting.noid import TemplateError
+from minting.noid import TemplateError, template_choices
 
 logger = logging.getLogger(__name__)
 
@@ -62,36 +62,62 @@ MAX_PAGE = 1000
 
 @require_role(VIEWER)
 def collection_list(request):
-    collections = Collection.objects.annotate(ark_count=Count("arks")).order_by("name")
+    collections = list(Collection.objects.annotate(ark_count=Count("arks")).order_by("name"))
     return render(
         request,
         "admin_ui/collection_list.html",
-        {"collections": collections, "organisation": Organisation.load()},
+        {
+            "collections": collections,
+            "organisation": Organisation.load(),
+            "collection_count": len(collections),
+            # Summed from the per-collection counts already fetched rather than
+            # a second COUNT(*) over the whole ARK table.
+            "ark_total": sum(c.ark_count for c in collections),
+            "running_jobs": BulkBindJob.objects.filter(
+                status__in=(BulkBindJob.Status.PENDING, BulkBindJob.Status.RUNNING)
+            ).count(),
+        },
     )
 
 
 @require_role(ADMIN)
 def collection_create(request):
-    error = None
+    errors: dict[str, str] = {}
     values = {"term": "medium"}
     if request.method == "POST":
         values = {
             key: request.POST.get(key, "").strip()
             for key in ("name", "prefix", "naan", "naa", "template", "term")
         }
-        collection = Collection(**values)
-        try:
-            collection.full_clean()
-            collection.save()
-            messages.success(request, f"Created collection {collection.name}.")
-            return redirect("admin_ui:collection_detail", pk=collection.pk)
-        except ValidationError as exc:
-            error = "; ".join(f"{k}: {' '.join(v)}" for k, v in exc.message_dict.items())
+        # The model allows a blank prefix so legacy minters import unchanged;
+        # the form insists on one, as the legacy form did.
+        if not values["prefix"]:
+            errors["prefix"] = "A prefix or shoulder is required."
+        elif Collection.objects.filter(naan=values["naan"], prefix=values["prefix"]).exists():
+            errors["prefix"] = "The entered prefix has been used, please enter another prefix."
+        if values["term"] == Collection.Term.LONG and not values["naa"]:
+            errors["naa"] = "A long-term collection needs a Name Assigning Authority."
+
+        if not errors:
+            collection = Collection(**values)
+            try:
+                collection.full_clean()
+                collection.save()
+                messages.success(request, f"Created collection {collection.name}.")
+                return redirect("admin_ui:collection_detail", pk=collection.pk)
+            except ValidationError as exc:
+                errors = {k: " ".join(v) for k, v in exc.message_dict.items()}
 
     return render(
         request,
         "admin_ui/collection_form.html",
-        {"error": error, "values": values, "terms": Collection.Term.choices},
+        {
+            "errors": errors,
+            "error": "; ".join(f"{k}: {v}" for k, v in errors.items()) or None,
+            "values": values,
+            "terms": Collection.Term.choices,
+            "templates": template_choices(),
+        },
     )
 
 

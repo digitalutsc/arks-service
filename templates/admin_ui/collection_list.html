@@ -1,17 +1,35 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}Collections{% endblock %}
 {% block body %}
-<h1>Collections</h1>
-<p class="sub">Each collection is a minter with its own prefix, NAAN and noid template.</p>
+<div class="page-header">
+  <div class="titles">
+    <span class="eyebrow">Overview</span>
+    <h1>Collections</h1>
+    <p class="sub">Each collection is one minter, with its own prefix, NAAN and noid template.</p>
+  </div>
+  {% if can_administer %}
+    <div class="actions">
+      <a class="btn" href="{% url 'admin_ui:collection_create' %}">New collection</a>
+    </div>
+  {% endif %}
+</div>
 
-{% if can_administer %}
-  <p><a class="btn" href="{% url 'admin_ui:collection_create' %}">New collection</a></p>
-{% endif %}
+<div class="stats">
+  <div class="stat"><div class="n">{{ collection_count }}</div>
+    <span class="l">Collection{{ collection_count|pluralize }}</span></div>
+  <div class="stat"><div class="n">{{ ark_total|intcomma:False }}</div><span class="l">ARKs minted</span></div>
+  <div class="stat {% if running_jobs %}is-warn{% endif %}"><div class="n">{{ running_jobs }}</div>
+    <span class="l">Jobs running</span></div>
+</div>
 
 {% if collections %}
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Name</th><th>Prefix</th><th>NAAN</th><th>Template</th><th>ARKs</th><th></th></tr></thead>
+  <thead><tr>
+    <th>Name</th><th>Prefix</th><th>NAAN</th><th>Template</th>
+    <th class="num">ARKs</th><th></th>
+  </tr></thead>
   <tbody>
   {% for collection in collections %}
     <tr>
@@ -19,15 +37,25 @@
       <td><code>{{ collection.prefix|default:"—" }}</code></td>
       <td><code>{{ collection.naan }}</code></td>
       <td><code>{{ collection.template }}</code></td>
-      <td>{{ collection.ark_count|default:0 }}</td>
-      <td><a href="{% url 'admin_ui:ark_list' %}?collection={{ collection.pk }}">Browse</a></td>
+      <td class="num">{{ collection.ark_count|default:0|intcomma:False }}</td>
+      <td class="acts">
+        <a class="btn secondary" href="{% url 'admin_ui:ark_list' %}?collection={{ collection.pk }}">Browse ARKs</a>
+        {% if can_edit %}
+          <a class="btn secondary" href="{% url 'admin_ui:mint' collection.pk %}">Mint</a>
+        {% endif %}
+      </td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
 {% else %}
-  <div class="panel"><p class="muted">No collections yet.
-  {% if can_administer %}Create one to start minting.{% else %}An administrator needs to create one.{% endif %}</p></div>
+  <div class="empty">
+    <p>No collections yet.
+      {% if can_administer %}Create one to start minting.{% else %}An administrator needs to create one.{% endif %}</p>
+    {% if can_administer %}
+      <p><a class="btn" href="{% url 'admin_ui:collection_create' %}">New collection</a></p>
+    {% endif %}
+  </div>
 {% endif %}
 {% endblock %}

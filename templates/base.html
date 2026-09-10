@@ -1,33 +1,56 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}ARK Service{% endblock %}</title>
-  {% load static %}
+  <title>{% block title %}ARK Service{% endblock %} · {{ organisation.name|default:"ARK Service" }}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
 </head>
 <body>
+<div class="shell {% block shell_class %}{% endblock %}">
 {% if user.is_authenticated %}
-<header class="top">
-  <a class="brand" href="{% url 'admin_ui:collection_list' %}">{{ organisation.name|default:"ARK Service" }}</a>
-  <nav>
-    <a href="{% url 'admin_ui:collection_list' %}">Collections</a>
-    <a href="{% url 'admin_ui:ark_list' %}">ARKs</a>
-    {% if can_administer %}<a href="{% url 'admin_ui:user_list' %}">Users</a>{% endif %}
-    <span class="role">{{ user.username }} · {{ user_role|default:"no role" }}</span>
-    <form method="post" action="{% url 'admin_ui:logout' %}">{% csrf_token %}
-      <button class="ghost" type="submit">Sign out</button>
-    </form>
-  </nav>
-</header>
+  <aside class="sidebar">
+    <a class="brand" href="{% url 'admin_ui:collection_list' %}">
+      <span class="brand-mark" aria-hidden="true">ark</span>
+      <span class="brand-name">{{ organisation.name|default:"ARK Service" }}</span>
+    </a>
+    <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false">Menu</button>
+
+    <nav class="sidebar-nav" aria-label="Sections">
+      <a href="{% url 'admin_ui:collection_list' %}"
+         {% if section == 'collections' %}aria-current="page"{% endif %}>Collections</a>
+      <a href="{% url 'admin_ui:ark_list' %}"
+         {% if section == 'arks' %}aria-current="page"{% endif %}>ARKs</a>
+      {% if can_administer %}
+        <a href="{% url 'admin_ui:user_list' %}"
+           {% if section == 'users' %}aria-current="page"{% endif %}>Users</a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-foot">
+      <p class="who"><strong>{{ user.username }}</strong>
+        <span class="role">{{ user_role|default:"no role" }}</span></p>
+      <p class="env-badge {% if environment_is_local %}is-local{% endif %}">
+        <span class="where"><span class="dot" aria-hidden="true"></span>{{ environment_label }}</span>
+        <span class="base">{{ ark_base_url }}</span>
+      </p>
+      <form class="sign-out" method="post" action="{% url 'admin_ui:logout' %}">{% csrf_token %}
+        <button class="secondary" type="submit">Sign out</button>
+      </form>
+    </div>
+  </aside>
 {% endif %}
-<main>
-  {% if messages %}{% for message in messages %}
-    <div class="msg {{ message.tags }}">{{ message }}</div>
-  {% endfor %}{% endif %}
-  {% block body %}{% endblock %}
-</main>
+
+  <div class="content">
+    <div class="content-inner">
+      {% if messages %}{% for message in messages %}
+        <div class="msg {{ message.tags }}">{{ message }}</div>
+      {% endfor %}{% endif %}
+      {% block body %}{% endblock %}
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -1,0 +1,19 @@
+{% comment %}
+The identifier plate. Every ARK in the interface is rendered through here, so
+one change reaches all of them.
+
+  ark       required
+  show_url  add the resolvable URL for this environment, plus a copy button
+  plain     render as text rather than a link to the ARK's page
+{% endcomment %}
+<span class="ark-line">
+  {% if plain %}
+    <span class="ark"><span class="naan">{{ ark.naan }}/</span><span class="ident">{{ ark.identifier }}</span></span>
+  {% else %}
+    <a class="ark" href="{% url 'admin_ui:ark_detail' ark.pk %}"><span class="naan">{{ ark.naan }}/</span><span class="ident">{{ ark.identifier }}</span></a>
+  {% endif %}
+  {% if show_url %}
+    <a class="ark-url" href="{{ ark_base_url }}{{ ark.path }}" target="_blank" rel="noopener">{{ ark_base_url }}{{ ark.path }}</a>
+    <button class="copy" type="button" data-copy="{{ ark_base_url }}{{ ark.path }}">Copy</button>
+  {% endif %}
+</span>

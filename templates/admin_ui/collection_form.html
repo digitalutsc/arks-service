@@ -1,43 +1,76 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}New collection{% endblock %}
 {% block body %}
-<h1>New collection</h1>
-<p class="sub">The prefix must be unique. The template decides what identifiers look like and how many there can be.</p>
-{% if error %}<div class="msg error">{{ error }}</div>{% endif %}
-<form method="post" class="panel">{% csrf_token %}
-  <div class="field"><label for="name">Name</label>
-    <input id="name" name="name" value="{{ values.name|default:'' }}" required style="width:100%"></div>
-  <div class="row">
-    <div class="field"><label for="prefix">Prefix</label>
-      <input id="prefix" name="prefix" value="{{ values.prefix|default:'' }}" placeholder="utsc"></div>
-    <div class="field"><label for="naan">NAAN</label>
-      <input id="naan" name="naan" value="{{ values.naan|default:'' }}" placeholder="61220" required></div>
-    <div class="field"><label for="template">Template</label>
-      <input id="template" name="template" value="{{ values.template|default:'.zd' }}" required></div>
-    <div class="field"><label for="term">Term</label>
-      <select id="term" name="term">
-        {% for value, label in terms %}
-          <option value="{{ value }}" {% if values.term == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select></div>
+<div class="page-header">
+  <div class="titles">
+    <span class="eyebrow"><a href="{% url 'admin_ui:collection_list' %}">Collections</a></span>
+    <h1>New collection</h1>
+    <p class="sub">A collection is one minter: one template, one prefix, one naming authority.</p>
   </div>
-  <div class="field"><label for="naa">Name Assigning Authority</label>
-    <input id="naa" name="naa" value="{{ values.naa|default:'' }}" style="width:100%"
-           placeholder="Shown when someone requests /ark:/&lt;naan&gt;/"></div>
-  <button type="submit">Create</button>
-  <a class="btn ghost" href="{% url 'admin_ui:collection_list' %}">Cancel</a>
-</form>
-
-<div class="panel">
-  <h2 style="margin-top:0">Common templates</h2>
-  <table>
-    <tbody>
-      <tr><td><code>.zd</code></td><td>Sequential digits, no limit — new digits are added as needed.</td></tr>
-      <tr><td><code>.zeee</code></td><td>Sequential extended digits, at least three, no limit.</td></tr>
-      <tr><td><code>.sdddddd</code></td><td>Sequential 6-digit numbers, stopping after a million.</td></tr>
-      <tr><td><code>.rddd</code></td><td>Random 3-digit numbers, stopping after a thousand.</td></tr>
-      <tr><td><code>.rdedk</code></td><td>Random mixed digits with a computed check character.</td></tr>
-    </tbody>
-  </table>
 </div>
+
+{% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+
+<form method="post" class="card">{% csrf_token %}
+  <div class="field {% if errors.name %}field-error{% endif %}">
+    <label for="name">Collection name</label>
+    <input id="name" name="name" class="wide" value="{{ values.name|default:'' }}" required>
+    {% if errors.name %}<span class="hint error">{{ errors.name }}</span>{% endif %}
+  </div>
+
+  <div class="field {% if errors.template %}field-error{% endif %}">
+    <label for="template">Template (for minter)</label>
+    <select id="template" name="template" class="wide" required>
+      <option value="" disabled {% if not values.template %}selected{% endif %}>Choose…</option>
+      {% for t in templates %}
+        <option value="{{ t.value }}" data-description="{{ t.description }}" data-capacity="{{ t.capacity }}"
+                {% if values.template == t.value %}selected{% endif %}>{{ t.value }}</option>
+      {% endfor %}
+    </select>
+    <span id="template-help" class="hint"></span>
+    <span class="hint">Review the noid template documentation at
+      <a href="https://metacpan.org/pod/distribution/Noid/noid" target="_blank" rel="noopener">metacpan.org/pod/distribution/Noid/noid</a>.</span>
+    {% if errors.template %}<span class="hint error">{{ errors.template }}</span>{% endif %}
+  </div>
+
+  <div class="field {% if errors.prefix %}field-error{% endif %}">
+    <label for="prefix">Prefix or Shoulder (must be unique)</label>
+    <input id="prefix" name="prefix" class="wide mono" value="{{ values.prefix|default:'' }}" required>
+    <span class="hint">Constant string after the NAAN, e.g. <code>utsc</code>. Must be unique within its NAAN.</span>
+    {% if errors.prefix %}<span class="hint error">{{ errors.prefix }}</span>{% endif %}
+  </div>
+
+  <div class="field {% if errors.term %}field-error{% endif %}">
+    <label for="term">Term</label>
+    <select id="term" name="term" class="wide">
+      {% for value, label in terms %}
+        <option value="{{ value }}" {% if values.term == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <span class="hint">Long-term collections must give a NAAN and a Name Assigning Authority.</span>
+    {% if errors.term %}<span class="hint error">{{ errors.term }}</span>{% endif %}
+  </div>
+
+  <div class="field {% if errors.naan %}field-error{% endif %}">
+    <label for="naan">Name Assigning Authority Number (NAAN)</label>
+    <input id="naan" name="naan" class="wide mono" value="{{ values.naan|default:'' }}" required>
+    <span class="hint">Look up your NAAN in the
+      <a href="https://cdlib.org/naan_registry" target="_blank" rel="noopener">NAAN registry</a>.</span>
+    {% if errors.naan %}<span class="hint error">{{ errors.naan }}</span>{% endif %}
+  </div>
+
+  <div class="field {% if errors.naa %}field-error{% endif %}">
+    <label for="naa">Name Assigning Authority (NAA)</label>
+    <textarea id="naa" name="naa" class="wide" rows="3">{{ values.naa|default:'' }}</textarea>
+    <span class="hint">Returned for <code>/ark:/&lt;naan&gt;/</code> when no identifier is given.</span>
+    {% if errors.naa %}<span class="hint error">{{ errors.naa }}</span>{% endif %}
+  </div>
+
+  <div class="form-actions">
+    <button type="submit">Create collection</button>
+    <a class="btn subtle" href="{% url 'admin_ui:collection_list' %}">Cancel</a>
+  </div>
+</form>
+<script src="{% static 'js/collection_form.js' %}" defer></script>
 {% endblock %}
