@@ -274,6 +274,13 @@ every bound value.
 value, bound/unbound, minimum redirects, minted-after / minted-before. Any
 result can be exported with *Export these as CSV*.
 
+Click a column heading to sort by it, and again to reverse the order. *ARK* and
+*Public URL* sort alike, *Elements* sorts by how many elements are bound, and
+*Redirects* by the total across qualifiers. The order is part of the address
+(`?sort=-minted`), so it survives paging, a change of filter and a bookmark; it
+does not affect an export. Sorting by *Elements* or *Redirects* has no index to
+lean on, so on a very large list narrow it with a filter first.
+
 **Command line**
 
 ```bash

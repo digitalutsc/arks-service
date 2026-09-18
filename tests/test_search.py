@@ -8,12 +8,13 @@ can be edited and uploaded straight back.
 """
 
 import re
+from datetime import timedelta
 
 import pytest
 from django.utils import timezone
 
 from core.models import Ark, Binding, Collection, Resolution
-from core.search import export_rows, search_arks
+from core.search import export_rows, parse_sort, search_arks, sort_arks
 
 pytestmark = pytest.mark.django_db
 
@@ -126,6 +127,95 @@ def test_results_are_distinct_even_when_several_bindings_match(data):
 
 def test_search_returns_no_rows_when_nothing_matches(data):
     assert names(search_arks(text="nothing-here")) == []
+
+
+# --- sorting --------------------------------------------------------------
+
+
+def in_order(queryset):
+    return [a.identifier for a in queryset]
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("ark", ("ark", False)),
+        ("-ark", ("ark", True)),
+        ("minted", ("minted", False)),
+        ("-redirects", ("redirects", True)),
+        ("elements", ("elements", False)),
+        # Anything unrecognised is today's order, never an error: the value
+        # comes straight from the query string.
+        ("", ("ark", False)),
+        ("-", ("ark", False)),
+        ("--ark", ("ark", False)),
+        ("minted_by__password", ("ark", False)),
+        ("²", ("ark", False)),
+        (None, ("ark", False)),
+    ],
+)
+def test_parse_sort_accepts_only_known_keys(raw, expected):
+    assert parse_sort(raw) == expected
+
+
+def test_the_default_sort_is_by_ark(data):
+    assert in_order(sort_arks(search_arks(), "ark", False)) == ["map0", "utsc0", "utsc1", "utsc2"]
+    assert in_order(sort_arks(search_arks(), "ark", True)) == ["utsc2", "utsc1", "utsc0", "map0"]
+
+
+def test_sort_by_minted_date(data):
+    now = timezone.now()
+    for days_ago, key in enumerate(["a2", "a0", "a3", "a1"]):
+        Ark.objects.filter(pk=data[key].pk).update(minted_at=now - timedelta(days=days_ago))
+    assert in_order(sort_arks(search_arks(), "minted", True)) == ["utsc2", "utsc0", "map0", "utsc1"]
+    assert in_order(sort_arks(search_arks(), "minted", False)) == [
+        "utsc1",
+        "map0",
+        "utsc0",
+        "utsc2",
+    ]
+
+
+def test_sort_by_redirects_puts_never_resolved_arks_at_zero(data):
+    # Ties (the two that were never resolved) fall back to ARK order.
+    assert in_order(sort_arks(search_arks(), "redirects", True)) == [
+        "utsc0",
+        "utsc1",
+        "map0",
+        "utsc2",
+    ]
+    assert in_order(sort_arks(search_arks(), "redirects", False)) == [
+        "map0",
+        "utsc2",
+        "utsc1",
+        "utsc0",
+    ]
+
+
+def test_sort_by_redirects_adds_up_every_qualifier(data):
+    # The column shows the total across qualifiers, so the sort must too.
+    Resolution.objects.create(ark=data["a1"], qualifier="/page1", count=1000)
+    assert in_order(sort_arks(search_arks(), "redirects", True))[:2] == ["utsc1", "utsc0"]
+
+
+def test_sort_by_number_of_elements(data):
+    assert in_order(sort_arks(search_arks(), "elements", True)) == [
+        "utsc0",
+        "utsc1",
+        "map0",
+        "utsc2",
+    ]
+    assert in_order(sort_arks(search_arks(), "elements", False)) == [
+        "utsc2",
+        "map0",
+        "utsc0",
+        "utsc1",
+    ]
+
+
+def test_sorting_composes_with_filters_and_keeps_rows_distinct(data, collection):
+    found = sort_arks(search_arks(collection=collection, bound=True), "redirects", False)
+    assert in_order(found) == ["utsc1", "utsc0"]
 
 
 # --- export ---------------------------------------------------------------

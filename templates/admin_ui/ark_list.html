@@ -12,6 +12,7 @@
 <form class="card" method="get" action="{% url 'admin_ui:ark_list' %}"
       hx-get="{% url 'admin_ui:ark_list' %}" hx-target="#results" hx-push-url="true"
       hx-trigger="submit, change from:select, change from:input[type=number]">
+  <input type="hidden" id="sort-field" name="sort" value="{{ sort_param }}">
   <div class="form-grid">
     <div class="field grow"><label for="q">Free text</label>
       <input id="q" name="q" value="{{ query.q|default:'' }}"></div>

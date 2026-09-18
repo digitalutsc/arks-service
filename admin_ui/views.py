@@ -40,7 +40,16 @@ from admin_ui.roles import (
     set_role,
 )
 from core.models import Ark, Binding, Collection, Organisation, Resolution
-from core.search import counted, element_names, export_rows, search_arks
+from core.search import (
+    DEFAULT_SORT,
+    SORT_DESC_FIRST,
+    counted,
+    element_names,
+    export_rows,
+    parse_sort,
+    search_arks,
+    sort_arks,
+)
 from core.services import bind_element, collection_stats, unbind_elements
 from jobs.bulkbind import TEMPLATE_COLUMNS, template_csv
 from jobs.models import BulkBindJob
@@ -213,14 +222,59 @@ def _as_datetime(value):
     return timezone.make_aware(datetime.combine(parsed, time.min))
 
 
+#: Browse table headers: label, sort key, CSS class. The public URL is the base
+#: URL plus the ARK, so it orders exactly as the ARK column does.
+ARK_TABLE_HEADERS = (
+    ("ARK", "ark", ""),
+    ("Public URL", "ark", ""),
+    ("Elements", "elements", "stretch"),
+    ("Redirects", "redirects", "num"),
+    ("Minted", "minted", ""),
+)
+
+
+def _sort_param(key: str, descending: bool) -> str:
+    return f"-{key}" if descending else key
+
+
+def _sort_headers(request, current: str, descending: bool) -> list[dict]:
+    """
+    The browse table's headers, each with the query string its link leads to.
+
+    Clicking the column already in use reverses it; clicking another starts
+    from that column's natural direction. Either way the link drops ``page``,
+    since page 7 of one ordering means nothing in another.
+    """
+    headers = []
+    for label, key, css in ARK_TABLE_HEADERS:
+        active = key == current
+        params = request.GET.copy()
+        params.pop("page", None)
+        params["sort"] = _sort_param(key, not descending if active else key in SORT_DESC_FIRST)
+        headers.append(
+            {
+                "label": label,
+                "css": css,
+                "query": params.urlencode(),
+                "aria": ("descending" if descending else "ascending") if active else "",
+            }
+        )
+    return headers
+
+
 @require_role(VIEWER)
 def ark_list(request):
     collection, queryset = _search_from_request(request)
+    sort_key, descending = parse_sort(request.GET.get("sort"))
+    is_htmx = bool(request.headers.get("HX-Request"))
 
     # Paginator would run COUNT(*) over the filtered set on every page view —
     # a full index scan on a large table, and with a free-text filter it runs
     # the whole LIKE plan a second time just to render a number.
+    # Counted before sorting: the redirect and element sorts annotate a
+    # subquery, and the capped count would evaluate it for every row it looks at.
     total, capped = counted(queryset)
+    queryset = sort_arks(queryset, sort_key, descending)
     number = max(1, min(as_int(request.GET.get("page")) or 1, MAX_PAGE))
     offset = (number - 1) * PAGE_SIZE
     arks = list(queryset[offset : offset + PAGE_SIZE + 1])
@@ -249,12 +303,16 @@ def ark_list(request):
         # Cached and collection-scoped: an unscoped DISTINCT over every binding
         # name is a full index scan on each page view.
         "element_names": element_names(collection.pk if collection else None),
+        "headers": _sort_headers(request, sort_key, descending),
+        # Empty for the default order, so an untouched table keeps a clean URL.
+        "sort_param": (
+            ""
+            if (sort_key, descending) == (DEFAULT_SORT, False)
+            else _sort_param(sort_key, descending)
+        ),
+        "is_htmx": is_htmx,
     }
-    template = (
-        "admin_ui/_ark_table.html"
-        if request.headers.get("HX-Request")
-        else "admin_ui/ark_list.html"
-    )
+    template = "admin_ui/_ark_table.html" if is_htmx else "admin_ui/ark_list.html"
     return render(request, template, context)
 
 

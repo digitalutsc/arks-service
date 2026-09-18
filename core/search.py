@@ -18,7 +18,18 @@ from collections.abc import Iterator
 from datetime import datetime
 
 from django.core.cache import cache
-from django.db.models import Exists, OuterRef, Q, QuerySet
+from django.db.models import (
+    BigIntegerField,
+    Count,
+    Exists,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce
 
 from core.models import Ark, Binding, Resolution, value_prefix
 
@@ -107,6 +118,71 @@ def search_arks(
     # Exists() subqueries keep rows distinct without a DISTINCT, which would
     # force a sort over the whole result on both engines.
     return queryset.order_by(order_by, "identifier")
+
+
+#: Columns the browse table can be ordered by. The value arrives in a query
+#: string, so it is only ever looked up here, never handed to order_by().
+SORT_KEYS = ("ark", "minted", "redirects", "elements")
+DEFAULT_SORT = "ark"
+
+#: Columns whose first click should show the largest or newest rows.
+SORT_DESC_FIRST = frozenset({"minted", "redirects", "elements"})
+
+
+def parse_sort(raw: str | None) -> tuple[str, bool]:
+    """
+    Turn a ``sort`` parameter into ``(key, descending)``.
+
+    ``minted`` is ascending and ``-minted`` descending. Anything unrecognised is
+    the default order rather than an error.
+    """
+    text = (raw or "").strip()
+    descending = text.startswith("-")
+    key = text[1:] if descending else text
+    if key not in SORT_KEYS:
+        return DEFAULT_SORT, False
+    return key, descending
+
+
+def sort_arks(queryset: QuerySet[Ark], key: str, descending: bool = False) -> QuerySet[Ark]:
+    """Order a search result by one of ``SORT_KEYS``."""
+    if key == "minted":
+        # The primary key rides along in every InnoDB secondary index, so the
+        # tie-break costs nothing and keeps pages stable when an import stamped
+        # thousands of ARKs with the same instant.
+        fields = ["minted_at", "id"]
+    elif key in ("redirects", "elements"):
+        # Neither total is stored, so these order by a per-row subquery and the
+        # database sorts the whole filtered set to find one page. That is paid
+        # only when someone asks for it; narrowing with a filter first keeps it
+        # quick. order_by() keeps Resolution's Meta.ordering out of the grouped
+        # subquery, which must come back as exactly one row.
+        if key == "redirects":
+            per_ark = (
+                Resolution.objects.filter(ark=OuterRef("pk"))
+                .order_by()
+                .values("ark")
+                .annotate(total=Sum("count"))
+            )
+        else:
+            per_ark = (
+                Binding.objects.filter(ark=OuterRef("pk"))
+                .order_by()
+                .values("ark")
+                .annotate(total=Count("id"))
+            )
+        queryset = queryset.annotate(
+            sort_total=Coalesce(
+                Subquery(per_ark.values("total")), Value(0), output_field=BigIntegerField()
+            )
+        )
+        # Ties stay in ARK order whichever way the totals run.
+        total = "-sort_total" if descending else "sort_total"
+        return queryset.order_by(total, "naan", "identifier")
+    else:
+        fields = ["naan", "identifier"]
+
+    return queryset.order_by(*(f"-{field}" if descending else field for field in fields))
 
 
 def counted(queryset: QuerySet[Ark], cap: int = COUNT_CAP) -> tuple[int, bool]:

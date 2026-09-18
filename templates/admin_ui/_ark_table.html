@@ -1,4 +1,7 @@
 {% load humanize %}
+{# The filter form sits outside #results, so a header click has to reach in and #}
+{# update its copy of the sort — otherwise the next filter change would drop it. #}
+{% if is_htmx %}<input type="hidden" id="sort-field" name="sort" value="{{ sort_param }}" hx-swap-oob="true">{% endif %}
 <p class="meta">{{ total|intcomma:False }}{% if capped %}+{% endif %} ARK{{ total|pluralize }}
   {% if total %}
     · <a href="{% url 'admin_ui:export' %}?{{ query.urlencode }}">Export these as CSV</a>
@@ -9,8 +12,11 @@
 <div class="table-wrap">
 <table>
   <thead><tr>
-    <th>ARK</th><th>Public URL</th><th class="stretch">Elements</th>
-    <th class="num">Redirects</th><th>Minted</th>
+  {% for h in headers %}
+    <th{% if h.css %} class="{{ h.css }}"{% endif %}{% if h.aria %} aria-sort="{{ h.aria }}"{% endif %}>
+      <a class="sort" href="?{{ h.query }}" hx-get="?{{ h.query }}"
+         hx-target="#results" hx-push-url="true">{{ h.label }}</a></th>
+  {% endfor %}
   </tr></thead>
   <tbody>
   {% for ark in arks %}
