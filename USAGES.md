@@ -220,6 +220,14 @@ row,ark_id,status,message
 
 Fix those rows and upload the whole file again.
 
+In the staff interface the job page (*Recent uploads* → **Details**) lists the
+same rows under the same four columns, fifty to a page, with a count for *All*,
+*Errors*, *Minted* and *OK*. A job with failures opens on *Errors*, so the rows
+to fix are in front of you however long the file was. The search box above the
+table finds rows by ARK or by message, ignoring case; the counts on the filters
+follow the search, so they show which status the matches are under. The table is
+read from the results file itself, so it always matches the download.
+
 ### Options
 
 | Option | UI equivalent | Effect |
@@ -257,6 +265,19 @@ Ark_ID,URL
 61220/utsc1/page1,https://example.org/1/p1
 61220/utsc1/page1.image.png,https://example.org/1/p1.png
 ```
+
+**Staff interface** — the ARK's page lists the object's own elements first, under
+*Bound elements*, and then its qualifiers in a table of their own under
+*Variants*, one row each: the qualifier, its public URL, its elements and its
+redirect count. As in the ARK list, a row shows four elements with values cut at
+60 characters (the whole value on hover); *+N more* opens the rest in place. Rows are in counting order (`/p2` before `/p10`). The
+search box above the table keeps only the variants whose qualifier, or any
+element name or value, contains the term (case is ignored). Click a heading to
+sort, and again to reverse: *Variant* and *Public URL* sort alike, *Elements* by
+how many are bound, *Redirects* by count, with ties left in counting order. Search
+and sort are both in the address, and an edit keeps them. Editors get a
+*Remove* beside each element, shown on hover or keyboard focus; binding to or
+removing from a variant brings you back to its row.
 
 > **There is no fallback up the hierarchy.** Requesting `/ark:/61220/utsc1/page9`
 > when nothing is bound to `/page9` returns 404, even if the object itself

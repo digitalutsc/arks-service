@@ -1,0 +1,19 @@
+{% comment %}
+One element in a row of the variants table. The value is cut at 60 characters,
+as in the Browse ARKs table; the whole of it is on hover.
+
+  binding   required
+  v         the variant the row is for (its qualifier names the Remove button)
+{% endcomment %}
+<div class="el">
+  <span class="el-name">{{ binding.name }}</span>
+  <span class="el-value" title="{{ binding.value }}">{{ binding.value|truncatechars:60 }}</span>
+  {% if can_edit %}
+  <form class="inline" method="post">{% csrf_token %}
+    <input type="hidden" name="action" value="unbind">
+    <input type="hidden" name="name" value="{{ binding.name }}">
+    <input type="hidden" name="qualifier" value="{{ binding.qualifier }}">
+    <button class="subtle el-remove" type="submit" aria-label="Remove {{ binding.name }} from {{ v.qualifier }}">Remove</button>
+  </form>
+  {% endif %}
+</div>

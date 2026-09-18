@@ -1,0 +1,26 @@
+{% comment %}
+The elements bound under one qualifier — the ARK's own, or one variant's.
+
+  bindings   required; every row shares one qualifier, so there is no column for it
+{% endcomment %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Element</th><th class="stretch">Value</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for binding in bindings %}
+    <tr>
+      <td><strong>{{ binding.name }}</strong></td>
+      <td class="break">{{ binding.value }}</td>
+      {% if can_edit %}
+      <td class="acts">
+        <form class="inline" method="post">{% csrf_token %}
+          <input type="hidden" name="action" value="unbind">
+          <input type="hidden" name="name" value="{{ binding.name }}">
+          <input type="hidden" name="qualifier" value="{{ binding.qualifier }}">
+          <button class="secondary" type="submit">Remove</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>

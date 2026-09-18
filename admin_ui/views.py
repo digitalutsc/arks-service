@@ -18,10 +18,12 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Sum
-from django.http import Http404, HttpResponse, StreamingHttpResponse
+from django.http import Http404, HttpResponse, QueryDict, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from django.utils.http import urlencode
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
@@ -51,8 +53,8 @@ from core.search import (
     sort_arks,
 )
 from core.services import bind_element, collection_stats, unbind_elements
-from jobs.bulkbind import TEMPLATE_COLUMNS, template_csv
-from jobs.models import BulkBindJob
+from jobs.bulkbind import STATUS_ERROR, STATUS_MINTED, STATUS_OK, TEMPLATE_COLUMNS, template_csv
+from jobs.models import RESULT_COLUMNS, BulkBindJob
 from jobs.tasks import run_bulk_bind
 from minting.minter import MintError, mint
 from minting.noid import TemplateError, template_choices
@@ -222,6 +224,40 @@ def _as_datetime(value):
     return timezone.make_aware(datetime.combine(parsed, time.min))
 
 
+#: Session key holding the Browse ARKs query string as the user last left it.
+ARK_LIST_SESSION_KEY = "ark_list_query"
+
+
+def _remember_list(request) -> None:
+    """
+    Keep this view of the ARK list, so an ARK opened from it can lead back.
+
+    One value per parameter: the pager appends ``page`` to an address that may
+    already carry one, and the last is the one that counts.
+    """
+    params = request.GET.copy()
+    for key in list(params.keys()):
+        params.setlist(key, [params[key]])
+    request.session[ARK_LIST_SESSION_KEY] = params.urlencode()
+
+
+def _back_to_list(request, ark) -> dict:
+    """
+    Where an ARK's page leads back to: the list as it was left, if it could
+    have held this ARK; otherwise the ARKs of this ARK's own collection.
+    """
+    base = reverse("admin_ui:ark_list")
+    left = request.session.get(ARK_LIST_SESSION_KEY)
+    if left is not None:
+        filtered_to = as_int(QueryDict(left).get("collection"))
+        if filtered_to in (None, ark.collection_id):
+            return {"url": f"{base}?{left}" if left else base, "label": "Back to ARKs"}
+    return {
+        "url": f"{base}?{urlencode({'collection': ark.collection_id})}",
+        "label": f"Back to ARKs in {ark.collection.name}",
+    }
+
+
 #: Browse table headers: label, sort key, CSS class. The public URL is the base
 #: URL plus the ARK, so it orders exactly as the ARK column does.
 ARK_TABLE_HEADERS = (
@@ -267,6 +303,7 @@ def ark_list(request):
     collection, queryset = _search_from_request(request)
     sort_key, descending = parse_sort(request.GET.get("sort"))
     is_htmx = bool(request.headers.get("HX-Request"))
+    _remember_list(request)
 
     # Paginator would run COUNT(*) over the filtered set on every page view —
     # a full index scan on a large table, and with a free-text filter it runs
@@ -316,6 +353,138 @@ def ark_list(request):
     return render(request, template, context)
 
 
+#: Elements a variant's row shows before folding the rest under "+N more" —
+#: the same four the Browse ARKs table shows for an ARK.
+VARIANT_ELEMENTS_SHOWN = 4
+
+#: Longest term looked for among an ARK's variants.
+VARIANT_SEARCH_MAX = 200
+
+
+_DIGITS = re.compile(r"(\d+)")
+
+
+def _variant_order(qualifiers) -> list[str]:
+    """Qualifiers as a person would count them: /p2 before /p10."""
+
+    def key(qualifier: str):
+        return [
+            (0, int(part)) if part.isdigit() else (1, part) for part in _DIGITS.split(qualifier)
+        ]
+
+    return sorted({q for q in qualifiers if q}, key=key)
+
+
+def _variants(bindings, resolutions, text: str = "") -> tuple[list[dict], int]:
+    """
+    The qualified forms of an ARK, each with its own elements, and how many
+    there are in all.
+
+    The ARK's own elements (no qualifier) are not among them; the page lists
+    those first, apart from these. ``text`` keeps only the variants whose
+    qualifier, or any element name or value, contains it. A variant that
+    matches keeps all of its elements: the point is to find the page, then
+    read it.
+    """
+    grouped: dict[str, list] = {}
+    for binding in bindings:
+        if binding.qualifier:
+            grouped.setdefault(binding.qualifier, []).append(binding)
+    redirects = {resolution.qualifier: resolution.count for resolution in resolutions}
+    needle = text.casefold()
+
+    variants = []
+
+    # Numbered before filtering, so a row's anchor is the same whether or not
+    # a search is hiding its neighbours.
+    def matches(binding) -> bool:
+        return needle in binding.name.casefold() or needle in binding.value.casefold()
+
+    for number, qualifier in enumerate(_variant_order(grouped), start=1):
+        found = grouped[qualifier]
+        if needle and not (needle in qualifier.casefold() or any(map(matches, found))):
+            continue
+        more = found[VARIANT_ELEMENTS_SHOWN:]
+        variants.append(
+            {
+                "number": number,
+                "qualifier": qualifier,
+                "bindings": found,
+                "shown": found[:VARIANT_ELEMENTS_SHOWN],
+                "more": more,
+                # A search that matched only a folded element would otherwise
+                # show a row with no visible reason for being there.
+                "more_open": bool(needle)
+                and not any(map(matches, found[:VARIANT_ELEMENTS_SHOWN]))
+                and any(map(matches, more)),
+                "redirects": redirects.get(qualifier, 0),
+            }
+        )
+    return variants, len(grouped)
+
+
+#: Variants table headers: label, sort key, CSS class. A variant's public URL is
+#: the ARK's plus the qualifier, so it orders exactly as the Variant column does.
+VARIANT_TABLE_HEADERS = (
+    ("Variant", "variant", ""),
+    ("Public URL", "variant", ""),
+    ("Elements", "elements", "stretch"),
+    ("Redirects", "redirects", "num"),
+)
+VARIANT_DEFAULT_SORT = "variant"
+#: Columns whose first click should show the largest first.
+VARIANT_DESC_FIRST = frozenset({"elements", "redirects"})
+
+
+def _parse_variant_sort(raw: str | None) -> tuple[str, bool]:
+    """``(key, descending)`` from a ``sort`` parameter; counting order if unknown."""
+    text = (raw or "").strip()
+    descending = text.startswith("-")
+    key = text[1:] if descending else text
+    if key not in {key for _, key, _ in VARIANT_TABLE_HEADERS}:
+        return VARIANT_DEFAULT_SORT, False
+    return key, descending
+
+
+def _sort_variants(variants: list[dict], key: str, descending: bool) -> list[dict]:
+    """
+    Order the variants table. They arrive in counting order, and Python's sort
+    is stable in both directions, so ties stay in counting order either way.
+    """
+    if key == "elements":
+        return sorted(variants, key=lambda v: len(v["bindings"]), reverse=descending)
+    if key == "redirects":
+        return sorted(variants, key=lambda v: v["redirects"], reverse=descending)
+    return variants[::-1] if descending else variants
+
+
+def _variant_query(text: str, sort: str) -> str:
+    """Query string for the variants table; the default order is left unsaid."""
+    params = {}
+    if text:
+        params["q"] = text
+    if sort:
+        params["sort"] = sort
+    return urlencode(params)
+
+
+def _variant_headers(text: str, current: str, descending: bool) -> list[dict]:
+    """The variants table's headers, as ``_sort_headers`` builds the browse table's."""
+    headers = []
+    for label, key, css in VARIANT_TABLE_HEADERS:
+        active = key == current
+        to = _sort_param(key, not descending if active else key in VARIANT_DESC_FIRST)
+        headers.append(
+            {
+                "label": label,
+                "css": css,
+                "query": _variant_query(text, to),
+                "aria": ("descending" if descending else "ascending") if active else "",
+            }
+        )
+    return headers
+
+
 @require_role(VIEWER)
 def ark_detail(request, pk):
     ark = get_object_or_404(Ark.objects.select_related("collection"), pk=pk)
@@ -340,15 +509,53 @@ def ark_detail(request, pk):
         elif action == "unbind":
             removed = unbind_elements(ark, name=request.POST.get("name", ""), qualifier=qualifier)
             messages.success(request, f"Removed {removed} element(s).")
-        return redirect("admin_ui:ark_detail", pk=pk)
 
+        url = reverse("admin_ui:ark_detail", args=[pk])
+        if qualifier:
+            # Back to the row that was just edited, rather than to the top of
+            # a table that may run to hundreds of them — and to the same view
+            # of it: the forms post to the address they were drawn at, so the
+            # search and sort in force are still in the query string.
+            sort_key, descending = _parse_variant_sort(request.GET.get("sort"))
+            query = _variant_query(
+                request.GET.get("q", "").strip()[:VARIANT_SEARCH_MAX],
+                ""
+                if (sort_key, descending) == (VARIANT_DEFAULT_SORT, False)
+                else _sort_param(sort_key, descending),
+            )
+            if query:
+                url = f"{url}?{query}"
+            order = _variant_order(ark.bindings.values_list("qualifier", flat=True).distinct())
+            if qualifier in order:
+                url = f"{url}#variant-{order.index(qualifier) + 1}"
+        return redirect(url)
+
+    bindings = list(ark.bindings.order_by("qualifier", "name"))
+    resolutions = list(ark.resolutions.order_by("qualifier"))
+    variant_query = request.GET.get("q", "").strip()[:VARIANT_SEARCH_MAX]
+    variants, variant_total = _variants(bindings, resolutions, variant_query)
+    sort_key, descending = _parse_variant_sort(request.GET.get("sort"))
+    # Empty for the default order, so an untouched table keeps a clean address.
+    variant_sort = (
+        ""
+        if (sort_key, descending) == (VARIANT_DEFAULT_SORT, False)
+        else _sort_param(sort_key, descending)
+    )
     return render(
         request,
         "admin_ui/ark_detail.html",
         {
             "ark": ark,
-            "bindings": ark.bindings.order_by("qualifier", "name"),
-            "resolutions": ark.resolutions.order_by("qualifier"),
+            "bindings": bindings,
+            "back": _back_to_list(request, ark),
+            "own_bindings": [binding for binding in bindings if not binding.qualifier],
+            "variants": _sort_variants(variants, sort_key, descending),
+            "variant_total": variant_total,
+            "variant_query": variant_query,
+            "variant_sort": variant_sort,
+            "variant_headers": _variant_headers(variant_query, sort_key, descending),
+            "variant_clear_query": _variant_query("", variant_sort),
+            "resolutions": resolutions,
             "suggested": TEMPLATE_COLUMNS,
         },
     )
@@ -495,13 +702,105 @@ def bulk_bind(request, pk):
     )
 
 
+#: Filters over a job's per-row results: query value, label. "all" is every row;
+#: the rest are the statuses bulk bind writes.
+RESULT_FILTERS = (
+    ("all", "All"),
+    (STATUS_ERROR, "Errors"),
+    (STATUS_MINTED, "Minted"),
+    (STATUS_OK, "OK"),
+)
+
+
+#: Longest search term looked for in a job's results. It is compared against
+#: every row of the file, so a pasted novel should not be.
+RESULT_SEARCH_MAX = 200
+
+
+def _job_results_page(job, status: str, number: int, text: str = "") -> dict:
+    """
+    One page of a job's per-row results, and how many rows each filter holds.
+
+    A single pass over the results file does both. An upload may run to
+    BULK_BIND_MAX_ROWS rows, so only the page being shown is kept; the rest is
+    counted and let go. ``text`` narrows everything, counts included, to rows
+    whose ARK or message contains it — the counts then say where the matches
+    are, so a search made under one filter shows when to look under another.
+    """
+    counts = dict.fromkeys((value for value, _ in RESULT_FILTERS), 0)
+    first = (number - 1) * PAGE_SIZE
+    needle = text.casefold()
+    rows = []
+    matched = 0
+    for row in job.iter_results():
+        if needle and needle not in row[1].casefold() and needle not in row[3].casefold():
+            continue
+        counts["all"] += 1
+        if row[2] in counts:
+            counts[row[2]] += 1
+        if status == "all" or row[2] == status:
+            if first <= matched < first + PAGE_SIZE:
+                rows.append(row)
+            matched += 1
+    return {
+        "rows": rows,
+        "counts": counts,
+        "page_number": number,
+        "has_previous": number > 1,
+        "has_next": matched > first + PAGE_SIZE,
+    }
+
+
 @require_role(EDITOR)
 def job_detail(request, pk):
     job = get_object_or_404(BulkBindJob.objects.select_related("collection"), pk=pk)
+    context = {"job": job}
+
+    if job.status == BulkBindJob.Status.FINISHED and job.results:
+        status = request.GET.get("status")
+        if status not in dict(RESULT_FILTERS):
+            # Rows that need fixing are why anyone opens a job that failed;
+            # they should not have to be found among thousands that were fine.
+            status = STATUS_ERROR if job.failed else "all"
+        number = max(1, min(as_int(request.GET.get("page")) or 1, MAX_PAGE))
+        text = request.GET.get("q", "").strip()[:RESULT_SEARCH_MAX]
+        results = _job_results_page(job, status, number, text)
+
+        def link(to_status: str, to_page: int = 1, keep_search: bool = True) -> str:
+            """Query string for another view of this table; page 1 is left unsaid."""
+            params = {"status": to_status}
+            if keep_search and text:
+                params["q"] = text
+            if to_page > 1:
+                params["page"] = to_page
+            return urlencode(params)
+
+        context.update(
+            results=results,
+            result_columns=RESULT_COLUMNS,
+            result_status=status,
+            result_query=text,
+            result_filters=[
+                {
+                    "label": label,
+                    "value": value,
+                    "count": results["counts"][value],
+                    "active": value == status,
+                    "query": link(value),
+                }
+                for value, label in RESULT_FILTERS
+            ],
+            result_links={
+                "previous": link(status, number - 1),
+                "next": link(status, number + 1),
+                "clear": link(status, keep_search=False),
+            },
+        )
+
     template = (
         "admin_ui/_job_status.html" if request.headers.get("HX-Request") else "admin_ui/job.html"
     )
-    return render(request, template, {"job": job})
+    return render(request, template, context)
 
 
 @require_role(EDITOR)

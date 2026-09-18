@@ -192,6 +192,20 @@ pre {
   text-transform: uppercase; letter-spacing: .07em;
   color: var(--muted); margin-bottom: .3rem;
 }
+/* The way back to the list a record was opened from: first on the page, and
+ * drawn as a control rather than a quiet link, since it is the usual way out. */
+.back-link {
+  display: inline-flex; align-items: center; gap: .4rem;
+  margin-bottom: 1rem; padding: .32rem .75rem .32rem .6rem;
+  font-size: .86rem; font-weight: 500; color: var(--action);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  box-shadow: var(--shadow); text-decoration: none;
+}
+.back-link:hover {
+  background: var(--action-soft); border-color: var(--action);
+  color: var(--action-deep); text-decoration: none;
+}
+
 /* An eyebrow is often a link back to the parent record; it stays an eyebrow. */
 .eyebrow a { color: inherit; text-decoration: none; }
 .eyebrow a:hover { color: var(--action); text-decoration: underline; }
@@ -343,6 +357,60 @@ button.danger, .btn.danger {
 button.danger:hover, .btn.danger:hover { background: #96201a; border-color: #96201a; color: #fff; }
 
 button:disabled, .btn.is-disabled { opacity: .55; cursor: not-allowed; }
+
+/* --- an ARK's variants ---------------------------------------------------
+ * One row per qualifier, as the browse table has one row per ARK — but every
+ * element is shown, in full, since this page is where they are read and edited. */
+h2 .count {
+  font-size: .78rem; font-weight: 500; color: var(--muted);
+  background: var(--line-soft); border-radius: 999px; padding: .1rem .5rem; margin-left: .3rem;
+  font-variant-numeric: tabular-nums;
+}
+.result-search + .table-wrap, .result-search + .empty { margin-top: .8rem; }
+table.variants td.qual { font-weight: 600; color: var(--ink); }
+table.variants .el { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .5rem; }
+table.variants .el-name { white-space: nowrap; }
+table.variants .el-remove { font-size: .78rem; padding: 0 .3rem; visibility: hidden; }
+table.variants .el:hover .el-remove, table.variants .el-remove:focus-visible { visibility: visible; }
+@media (hover: none) { table.variants .el-remove { visibility: visible; } }
+/* "+N more": the rest of a variant's elements, folded until asked for. */
+/* Plain block layout: browsers disagree about flex or contents on <details>. */
+table.variants details.more > .el { margin-top: .15rem; }
+table.variants details.more > summary {
+  list-style: none; cursor: pointer; width: max-content;
+  color: var(--muted); font-size: .82rem;
+}
+table.variants details.more > summary::-webkit-details-marker { display: none; }
+table.variants details.more > summary:hover { color: var(--action); text-decoration: underline; }
+table.variants details.more .when-open,
+table.variants details.more[open] .when-closed { display: none; }
+table.variants details.more[open] .when-open { display: inline; }
+
+/* Arriving from an edit: the row is marked, and sits clear of the top of the window. */
+table.variants tr:target { background: var(--action-soft); scroll-margin-top: 1rem; }
+
+/* Read aloud, not drawn: a label for a control whose purpose is plain to the eye. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* Search over a job's results: one line, above the status filters. */
+.result-search { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: 1.4rem; }
+.result-search input[type="search"] { flex: 1 1 16rem; max-width: 28rem; }
+
+/* A row of mutually exclusive views over one table — the job results by status. */
+.filters { display: flex; flex-wrap: wrap; gap: .4rem; margin: .8rem 0 .7rem; }
+.filters .filter {
+  font: 500 .82rem/1.35 var(--sans); padding: .3rem .7rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+  text-decoration: none; font-variant-numeric: tabular-nums;
+}
+.filters .filter:hover { border-color: var(--action); color: var(--action-deep); }
+.filters .filter.is-active {
+  background: var(--action-soft); border-color: var(--action); color: var(--action-deep);
+}
+.filters .filter.is-empty:not(.is-active) { opacity: .55; }
 
 /* --- pills and messages -------------------------------------------------- */
 .pill {

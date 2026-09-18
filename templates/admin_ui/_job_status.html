@@ -30,6 +30,68 @@ attributes and the #status wrapper live here rather than in job.html.
         <a class="btn" href="{% url 'admin_ui:job_results' job.pk %}">Download per-row results</a>
       </div>
     {% endif %}
+
+    {% if results %}
+      {# The same rows as the download, read from the same file. #}
+      <form class="result-search" method="get" action="{% url 'admin_ui:job_detail' job.pk %}"
+            hx-get="{% url 'admin_ui:job_detail' job.pk %}" hx-target="#status"
+            hx-swap="outerHTML" hx-push-url="true">
+        <input type="hidden" name="status" value="{{ result_status }}">
+        <label class="sr-only" for="result-q">Search these rows</label>
+        <input id="result-q" type="search" name="q" value="{{ result_query }}"
+               placeholder="Search ARK or message" maxlength="200">
+        <button type="submit" class="secondary">Search</button>
+        {% if result_query %}
+          <a class="btn subtle" href="?{{ result_links.clear }}" hx-get="?{{ result_links.clear }}"
+             hx-target="#status" hx-swap="outerHTML" hx-push-url="true">Clear search</a>
+        {% endif %}
+      </form>
+
+      <div class="filters">
+        {% for f in result_filters %}
+          <a class="filter{% if f.active %} is-active{% endif %}{% if not f.count %} is-empty{% endif %}"
+             {% if f.active %}aria-current="true"{% endif %}
+             href="?{{ f.query }}" hx-get="?{{ f.query }}"
+             hx-target="#status" hx-swap="outerHTML" hx-push-url="true">{{ f.label }} ({{ f.count|intcomma:False }})</a>
+        {% endfor %}
+      </div>
+
+      {% if results.rows %}
+      <div class="table-wrap">
+      <table>
+        <thead><tr>
+          {% for column in result_columns %}
+            <th class="{% if forloop.first %}num{% elif forloop.last %}stretch{% endif %}">{{ column }}</th>
+          {% endfor %}
+        </tr></thead>
+        <tbody>
+        {% for number, ark_id, status, message in results.rows %}
+          <tr>
+            <td class="num muted">{{ number|intcomma:False }}</td>
+            <td class="nowrap"><code>{{ ark_id }}</code></td>
+            <td><span class="pill {% if status == 'error' %}bad{% elif status == 'minted' %}run{% else %}ok{% endif %}">{{ status }}</span></td>
+            <td>{{ message }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+
+      <div class="pager">
+        {% if results.has_previous %}
+          <a class="btn secondary" href="?{{ result_links.previous }}" hx-get="?{{ result_links.previous }}"
+             hx-target="#status" hx-swap="outerHTML" hx-push-url="true">Previous</a>
+        {% endif %}
+        <span class="page-of">Page {{ results.page_number }}</span>
+        {% if results.has_next %}
+          <a class="btn secondary" href="?{{ result_links.next }}" hx-get="?{{ result_links.next }}"
+             hx-target="#status" hx-swap="outerHTML" hx-push-url="true">Next</a>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="empty"><p>{% if result_query %}No rows match “{{ result_query }}” under this filter.{% else %}No rows with that status.{% endif %}</p></div>
+      {% endif %}
+    {% endif %}
   {% else %}
     <div class="card">
       <p class="card-title"><span class="pill run">{{ job.get_status_display }}</span></p>

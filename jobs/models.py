@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Iterator
 
 from django.core.files.base import ContentFile
 from django.db import models
 from django.utils import timezone
 
-from core.search import csv_safe
+from core.search import csv_safe, csv_unsafe
+
+#: Header of the per-row results file, and of the table the job page draws from it.
+RESULT_COLUMNS = ("row", "ark_id", "status", "message")
 
 
 class BulkBindJob(models.Model):
@@ -92,10 +96,42 @@ class BulkBindJob(models.Model):
             ]
         )
 
+    def iter_results(self) -> Iterator[tuple[int, str, str, str]]:
+        """
+        Yield ``(row, ark_id, status, message)`` from the stored results file.
+
+        The job page shows the same rows the download holds, so it reads the
+        same file rather than keeping a second copy that could disagree. Values
+        come back as they were before ``csv_safe`` guarded them for a
+        spreadsheet. A job with no file, or whose file has gone from storage,
+        simply has no rows: the page must still open.
+        """
+        if not self.results:
+            return
+        try:
+            # Through the storage, not the FieldFile: a fresh handle each time,
+            # whatever state an earlier read or save left the field in.
+            handle = self.results.storage.open(self.results.name, "rb")
+        except FileNotFoundError:
+            return
+        with handle:
+            reader = csv.reader(io.TextIOWrapper(handle, encoding="utf-8", newline=""))
+            next(reader, None)  # the header
+            for line in reader:
+                if not line:
+                    continue
+                number, ark_id, status, message = (line + [""] * 4)[:4]
+                yield (
+                    int(number) if number.isascii() and number.isdigit() else 0,
+                    csv_unsafe(ark_id),
+                    csv_unsafe(status),
+                    csv_unsafe(message),
+                )
+
     def _store_results(self, result) -> None:
         buffer = io.StringIO()
         writer = csv.writer(buffer)
-        writer.writerow(["row", "ark_id", "status", "message"])
+        writer.writerow(RESULT_COLUMNS)
         for row in result.rows:
             writer.writerow(
                 [row.number, csv_safe(row.ark_id), csv_safe(row.status), csv_safe(row.message)]

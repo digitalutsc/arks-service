@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}{{ ark.name }}{% endblock %}
 {% block body %}
+<a class="back-link" href="{{ back.url }}"><span aria-hidden="true">←</span> {{ back.label }}</a>
 <div class="page-header">
   <div class="titles">
     <span class="eyebrow">ARK</span>
@@ -16,34 +18,6 @@
     <button class="copy" type="button" data-copy="{{ ark_base_url }}{{ ark.path }}">Copy</button>
   </div>
 </div>
-
-<h2>Bound elements</h2>
-{% if bindings %}
-<div class="table-wrap"><table>
-  <thead><tr><th>Qualifier</th><th>Element</th><th class="stretch">Value</th>{% if can_edit %}<th></th>{% endif %}</tr></thead>
-  <tbody>
-  {% for binding in bindings %}
-    <tr>
-      <td class="mono qual">{{ binding.qualifier|default:"—" }}</td>
-      <td><strong>{{ binding.name }}</strong></td>
-      <td class="break">{{ binding.value }}</td>
-      {% if can_edit %}
-      <td class="acts">
-        <form class="inline" method="post">{% csrf_token %}
-          <input type="hidden" name="action" value="unbind">
-          <input type="hidden" name="name" value="{{ binding.name }}">
-          <input type="hidden" name="qualifier" value="{{ binding.qualifier }}">
-          <button class="secondary" type="submit">Remove</button>
-        </form>
-      </td>
-      {% endif %}
-    </tr>
-  {% endfor %}
-  </tbody>
-</table></div>
-{% else %}
-<div class="empty"><p>Nothing is bound yet, so this ARK does not resolve.</p></div>
-{% endif %}
 
 {% if can_edit %}
 <h2>Bind an element</h2>
@@ -67,17 +41,6 @@
 </form>
 {% endif %}
 
-{% if resolutions %}
-<h2>Resolutions</h2>
-<div class="table-wrap"><table>
-  <thead><tr><th>Qualifier</th><th class="num">Redirects</th><th>Last</th></tr></thead>
-  <tbody>{% for r in resolutions %}
-    <tr><td class="mono qual">{{ r.qualifier|default:"—" }}</td><td class="num">{{ r.count }}</td>
-        <td class="muted nowrap">{{ r.last_at|date:"Y-m-d H:i"|default:"—" }}</td></tr>
-  {% endfor %}</tbody>
-</table></div>
-{% endif %}
-
 {% if can_administer and bindings %}
 <h2>Danger zone</h2>
 <form method="post" action="{% url 'admin_ui:ark_purge' ark.pk %}" class="card danger"
@@ -89,4 +52,82 @@
   <button class="danger" type="submit">Purge all elements</button>
 </form>
 {% endif %}
+
+<h2>Bound elements</h2>
+{% if own_bindings %}
+  {% include "admin_ui/_binding_table.html" with bindings=own_bindings %}
+{% elif variant_total %}
+<div class="empty"><p>Nothing is bound to the ARK itself — only to its variants, below.</p></div>
+{% else %}
+<div class="empty"><p>Nothing is bound yet, so this ARK does not resolve.</p></div>
+{% endif %}
+
+{% if variant_total %}
+<h2 id="variants">Variants <span class="count">{% if variant_query %}{{ variants|length|intcomma:False }} of {% endif %}{{ variant_total|intcomma:False }}</span></h2>
+<p class="meta">Each qualifier resolves on its own and keeps its own elements.</p>
+
+{# Lands back on this section, not at the top of the page. #}
+<form class="result-search" method="get" action="{% url 'admin_ui:ark_detail' ark.pk %}#variants">
+  {% if variant_sort %}<input type="hidden" name="sort" value="{{ variant_sort }}">{% endif %}
+  <label class="sr-only" for="variant-q">Search the variants</label>
+  <input id="variant-q" type="search" name="q" value="{{ variant_query }}"
+         placeholder="Search qualifier, element or value" maxlength="200">
+  <button type="submit" class="secondary">Search</button>
+  {% if variant_query %}
+    <a class="btn subtle" href="{% url 'admin_ui:ark_detail' ark.pk %}{% if variant_clear_query %}?{{ variant_clear_query }}{% endif %}#variants">Clear search</a>
+  {% endif %}
+</form>
+
+{% if not variants %}
+<div class="empty"><p>No variants match “{{ variant_query }}”.</p></div>
+{% else %}
+<div class="table-wrap">
+<table class="variants">
+  <thead><tr>
+  {% for h in variant_headers %}
+    <th{% if h.css %} class="{{ h.css }}"{% endif %}{% if h.aria %} aria-sort="{{ h.aria }}"{% endif %}>
+      <a class="sort" href="?{{ h.query }}#variants">{{ h.label }}</a></th>
+  {% endfor %}
+  </tr></thead>
+  <tbody>
+  {% for v in variants %}
+    <tr id="variant-{{ v.number }}">
+      <td class="mono qual nowrap">{{ v.qualifier }}</td>
+      <td class="url-cell">
+        <a class="ark-url" href="{{ ark_base_url }}{{ ark.path }}{{ v.qualifier }}" target="_blank" rel="noopener">{{ ark_base_url }}{{ ark.path }}{{ v.qualifier }}</a>
+        <button class="copy" type="button" data-copy="{{ ark_base_url }}{{ ark.path }}{{ v.qualifier }}">Copy</button>
+      </td>
+      <td>
+        <div class="elements">
+        {% for binding in v.shown %}{% include "admin_ui/_variant_element.html" %}{% endfor %}
+        {% if v.more %}
+          {# "+N more", as in the Browse ARKs table — but opens in place, since #}
+          {# this is the page where the rest are read and removed. #}
+          <details class="more"{% if v.more_open %} open{% endif %}>
+            <summary><span class="when-closed">+{{ v.more|length }} more</span><span class="when-open">Show fewer</span></summary>
+            {% for binding in v.more %}{% include "admin_ui/_variant_element.html" %}{% endfor %}
+          </details>
+        {% endif %}
+        </div>
+      </td>
+      <td class="num">{{ v.redirects|intcomma:False }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endif %}
+
+{% if resolutions %}
+<h2>Resolutions</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Qualifier</th><th class="num">Redirects</th><th>Last</th></tr></thead>
+  <tbody>{% for r in resolutions %}
+    <tr><td class="mono qual">{{ r.qualifier|default:"—" }}</td><td class="num">{{ r.count }}</td>
+        <td class="muted nowrap">{{ r.last_at|date:"Y-m-d H:i"|default:"—" }}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% endif %}
+
 {% endblock %}

@@ -12,6 +12,7 @@ grows one looks fine locally and quietly stops working.
 import re
 
 import pytest
+from django.core.files.base import ContentFile
 from django.urls import reverse
 
 from admin_ui.roles import ADMIN, ensure_groups, set_role
@@ -163,11 +164,22 @@ def admin_pages(collection, ark, job):
     ]
 
 
-def test_no_admin_page_relies_on_inline_styles_or_handlers(admin_client, collection, ark):
+def test_no_admin_page_relies_on_inline_styles_or_handlers(
+    admin_client, collection, ark, settings, tmp_path
+):
+    settings.MEDIA_ROOT = tmp_path
     Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
+    # And a variant, so the ARK page draws a qualified section as well.
+    Binding.objects.create(ark=ark, qualifier="/p1", name="URL", value="https://example.org/1/p1")
     job = BulkBindJob.objects.create(collection=collection, status=BulkBindJob.Status.FINISHED)
+    # With a results file, so the job page draws its table, filters and pager.
+    job.results.save(
+        "results.csv", ContentFile(b"row,ark_id,status,message\n2,61220/utsc1,ok,\n"), save=True
+    )
     for url in admin_pages(collection, ark, job):
         body = admin_client.get(url).content.decode()
+        if url == reverse("admin_ui:job_detail", args=[job.pk]):
+            assert "<table" in body, "the job page did not draw its results table"
         assert not INLINE_STYLE.search(body), f"inline style= on {url}"
         assert not INLINE_HANDLER.search(body), f"inline event handler on {url}"
 

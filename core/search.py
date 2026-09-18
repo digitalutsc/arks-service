@@ -47,6 +47,12 @@ def csv_safe(value: str) -> str:
     return "'" + text if text.startswith(FORMULA_LEAD) else text
 
 
+def csv_unsafe(value: str) -> str:
+    """Undo ``csv_safe`` for a value read back to be shown on a page, not in a sheet."""
+    text = "" if value is None else str(value)
+    return text[1:] if text.startswith("'") and text[1:].startswith(FORMULA_LEAD) else text
+
+
 #: Rows pulled from the database at a time when exporting.
 EXPORT_CHUNK = 2000
 

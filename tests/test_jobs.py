@@ -80,6 +80,62 @@ def test_a_job_stores_per_row_results_for_download(collection):
     assert "61220/utsc0" in text
 
 
+# --- reading the results back ---------------------------------------------
+
+
+def test_the_results_can_be_read_back_row_by_row(collection):
+    Ark.objects.create(collection=collection, identifier="utsc0", sequence=0)
+    job = make_job(
+        collection,
+        "Ark_ID,URL\n61220/utsc0,https://ok.example\n61220/nope,https://bad.example\n",
+    )
+    run_bulk_bind(job.pk)
+    job.refresh_from_db()
+
+    rows = list(job.iter_results())
+
+    # Row numbers are spreadsheet rows: the header is row 1.
+    assert [(number, ark_id, status) for number, ark_id, status, _ in rows] == [
+        (2, "61220/utsc0", "ok"),
+        (3, "61220/nope", "error"),
+    ]
+    assert rows[0][3] == ""
+    assert rows[1][3]
+
+
+def test_reading_results_twice_gives_the_same_rows(collection):
+    Ark.objects.create(collection=collection, identifier="utsc0", sequence=0)
+    job = make_job(collection, "Ark_ID,URL\n61220/utsc0,https://example.org/0\n")
+    run_bulk_bind(job.pk)
+    job.refresh_from_db()
+    assert list(job.iter_results()) == list(job.iter_results())
+
+
+def test_values_guarded_for_a_spreadsheet_are_read_back_as_written(collection):
+    # The download keeps the guard quote; a web page has no use for it.
+    job = make_job(collection, "Ark_ID,URL\n=HYPERLINK(1),https://example.org/0\n")
+    run_bulk_bind(job.pk)
+    job.refresh_from_db()
+
+    assert "'=HYPERLINK(1)" in job.results.storage.open(job.results.name).read().decode()
+    assert [ark_id for _, ark_id, _, _ in job.iter_results()] == ["=HYPERLINK(1)"]
+
+
+def test_a_job_without_a_results_file_has_no_rows(collection):
+    job = make_job(collection, "Ark_ID,URL\n")
+    assert list(job.iter_results()) == []
+
+
+def test_a_results_file_gone_from_storage_reads_as_no_rows(collection):
+    Ark.objects.create(collection=collection, identifier="utsc0", sequence=0)
+    job = make_job(collection, "Ark_ID,URL\n61220/utsc0,https://example.org/0\n")
+    run_bulk_bind(job.pk)
+    job.refresh_from_db()
+    job.results.storage.delete(job.results.name)
+
+    assert list(job.iter_results()) == []
+
+
 def test_a_job_can_mint_blank_rows_when_configured(collection):
     job = make_job(collection, "Ark_ID,URL\n,https://example.org/new\n", mint_missing=True)
     run_bulk_bind(job.pk)
