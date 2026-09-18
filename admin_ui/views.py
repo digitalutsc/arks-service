@@ -331,7 +331,12 @@ def mint_view(request, pk):
     return render(
         request,
         "admin_ui/mint.html",
-        {"collection": collection, "minted": minted, "columns": TEMPLATE_COLUMNS},
+        {
+            "collection": collection,
+            "minted": minted,
+            "columns": TEMPLATE_COLUMNS,
+            "mint_limit": settings.MINT_MAX_PER_REQUEST,
+        },
     )
 
 

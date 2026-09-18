@@ -30,12 +30,18 @@ cp .env.example .env                  # then edit
 ```
 
 Or bring the whole stack up — app, worker, Redis, PostgreSQL — from the
-deployment repository beside this one:
+deployment repository,
+[`docker-arks-service`](https://github.com/digitalutsc/docker-arks-service):
 
 ```bash
-cd ../docker-arks-service && make install
+cd ../docker-arks-service && make up
 # http://localhost:8000, with the login it prints
 ```
+
+`make up` does everything, from nothing, and is safe to repeat. With that
+repository beside this one it builds from this checkout; cloned on its own, it
+fetches a copy of this repository for itself. After changing code here,
+`make install` there rebuilds the image — the source is baked in, not mounted.
 
 That repository holds every Docker file; this one holds none. Production uses
 neither: it runs bare on the LAMP VM against the existing MySQL server

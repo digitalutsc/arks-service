@@ -63,9 +63,13 @@ deliberate — see [Boot guards](#boot-guards). For local work, set
 
 ## 2. Docker (dev and prototyping)
 
-The Docker stack lives in its own repository, `docker-arks-service`, checked out
-beside this one. It contains no application code: it points at this checkout and
+The Docker stack lives in its own repository,
+[`docker-arks-service`](https://github.com/digitalutsc/docker-arks-service). It
+contains no application code: it points at a checkout of this repository and
 builds an image from it, which is why nothing here refers to Docker.
+
+When you are working on the application, check the two out side by side and the
+stack builds from your working tree:
 
 ```
 arks-redesign/
@@ -73,19 +77,31 @@ arks-redesign/
 └── docker-arks-service/    the Docker stack
 ```
 
+When you only want the service running, clone `docker-arks-service` on its own:
+finding no checkout beside it, it clones this repository into its own
+gitignored `src/arks-service-new`. Either way the path ends up as `ARKS_SRC` in
+that repository's `.env`, and a checkout that already exists is never pulled or
+reset.
+
 ```bash
 cd ../docker-arks-service
-make install     # build and start everything, from nothing
-make up          # start an already-built stack
+make up          # bring everything up, from nothing if need be
+make install     # the same, but always rebuild the image first
 make down        # stop it, keeping the data
 make clean       # remove it entirely: containers, volumes, image
 make rebuild     # clean, then install
 ```
 
-`make install` generates a secret key and an administrator password, brings up
-`web` (gunicorn), `worker` (celery), `redis` and `db` (PostgreSQL 16), waits
+`make up` generates a secret key and an administrator password, fetches the
+application if there is no checkout, builds the image if there is none, brings
+up `web` (gunicorn), `worker` (celery), `redis` and `db` (PostgreSQL 16), waits
 until `/healthz` answers, creates the administrator, and prints the login.
-Re-running it changes nothing that is already set.
+Re-running it changes nothing that is already set, so it is also the everyday
+way to start the stack.
+
+The source is copied into the image, not mounted. **After changing code here,
+run `make install`** there; `make up` alone keeps serving the image it already
+has.
 
 Management commands run through the same Makefile:
 
@@ -95,8 +111,9 @@ make manage ARGS="createcollection 'UTSC Digital Collections' \
 make manage ARGS="mint utsc 10"
 ```
 
-Configuration is the `.env` file in that repository, and `ARKS_SRC` in it says
-where this checkout is. The image runs `collectstatic` at build time and serves
+Configuration is the `.env` file in that repository. `ARKS_SRC` in it says where
+this checkout is; `ARKS_REPO` and `ARKS_REF` say where to clone it from, and at
+which branch or tag, when there is none. The image runs `collectstatic` at build time and serves
 static files through WhiteNoise, so no separate web server is needed.
 
 One thing to know when working here: the Dockerfile copies each top-level
@@ -453,7 +470,7 @@ tail -f /var/log/apache2/arkservice-error.log
 | `CELERY_RESULT_BACKEND` | same as broker | |
 | `CELERY_TASK_ALWAYS_EAGER` | `false` | `true` runs jobs inline — development only |
 | `CELERY_TASK_TIME_LIMIT` | `3600` | Seconds |
-| `MINT_MAX_PER_REQUEST` | `10000` | Largest single mint batch |
+| `MINT_MAX_PER_REQUEST` | `10000` | Largest single mint batch; `0` removes the cap. The mint form runs inside the web request, so a batch that outlasts the gunicorn timeout fails and is rolled back |
 | `BULK_BIND_MAX_ROWS` | `100000` | Largest upload |
 | `DATA_UPLOAD_MAX_MEMORY_SIZE` | `20971520` | 20 MB |
 | `MANIFEST_FETCH_TIMEOUT` | `5` | Seconds. Short by design: the request holds a worker while fetching someone else's server |

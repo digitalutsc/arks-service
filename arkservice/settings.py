@@ -239,8 +239,11 @@ ARK_PUBLIC_BASE_URL = env.str("ARK_PUBLIC_BASE_URL", default="")
 MANIFEST_FETCH_TIMEOUT = env.int("MANIFEST_FETCH_TIMEOUT", default=5)
 MANIFEST_MAX_BYTES = env.int("MANIFEST_MAX_BYTES", default=10 * 1024 * 1024)
 
-# Largest batch a single mint request may create. Bigger batches hold the
-# collection lock and build every identifier inside one transaction.
+# Largest batch a single mint request may create; 0 means no cap. Bigger
+# batches hold the collection lock and build every identifier inside one
+# transaction. The mint form also runs inside the web request, so a batch that
+# outlasts the gunicorn timeout is rolled back and the user sees an error page;
+# bulk bind mints in the worker and has no such ceiling.
 MINT_MAX_PER_REQUEST = env.int("MINT_MAX_PER_REQUEST", default=10_000)
 
 # Upload guardrails for bulk bind. DATA_UPLOAD_MAX_MEMORY_SIZE does NOT cover

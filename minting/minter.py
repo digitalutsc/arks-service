@@ -188,8 +188,9 @@ def mint(collection: Collection, count: int = 1, user=None) -> list[Ark]:
     """
     if count < 1:
         raise ValueError("count must be at least 1")
+    # 0 switches the cap off.
     limit = getattr(settings, "MINT_MAX_PER_REQUEST", 10_000)
-    if count > limit:
+    if limit and count > limit:
         raise ValueError(
             f"Refusing to mint {count:,} identifiers in one go; at most {limit:,} per request. "
             "Run it as several batches."

@@ -233,6 +233,14 @@ def test_a_single_mint_request_is_capped(settings):
     assert Ark.objects.filter(collection=collection).count() == 0
 
 
+def test_a_zero_cap_disables_the_limit(settings):
+    # 0 is how an operator removes the cap; it must not read as "at most 0".
+    settings.MINT_MAX_PER_REQUEST = 0
+    collection = make_collection(".zd", name="uncapped")
+    assert len(mint(collection, count=11)) == 11
+    assert Ark.objects.filter(collection=collection).count() == 11
+
+
 # --- cost must not grow with the collection -------------------------------
 
 

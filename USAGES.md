@@ -121,6 +121,11 @@ A single request is capped at `MINT_MAX_PER_REQUEST` (default 10,000). Larger
 batches would build every identifier inside one transaction while holding the
 collection lock, blocking other minters. Run several batches instead.
 
+The cap is a deployment setting: raise `MINT_MAX_PER_REQUEST`, or set it to `0`
+to remove it. The staff form mints inside the web request, so a batch that takes
+longer than the gunicorn timeout fails — nothing is minted — however high the
+cap is set.
+
 Minting is safe to run concurrently: two people minting at the same moment
 cannot produce the same ARK.
 
@@ -428,7 +433,7 @@ lists the few rows that could not be carried over exactly, and `resolve_diff`
 exits non-zero until every path that is not in it matches.
 
 To rehearse the whole thing in Docker instead, see
-[`../docker-arks-service/MIGRATION.md`](../docker-arks-service/MIGRATION.md).
+[`MIGRATION.md` in `docker-arks-service`](https://github.com/digitalutsc/docker-arks-service/blob/main/MIGRATION.md).
 
 ---
 
