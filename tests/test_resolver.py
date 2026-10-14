@@ -43,6 +43,14 @@ def test_redirects_to_the_bound_url(client, ark):
     assert response["Location"] == "https://example.org/item/1"
 
 
+def test_redirects_the_slashless_form_the_admin_ui_links_to(client, ark):
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/item/1")
+    response = get(client, f"/{ark.path}")
+    assert ark.path == "ark:61220/utsc1"
+    assert response.status_code == 302
+    assert response["Location"] == "https://example.org/item/1"
+
+
 def test_falls_back_to_where_when_there_is_no_url(client, ark):
     Binding.objects.create(ark=ark, name="WHERE?", value="https://fallback.example/1")
     response = get(client, "/ark:/61220/utsc1")

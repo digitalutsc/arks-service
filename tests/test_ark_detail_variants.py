@@ -93,8 +93,8 @@ def test_variants_are_in_counting_order_not_alphabetical(make_client, ark):
 def test_a_variant_shows_its_own_public_url(make_client, ark):
     bind(ark, "/p1", URL="https://example.org/book/1")
     body = detail(make_client(VIEWER), ark).content.decode()
-    assert 'href="http://testserver/ark:/61220/utsc1/p1"' in body
-    assert 'data-copy="http://testserver/ark:/61220/utsc1/p1"' in body
+    assert 'href="http://testserver/ark:61220/utsc1/p1"' in body
+    assert 'data-copy="http://testserver/ark:61220/utsc1/p1"' in body
 
 
 def test_a_variant_shows_its_redirect_count(make_client, ark):

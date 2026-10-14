@@ -49,7 +49,7 @@ def ark(collection):
 
 
 def test_an_ark_knows_its_resolver_path(ark):
-    assert ark.path == "ark:/61220/utsc1"
+    assert ark.path == "ark:61220/utsc1"
 
 
 # --- environment detection -------------------------------------------------
@@ -96,8 +96,8 @@ def test_browsing_arks_shows_the_full_public_url_for_this_environment(admin_clie
     body = admin_client.get(
         reverse("admin_ui:ark_list"), HTTP_HOST="localhost:8000"
     ).content.decode()
-    assert 'href="http://localhost:8000/ark:/61220/utsc1"' in body
-    assert 'data-copy="http://localhost:8000/ark:/61220/utsc1"' in body
+    assert 'href="http://localhost:8000/ark:61220/utsc1"' in body
+    assert 'data-copy="http://localhost:8000/ark:61220/utsc1"' in body
 
 
 def test_the_url_column_follows_the_environment(admin_client, ark, settings):
@@ -105,13 +105,13 @@ def test_the_url_column_follows_the_environment(admin_client, ark, settings):
     body = admin_client.get(
         reverse("admin_ui:ark_list"), HTTP_HOST=PROD_HOST, HTTP_X_FORWARDED_PROTO="https"
     ).content.decode()
-    assert f'href="https://{PROD_HOST}/ark:/61220/utsc1"' in body
+    assert f'href="https://{PROD_HOST}/ark:61220/utsc1"' in body
     assert "localhost" not in body
 
 
 def test_an_ark_page_shows_its_public_url(admin_client, ark):
     body = admin_client.get(reverse("admin_ui:ark_detail", args=[ark.pk])).content.decode()
-    assert 'href="http://testserver/ark:/61220/utsc1"' in body
+    assert 'href="http://testserver/ark:61220/utsc1"' in body
 
 
 def test_freshly_minted_arks_show_their_public_urls(admin_client, collection):
@@ -119,8 +119,8 @@ def test_freshly_minted_arks_show_their_public_urls(admin_client, collection):
         reverse("admin_ui:mint", args=[collection.pk]), {"count": "2"}
     ).content.decode()
     # A fresh .zd minter counts from zero.
-    assert 'href="http://testserver/ark:/61220/utsc0"' in body
-    assert 'href="http://testserver/ark:/61220/utsc1"' in body
+    assert 'href="http://testserver/ark:61220/utsc0"' in body
+    assert 'href="http://testserver/ark:61220/utsc1"' in body
 
 
 # --- the dashboard ---------------------------------------------------------
