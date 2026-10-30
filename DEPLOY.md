@@ -73,13 +73,13 @@ stack builds from your working tree:
 
 ```
 arks-redesign/
-├── arks-service-new/       this repository
+├── arks-service/           this repository
 └── docker-arks-service/    the Docker stack
 ```
 
 When you only want the service running, clone `docker-arks-service` on its own:
 finding no checkout beside it, it clones this repository into its own
-gitignored `src/arks-service-new`. Either way the path ends up as `ARKS_SRC` in
+gitignored `src/arks-service`. Either way the path ends up as `ARKS_SRC` in
 that repository's `.env`, and a checkout that already exists is never pulled or
 reset.
 
