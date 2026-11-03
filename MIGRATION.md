@@ -7,6 +7,12 @@ and rolled back by putting the old vhost back.
 
 - **Rehearsing it in Docker:** [`MIGRATION.md` in `docker-arks-service`](https://github.com/digitalutsc/docker-arks-service/blob/main/MIGRATION.md)
 - **The rest of the cutover** (vhost, systemd, rollback): [DEPLOY.md](DEPLOY.md#cutover-from-the-legacy-service)
+- **Production in Docker:** the commands below are written for a bare install
+  (`.venv/bin/python manage.py …`). When production runs the
+  `docker-arks-service` stack against its external MySQL server, run the same
+  commands from that repository as `make manage ARGS="…"`, and the import as
+  `make import-dump DUMP=… ARGS="--dry-run"`, which copies the export into the
+  container and removes it again.
 
 ## Contents
 

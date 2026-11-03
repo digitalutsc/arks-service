@@ -65,7 +65,7 @@ deliberate — see [Boot guards](#boot-guards). For local work, set
 
 ---
 
-## 2. Docker (dev and prototyping)
+## 2. Docker (development, demos and production)
 
 The Docker stack lives in its own repository,
 [`docker-arks-service`](https://github.com/digitalutsc/docker-arks-service). It
@@ -98,7 +98,7 @@ make rebuild     # clean, then install
 
 `make up` generates a secret key and an administrator password, fetches the
 application if there is no checkout, builds the image if there is none, brings
-up `web` (gunicorn), `worker` (celery), `redis` and `db` (PostgreSQL 16), waits
+up `web` (gunicorn), `worker` (celery), `broker` (Valkey) and `db` (PostgreSQL 16), waits
 until `/healthz` answers, creates the administrator, and prints the login.
 Re-running it changes nothing that is already set, so it is also the everyday
 way to start the stack.
