@@ -89,7 +89,7 @@ flowchart TB
             CW["<b>arkservice-worker</b><br/>celery, concurrency 2"]
         end
 
-        RD[("Redis or Valkey<br/>broker + cache")]
+        RD[("Valkey or Redis<br/>broker + cache")]
         DB[("MySQL / MariaDB<br/><i>the only durable state</i>")]
         MED[("MEDIA_ROOT<br/>uploaded CSVs<br/>+ results")]
     end
@@ -114,15 +114,15 @@ the way through. Without `nocanon`, metadata requests silently become redirects.
 **Docker** replaces Apache with WhiteNoise inside gunicorn. For development it
 also brings its own PostgreSQL (or MySQL) container; for production,
 `docker-compose.external-db.yml` points it at an existing MySQL server and the
-`db` container is not started. `docker-compose.valkey.yml` runs Valkey in the
-`redis` service's place. The stack is defined in the `docker-arks-service`
+`db` container is not started. The `redis` service runs Valkey by default,
+or Redis with `BROKER_IMAGE=redis:7-alpine`. The stack is defined in the `docker-arks-service`
 repository beside this one, not here. The development shape:
 
 ```mermaid
 flowchart LR
     B["Browser :8000"] --> W["web<br/>gunicorn + WhiteNoise"]
     W --> P[("db<br/>PostgreSQL 16")]
-    W --> R[("redis<br/>Redis or Valkey")]
+    W --> R[("redis<br/>Valkey, or Redis")]
     R --> K["worker<br/>celery"]
     K --> P
     W -.-> V[("media volume")]
