@@ -1,8 +1,13 @@
 # /etc/systemd/system/arkservice-worker.service
 [Unit]
 Description=ARK identifier service (celery worker for bulk binds)
-After=network.target redis-server.service mysql.service
-Wants=redis-server.service
+# The broker is Redis or Valkey, whichever is installed: Debian and Ubuntu
+# name their units redis-server and valkey-server. systemd ignores a wanted
+# unit that does not exist, so both are listed and this file needs no edit.
+# The same goes for mysql.service when MySQL is on another machine, which is
+# also why this waits for network-online rather than network.
+After=network-online.target redis-server.service valkey-server.service mysql.service
+Wants=network-online.target redis-server.service valkey-server.service
 
 [Service]
 Type=simple

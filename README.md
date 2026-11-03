@@ -29,7 +29,7 @@ cp .env.example .env                  # then edit
 ./.venv/bin/python manage.py runserver
 ```
 
-Or bring the whole stack up — app, worker, Redis, PostgreSQL — from the
+Or bring the whole stack up — app, worker, Redis (or Valkey), PostgreSQL — from the
 deployment repository,
 [`docker-arks-service`](https://github.com/digitalutsc/docker-arks-service):
 
@@ -43,9 +43,10 @@ repository beside this one it builds from this checkout; cloned on its own, it
 fetches a copy of this repository for itself. After changing code here,
 `make install` there rebuilds the image — the source is baked in, not mounted.
 
-That repository holds every Docker file; this one holds none. Production uses
-neither: it runs bare on the LAMP VM against the existing MySQL server
-([DEPLOY.md](DEPLOY.md)).
+That repository holds every Docker file; this one holds none. In production
+the same stack can run against an existing MySQL server instead of its own
+database container, or the service can run bare on the VM without Docker
+([DEPLOY.md](DEPLOY.md)). Either way the broker and cache is Redis or Valkey.
 
 ## How it fits together
 

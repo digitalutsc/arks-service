@@ -1,8 +1,12 @@
 # /etc/systemd/system/arkservice.service
 [Unit]
 Description=ARK identifier service (gunicorn)
-After=network.target mysql.service
-Wants=mysql.service
+# network-online, not just network: when MySQL is on another machine the
+# first request needs a route to it, not merely configured interfaces. The
+# mysql.service ordering only matters when the server is on this VM; on a VM
+# without one, systemd ignores it.
+After=network-online.target mysql.service
+Wants=network-online.target mysql.service
 
 [Service]
 Type=notify

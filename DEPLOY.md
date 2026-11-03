@@ -6,14 +6,18 @@ directory name, so it can be renamed or moved freely.
 | Environment | Runs on | Database | Worker | Static files |
 |---|---|---|---|---|
 | **Local** | `runserver` | SQLite | eager (in-process) | Django dev server |
-| **Dev / Docker** | Compose: gunicorn + celery, defined in `docker-arks-service` | PostgreSQL 16 | Redis + Celery | WhiteNoise |
+| **Dev / Docker** | Compose: gunicorn + celery, defined in `docker-arks-service` | PostgreSQL 16 (or MySQL 8.0) container | Redis or Valkey + Celery | WhiteNoise |
 | **CI** | GitHub Actions | PostgreSQL **and** MySQL | n/a | n/a |
-| **Production** | Bare on the LAMP VM | MySQL/MariaDB | Redis + Celery (systemd) | Apache, WhiteNoise as fallback |
+| **Production, Docker** | The same Compose stack with `docker-compose.external-db.yml` | An existing MySQL server, no container | Redis or Valkey + Celery | WhiteNoise, behind Apache |
+| **Production, bare** | Bare on the LAMP VM | MySQL/MariaDB | Redis or Valkey + Celery (systemd) | Apache, WhiteNoise as fallback |
 
 No Docker file lives in this repository. The stack is defined next door in
 `../docker-arks-service`, which builds an image from this checkout; see section
-2. Production deliberately does not use it either, running against the MySQL
-server already on the VM.
+2. Production either runs that stack pointed at an existing MySQL server
+(section 2, [Production in Docker](#production-in-docker)) or runs bare on the
+VM (section 4). Either way the broker and cache is **Redis or Valkey**: Valkey
+speaks the same protocol, so the application and its `redis://` URLs do not
+change. There is no `valkey://` scheme.
 
 ---
 
@@ -46,7 +50,7 @@ service falls back to a local SQLite file. Then:
 A superuser is automatically treated as **Admin**. To give other accounts a
 role, use the staff interface at `/admin/users/`.
 
-### Running bulk binds without Redis
+### Running bulk binds without Redis or Valkey
 
 Set `CELERY_TASK_ALWAYS_EAGER=true` in `.env` and uploads run inline in the
 request instead of on a worker. Fine for development; never use it in
@@ -121,6 +125,32 @@ package of this repository by name rather than the whole tree, so **a new
 top-level Django app needs a matching `COPY --from=src` line** in
 `docker-arks-service/Dockerfile`. Its README says so too.
 
+The stack picks its database and broker with `COMPOSE_FILE` in its `.env`:
+`docker-compose.mysql.yml` runs a MySQL 8.0 container instead of PostgreSQL,
+and `docker-compose.valkey.yml` runs Valkey instead of Redis.
+
+### Production in Docker
+
+For production the stack runs against an existing MySQL server and starts no
+database container. In `docker-arks-service/.env`:
+
+```ini
+COMPOSE_FILE=docker-compose.yml:docker-compose.external-db.yml:docker-compose.valkey.yml
+MYSQL_HOST=<the MySQL endpoint>
+MYSQL_PORT=3306
+MYSQL_DATABASE=ark
+MYSQL_USER=ark
+MYSQL_PASSWORD=<letters and digits, or percent-encoded>
+```
+
+Drop `:docker-compose.valkey.yml` to run Redis instead. The database must exist
+already; `web` runs `migrate` against it on every start. Everything else (the
+caveats about reaching the server from a container, `make clean`, and
+`make import-dump` writing into that database) is in the stack's README under
+"Production: an external MySQL server". Putting the stack behind Apache with
+TLS is planned in `DOCKER-DEPLOY.md` at the workspace root and not yet part of
+the stack.
+
 ---
 
 ## 3. Continuous integration
@@ -163,13 +193,23 @@ DATABASE_URL=mysql://root:root@127.0.0.1:33306/ark  ./.venv/bin/python -m pytest
 ```bash
 sudo apt install python3.13 python3.13-venv redis-server \
                  libmysqlclient-dev pkg-config
+```
+
+For Valkey instead of Redis, install `valkey-server` in place of
+`redis-server`. Debian 13 packages it, and so do recent Ubuntu releases; check
+with `apt-cache policy valkey-server`. Nothing else changes: it listens on the
+same port, the `redis://` URLs below stay as they are, and
+`arkservice-worker.service` already orders itself after either one.
+
+```bash
 sudo mkdir -p /var/www/arkservice /var/log/arkservice
 sudo chown -R www-data:www-data /var/www/arkservice /var/log/arkservice
 ```
 
 `libmysqlclient-dev` and `pkg-config` are needed to build `mysqlclient`; without
 them the install fails with a `pkg-config: command not found` message that does
-not mention MySQL.
+not mention MySQL. They are needed even when MySQL runs on another machine,
+because they build the client driver, not a server.
 
 ### 4.2 Application
 
@@ -200,6 +240,7 @@ Required in production:
 ```ini
 DJANGO_DEBUG=false
 DJANGO_SECRET_KEY=<64 random characters>
+# localhost, or the MySQL server's hostname when it is on another machine
 DATABASE_URL=mysql://arkuser:password@localhost:3306/ark
 DJANGO_ALLOWED_HOSTS=ark.digital.utsc.utoronto.ca
 DJANGO_CSRF_TRUSTED_ORIGINS=https://ark.digital.utsc.utoronto.ca
@@ -457,9 +498,10 @@ tail -f /var/log/apache2/arkservice-error.log
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | empty | Needed behind HTTPS |
 | `DJANGO_TIME_ZONE` | `America/Toronto` | |
 | `DJANGO_LOG_LEVEL` | `INFO` | |
-| `DB_CONN_MAX_AGE` | `60` | Seconds |
-| `CELERY_BROKER_URL` | `redis://localhost:6379/0` | |
-| `REDIS_URL` | empty | Cache for the login lockout, target cache and buffered counters. **Set it in production** — without it each gunicorn worker has its own |
+| `DB_CONN_MAX_AGE` | `60` | Seconds a connection is kept for reuse; `0` closes it after each request |
+| `DB_CONN_HEALTH_CHECKS` | `true` | Check a reused connection before using it. Keep it on when MySQL is across a network, where idle connections get dropped ("server has gone away") |
+| `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Redis or Valkey; the scheme is `redis://` (or `rediss://`) for both |
+| `REDIS_URL` | empty | Redis or Valkey, for the login lockout, target cache and buffered counters. **Set it in production** — without it each gunicorn worker has its own |
 | `LOGIN_MAX_ATTEMPTS` | `5` | Failures before a username+address is locked out |
 | `LOGIN_LOCKOUT_SECONDS` | `900` | How long the lockout lasts |
 | `TRUST_FORWARDED_FOR` | `false` | Set true only behind a proxy that sets it and when gunicorn is unreachable directly |

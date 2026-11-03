@@ -8,7 +8,7 @@ per (username, client address) in the cache and refuses further attempts for a
 while.
 
 The counter lives in the cache, so it is only shared between gunicorn workers
-when the cache is (Redis in production). With the local-memory fallback a
+when the cache is (Redis or Valkey in production). With the local-memory fallback a
 lockout applies per worker, which still slows an attacker by the worker count
 but is not a real limit — production must configure ``REDIS_URL``.
 """

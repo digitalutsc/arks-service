@@ -93,6 +93,11 @@ DATABASES = {
         "DATABASE_URL",
         default="sqlite:///" + str(BASE_DIR / "db.sqlite3"),
         conn_max_age=env.int("DB_CONN_MAX_AGE", default=60),
+        # A kept-open connection to a server across the network can be dropped
+        # by the server or a firewall between requests; the next query then
+        # fails with "MySQL server has gone away". Checking a reused connection
+        # first costs one ping per request and reconnects instead.
+        conn_health_checks=env.bool("DB_CONN_HEALTH_CHECKS", default=True),
     )
 }
 
@@ -159,9 +164,11 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
 
 # --- Cache ----------------------------------------------------------------
-# Redis in production: the login lockout counter, the element-name list and the
-# resolved-target cache are only shared between gunicorn workers if the cache
-# is. Falls back to per-process memory so development needs no Redis.
+# Redis or Valkey in production (any server speaking the Redis protocol; the
+# URL scheme stays redis:// or rediss:// for either): the login lockout counter,
+# the element-name list and the resolved-target cache are only shared between
+# gunicorn workers if the cache is. Falls back to per-process memory so
+# development needs neither.
 #
 # Two caches, because they have different tolerance for eviction. "default" is
 # memoisation and may drop anything at any time. "counters" holds redirect hits
@@ -206,6 +213,8 @@ SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=8 * 60 * 60)
 SESSION_SAVE_EVERY_REQUEST = True
 
 # --- Celery ---------------------------------------------------------------
+# The broker is Redis or Valkey; both use redis:// URLs and Celery's Redis
+# transport. There is no valkey:// scheme.
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)

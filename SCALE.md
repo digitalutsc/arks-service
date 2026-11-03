@@ -87,7 +87,7 @@ Hits are buffered in the cache and written every 60 seconds
 cache outage loses that window. This is the trade that makes resolution a pure
 read — which in turn is what would let a read replica serve it.
 
-If Redis is unreachable, counting falls back to writing directly, so counts are
+If the cache (Redis or Valkey) is unreachable, counting falls back to writing directly, so counts are
 never silently abandoned.
 
 ### Deployment capacity

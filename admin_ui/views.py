@@ -685,7 +685,7 @@ def bulk_bind(request, pk):
             try:
                 run_bulk_bind.delay(job.pk)
             except Exception:
-                # Redis unreachable: say so and mark the job, rather than
+                # Broker (Redis or Valkey) unreachable: say so and mark the job, rather than
                 # leaving it pending forever behind a 500.
                 logger.exception("could not queue bulk bind job %s", job.pk)
                 job.mark_failed(
