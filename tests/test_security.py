@@ -236,6 +236,41 @@ def test_locking_one_account_does_not_lock_another(client, make_user, settings):
     assert response.status_code == 302, "bob must be unaffected by alice's lockout"
 
 
+def test_a_forged_forwarded_for_does_not_dodge_the_lockout(client, make_user, settings):
+    # Apache appends the real client address to whatever X-Forwarded-For the
+    # client sent. Keying on the first entry let an attacker invent a new
+    # address per attempt and never be locked out.
+    settings.LOGIN_MAX_ATTEMPTS = 3
+    settings.TRUST_FORWARDED_FOR = True
+    make_user("target", VIEWER)
+    url = reverse("admin_ui:login")
+
+    for n in range(3):
+        client.post(
+            url,
+            {"username": "target", "password": "wrong"},
+            HTTP_X_FORWARDED_FOR=f"10.9.9.{n}, 203.0.113.7",
+        )
+
+    response = client.post(
+        url,
+        {"username": "target", "password": "pw-for-tests"},
+        HTTP_X_FORWARDED_FOR="10.9.9.99, 203.0.113.7",
+    )
+    assert response.status_code == 429
+
+
+def test_the_address_apache_saw_is_used(rf, settings):
+    from admin_ui.throttle import client_address
+
+    settings.TRUST_FORWARDED_FOR = True
+    request = rf.get("/", HTTP_X_FORWARDED_FOR="1.2.3.4, 203.0.113.7", REMOTE_ADDR="127.0.0.1")
+    assert client_address(request) == "203.0.113.7"
+
+    settings.TRUST_FORWARDED_FOR = False
+    assert client_address(request) == "127.0.0.1"
+
+
 def test_a_locked_out_attempt_says_so(client, make_user, settings):
     settings.LOGIN_MAX_ATTEMPTS = 1
     make_user("target", VIEWER)

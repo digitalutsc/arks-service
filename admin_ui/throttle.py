@@ -37,11 +37,17 @@ def client_address(request) -> str:
     Behind Apache the peer is always the proxy, so the forwarded address is used
     when the deployment says it is trustworthy. Never trust it otherwise — an
     attacker would just vary the header.
+
+    The *last* entry is the one to use: Apache appends the address it saw to
+    whatever X-Forwarded-For the client sent, so everything before it is
+    whatever the client chose to write. Taking the first entry let anyone
+    sidestep the lockout by sending a different made-up address each time.
     """
     if getattr(settings, "TRUST_FORWARDED_FOR", False):
         forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
+        entries = [entry.strip() for entry in forwarded.split(",") if entry.strip()]
+        if entries:
+            return entries[-1]
     return request.META.get("REMOTE_ADDR", "") or "unknown"
 
 
