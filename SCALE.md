@@ -11,6 +11,49 @@ DATABASE_URL=mysql://... python scripts/bench/measure.py --label "my change"
 
 ---
 
+## Measured, 4,000,000 ARKs / 18,000,000 bindings (2026-11-04)
+
+MySQL 8.0.46 in a local container with `innodb_buffer_pool_size=4G` and no
+binary log, seeded with `seed.py --arks 4000000`. In-process Django test
+client, `DJANGO_DEBUG=true`, redirect hits buffered in Valkey as in production.
+"Before" is the code after `INTENTS_prod_readiness.md` Phases 1–3; "after" adds
+Phase 4 (stored statistics, starts-with search, sort and export limits, export
+paged by key).
+
+| Operation | Before | After | Why |
+|---|---|---|---|
+| Resolve one ARK, steady state (`DEBUG=false`) | — | **1.23 ms** hot, 1.42 ms across 300 ARKs | Two indexed reads; no target cache, no write |
+| Free-text search, *contains* | 49.5 s | 57.9 s | Still a scan over 18M values; now an explicit, labelled choice |
+| Free-text search, *starts with* | — | **0.01 s** | Identifier and `(name, value_prefix)` index ranges |
+| Staff list + free text | 88.7 s | **0.02 s** | Starts-with by default; count skipped when one page holds everything |
+| Staff list, page 1 / page 1000 | 0.06 s / 6.6 s | 0.06 s / 3.8 s | OFFSET still walks to the page |
+| Collection page | 6.3 s | **0.01 s** | Stored counts, refreshed by the scheduler (the count itself is 6.6 s) |
+| Dashboard | 0.27 s | 0.01 s | Stored counts |
+| Sort by Redirects / Elements | 6.5 s / 10.4 s | **0.06 s** | Refused above `SORT_SUBQUERY_MAX_ROWS` (50,000) |
+| Element-name list, cache empty | 5.2 s | 5.3 s | Now rebuilt by the scheduler, so requests read the cache |
+| Export first 5,000 rows | 8.3 s / **371 MB** | **0.17 s / 4 MB** | Paged by key; `.iterator()` on MySQL buffered all 4M ids first |
+| Export first 100,000 rows | 9.7 s / 371 MB | **2.7 s / 5 MB** | Same; a whole 4M export is the CLI's job (~2 min at this rate) |
+| Flush 50,000 buffered hit pairs | 3.7 s (new rows) | **1.4 s** new, **1.05 s** existing | 500 pairs per transaction; `count = count + n` per distinct n |
+| Process peak RSS | 1,282 MB | **121 MB** | The export id buffer was most of it |
+
+Storage, from `information_schema` and `mysql.innodb_index_stats`:
+
+| Table | Data | Indexes | Largest indexes |
+|---|---|---|---|
+| `core_binding` | 2,303 MB | 2,493 MB | `binding_name_value_idx` 1,587 MB, `unique_element_per_qualifier` 906 MB |
+| `core_ark` | 299 MB | 767 MB | `ark_collection_ident_idx` 254 MB, `unique_ark_per_naan` 242 MB |
+| **Total** | | **~5.9 GB** | about **1.5 KB per ARK** |
+
+The redundant `binding_ark_qualifier_idx` was already dropped (migration
+`0005`) before this was measured. `binding_name_value_idx` is a third of the
+bindings table because it holds the values themselves (case-folded). Seeded
+values are 12–55 characters, shorter than any prefix length that could be
+chosen, so shortening `VALUE_PREFIX_LENGTH` would not shrink it; it was left
+at 191. Production value lengths were not measured (the export was not read);
+only values longer than ~100 characters would make a shorter prefix worth it.
+
+---
+
 ## Measured, 1,000,000 ARKs / 4,500,000 bindings
 
 Single MySQL 8 container, in-process client (no HTTP server), before and after
@@ -18,7 +61,7 @@ the scalability work.
 
 | Operation | Before | After | Why |
 |---|---|---|---|
-| Resolve one ARK | 4.8 ms | **0.73 ms** hot, 3.0 ms cold | Target cached; no write on the path |
+| Resolve one ARK | 4.8 ms | **0.73 ms** hot, 3.0 ms cold | Target cached; no write on the path (target cache since removed, see note below) |
 | Mint 100 | 1.78 s / 116 MB | **0.02 s / 0.2 MB** | Stopped loading every identifier |
 | Exact value lookup (find by PID) | 5.91 s | **0.00 s** | Indexed `value_prefix` column |
 | Free-text substring search | 8.69 s | 3.90 s | Still a scan — see below |
@@ -37,6 +80,12 @@ Resolver throughput, single-threaded, in-process:
 | One hot ARK (cached target) | 1,363 | 0.73 ms |
 | 500 distinct ARKs | 332 | 3.02 ms |
 
+*Since 2026-11-04 the redirect target is no longer cached:* a redirect is two
+indexed reads (the ARK, then its `URL`/`WHERE?` binding), so the resolver no
+longer depends on Valkey and a rebind can never be served stale. The hot-ARK
+figure above was measured with the cache; the 4M-ARK run in
+`INTENTS_prod_readiness.md` §4.1 re-measures it.
+
 ---
 
 ## How each operation grows
@@ -52,6 +101,9 @@ Resolver throughput, single-threaded, in-process:
 | **Collection statistics** | linear in the collection |
 | **Storage** | 0.2 GB | 2 GB | 22 GB | 220 GB | 2.2 TB |
 
+(Storage measured at 4M ARKs is 5.9 GB, about 1.5 KB per ARK, after the
+redundant index was dropped; the row above is the earlier 1M-based estimate.)
+
 Storage is roughly **2.2 KB per ARK** all in: the row, its six indexes, about
 4.5 bindings, and their indexes. Values longer than about 8 KB move to overflow
 pages and cost more.
@@ -64,10 +116,14 @@ pages and cost more.
 
 `LIKE '%text%'` cannot use an index in any engine, and the schema is
 deliberately restricted to the portable SQL subset (see README). Measured at
-3.9 s over 4.5M bindings, so roughly 40 s at 10M ARKs and minutes at 100M.
+3.9 s over 4.5M bindings at 1M ARKs, and 49–58 s over 18M bindings at 4M ARKs
+(the measured growth is worse than linear once the table no longer fits the
+buffer pool's hot pages).
 
-Mitigations already in place: the result count is capped so the scan is not run
-twice per page, and exact and starts-with lookups are index-backed. If
+Mitigations in place: the result count is capped so the scan is not run twice
+per page, exact lookups are index-backed, and since 2026-11-04 the staff search
+defaults to *starts with* (0.01 s at 4M) with *contains* as an explicit,
+labelled choice. The `export_arks` command's `--text` is still *contains*. If
 substring search over values becomes a daily need at 10M+, add an
 engine-specific index — MySQL `FULLTEXT` with `MATCH … AGAINST`, or PostgreSQL
 trigram — behind a setting. That trades the portable-subset rule for the speed,
@@ -76,9 +132,10 @@ which is a decision to take deliberately.
 ### Collection statistics count the collection
 
 `collection_stats` runs `COUNT(*)` and a bound/unbound count. InnoDB keeps no
-row count, so this is a full index scan: 1.9 s at 1M, minutes at 1B. It is on
-the collection page only, not the resolver. Past ~10M, denormalise the counts
-onto `Collection` and refresh them on a schedule.
+row count, so this is a full index scan: 1.9 s at 1M, 6.6 s at 4M, minutes at
+1B. *Done 2026-11-04:* the counts are stored on `Collection` and recounted by
+the scheduler every `COLLECTION_STATS_SECONDS`; pages for collections of
+50,000+ ARKs read the stored figures and say when they were taken.
 
 ### Redirect counts lag
 
