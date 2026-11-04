@@ -263,7 +263,13 @@ ARK_PUBLIC_BASE_URL = env.str("ARK_PUBLIC_BASE_URL", default="")
 # and the endpoint is public and unauthenticated. 30s meant a handful of slow
 # targets could occupy every worker at once.
 MANIFEST_FETCH_TIMEOUT = env.int("MANIFEST_FETCH_TIMEOUT", default=5)
+# The fetch timeout above bounds each socket read; this bounds the whole fetch,
+# so a server trickling bytes cannot hold a thread for minutes.
+MANIFEST_TOTAL_TIMEOUT = env.float("MANIFEST_TOTAL_TIMEOUT", default=10)
 MANIFEST_MAX_BYTES = env.int("MANIFEST_MAX_BYTES", default=10 * 1024 * 1024)
+# Concurrent /manifest fetches per gunicorn process (each has 8 threads). Past
+# this, callers get 503 + Retry-After instead of taking every thread.
+MANIFEST_MAX_CONCURRENT = env.int("MANIFEST_MAX_CONCURRENT", default=4)
 
 # Largest batch a single mint request may create; 0 means no cap. Bigger
 # batches hold the collection lock and build every identifier inside one

@@ -5,6 +5,7 @@ from __future__ import annotations
 import http.client
 import ipaddress
 import socket
+import time
 import urllib.request
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -89,6 +90,14 @@ class UnsafeTarget(Exception):
 
 class TargetTooLarge(Exception):
     """The target returned more than the manifest size limit."""
+
+
+class TargetTooSlow(Exception):
+    """The target did not deliver its whole body within the overall deadline."""
+
+
+#: Bytes read per call while streaming a target's body.
+READ_CHUNK = 64 * 1024
 
 
 class _NoRedirects(urllib.request.HTTPRedirectHandler):
@@ -238,25 +247,51 @@ def _pinned_opener(target: FetchTarget):
     return urllib.request.build_opener(_NoRedirects, _HTTPHandler, _HTTPSHandler)
 
 
-def fetch_json(url: str, timeout: int | None = None, max_bytes: int | None = None) -> bytes:
+def fetch_json(
+    url: str,
+    timeout: float | None = None,
+    max_bytes: int | None = None,
+    total_timeout: float | None = None,
+) -> bytes:
     """
     Fetch ``url`` server-side and return its raw body.
 
     Used only by the /manifest inflection, which proxies a target's JSON (a IIIF
     manifest in practice) instead of redirecting to it. Redirects are refused,
     since following one would bypass the address check.
+
+    Two clocks: ``timeout`` bounds each socket operation, and ``total_timeout``
+    bounds the whole fetch. The first alone let a server that sends a byte every
+    few seconds hold a gunicorn thread indefinitely.
     """
     timeout = timeout if timeout is not None else settings.MANIFEST_FETCH_TIMEOUT
     max_bytes = max_bytes if max_bytes is not None else settings.MANIFEST_MAX_BYTES
+    total_timeout = total_timeout if total_timeout is not None else settings.MANIFEST_TOTAL_TIMEOUT
+    deadline = time.monotonic() + total_timeout
 
     target = safe_target(url)
 
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     opener = _pinned_opener(target)
     with opener.open(request, timeout=timeout) as response:
-        # Read one byte past the limit so truncation is detectable; a silently
-        # truncated body would otherwise surface as an unexplained parse error.
-        body = response.read(max_bytes + 1)
-    if len(body) > max_bytes:
-        raise TargetTooLarge(f"The target returned more than {max_bytes} bytes.")
-    return body
+        declared = response.headers.get("Content-Length", "")
+        if declared.isascii() and declared.isdigit() and int(declared) > max_bytes:
+            raise TargetTooLarge(f"The target declared {declared} bytes; the limit is {max_bytes}.")
+        chunks, received = [], 0
+        while True:
+            if time.monotonic() > deadline:
+                raise TargetTooSlow(f"The target took longer than {total_timeout}s.")
+            # Read one byte past the limit so truncation is detectable; a
+            # silently truncated body would otherwise surface as an unexplained
+            # parse error.
+            # read1 returns what has arrived (up to the size asked for) rather
+            # than waiting for the whole chunk, so the deadline is checked as
+            # the bytes trickle in.
+            chunk = response.read1(min(READ_CHUNK, max_bytes + 1 - received))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            received += len(chunk)
+            if received > max_bytes:
+                raise TargetTooLarge(f"The target returned more than {max_bytes} bytes.")
+    return b"".join(chunks)

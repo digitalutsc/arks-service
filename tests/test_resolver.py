@@ -231,6 +231,46 @@ def test_manifest_proxies_the_targets_json(client, ark, monkeypatch):
     assert json.loads(response.content) == manifest
 
 
+def test_manifest_passes_the_body_through_unchanged(client, ark, monkeypatch):
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/item/1")
+    raw = b'{ "type" :"Manifest",   "label": {"en": ["caf\\u00e9"]} }'
+    monkeypatch.setattr("resolver.views.fetch_json", lambda url, **kw: raw)
+    assert get(client, "/ark:/61220/utsc1/manifest").content == raw
+
+
+def test_manifest_fetches_are_capped_per_process(client, ark, monkeypatch, settings):
+    # Each fetch parks a thread on someone else's server; a public endpoint must
+    # not be able to take every thread at once.
+    from resolver.views import _manifest_slots_for
+
+    settings.MANIFEST_MAX_CONCURRENT = 1
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/item/1")
+    monkeypatch.setattr("resolver.views.fetch_json", lambda url, **kw: b"{}")
+
+    slots = _manifest_slots_for(1)
+    assert slots.acquire(blocking=False)
+    try:
+        response = get(client, "/ark:/61220/utsc1/manifest")
+        assert response.status_code == 503
+        assert response["Retry-After"] == "5"
+    finally:
+        slots.release()
+
+    assert get(client, "/ark:/61220/utsc1/manifest").status_code == 200
+
+
+def test_a_slow_manifest_is_a_gateway_timeout(client, ark, monkeypatch):
+    from resolver.services import TargetTooSlow
+
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/item/1")
+
+    def slow(url, **kwargs):
+        raise TargetTooSlow("too slow")
+
+    monkeypatch.setattr("resolver.views.fetch_json", slow)
+    assert get(client, "/ark:/61220/utsc1/manifest").status_code == 504
+
+
 def test_manifest_reports_an_upstream_failure_as_bad_gateway(client, ark, monkeypatch):
     Binding.objects.create(ark=ark, name="URL", value="https://example.org/item/1")
 
