@@ -476,17 +476,25 @@ def test_the_health_endpoint_reports_ok(client):
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["checks"]["database"] == "ok"
-    assert body["checks"]["counters"] == "ok"
+    assert body["checks"] == {"database": "ok", "cache": "ok", "counters": "ok"}
+    assert "counters_flushed_ago" in body
 
 
-def test_the_health_endpoint_reports_a_broken_dependency(client, monkeypatch):
-    from django.core.cache import caches
-
+def test_the_health_endpoint_reports_a_broken_dependency(client, monkeypatch, counter_redis):
     def broken(*args, **kwargs):
-        raise RuntimeError("cache is down")
+        raise RuntimeError("cache is down at secret-host.internal")
 
-    monkeypatch.setattr(caches["counters"], "set", broken)
+    monkeypatch.setattr(counter_redis, "ping", broken)
     response = client.get("/healthz")
     assert response.status_code == 503
-    assert response.json()["status"] == "degraded"
+    body = response.json()
+    assert body["status"] == "degraded"
+    assert body["checks"]["counters"] == "error"
+    assert "secret-host" not in response.content.decode(), "error detail must stay in the log"
+
+
+def test_the_health_endpoint_reports_the_last_flush(client):
+    from core.counters import flush_counters
+
+    flush_counters()
+    assert client.get("/healthz").json()["counters_flushed_ago"] is not None

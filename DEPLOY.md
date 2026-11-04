@@ -350,9 +350,10 @@ better check.
 ## Health check
 
 `GET /healthz` reports whether this instance can actually serve — it checks the
-database and the cache rather than merely confirming the process started.
-Returns 200 when healthy and 503 when not, so Apache or a load balancer can act
-on it.
+database, the Django cache and the redirect-hit buffer rather than merely
+confirming the process started. Returns 200 when healthy and 503 when not, so
+Docker, a monitor or a load balancer can act on it. Failures say only `"error"`;
+the detail goes to the log, because the endpoint is public.
 
 ```bash
 curl -s http://127.0.0.1:8000/healthz
@@ -534,7 +535,8 @@ tail -f /var/log/apache2/arkservice-error.log
 | `DB_CONN_MAX_AGE` | `60` | Seconds a connection is kept for reuse; `0` closes it after each request |
 | `DB_CONN_HEALTH_CHECKS` | `true` | Check a reused connection before using it. Keep it on when MySQL is across a network, where idle connections get dropped ("server has gone away") |
 | `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Valkey or Redis; the scheme is `redis://` (or `rediss://`) for both. Credentials go in the URL: `redis://:password@host:6379/0`, or `redis://user:password@…` for a named account |
-| `REDIS_URL` | empty | Valkey or Redis, for the login lockout, target cache and buffered counters, with credentials as for `CELERY_BROKER_URL` and a different database number. **Set it in production** — without it each gunicorn worker has its own |
+| `REDIS_URL` | empty | Valkey or Redis, for the login lockout, the staff-side cache and the buffered redirect counters, with credentials as for `CELERY_BROKER_URL` and a different database number. **Required in production**: the service refuses to start without it |
+| `CACHE_SOCKET_TIMEOUT` | `0.5` | Seconds to wait on Valkey/Redis before giving up, so a hung server cannot hold request threads |
 | `LOGIN_MAX_ATTEMPTS` | `5` | Failures before a username+address is locked out |
 | `LOGIN_LOCKOUT_SECONDS` | `900` | How long the lockout lasts |
 | `TRUST_FORWARDED_FOR` | `false` | Set true only behind a proxy that sets it and when gunicorn is unreachable directly |

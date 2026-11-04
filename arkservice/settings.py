@@ -25,7 +25,12 @@ _DATABASE_URL = env.str("DATABASE_URL", default="")
 # 404s from an empty SQLite file with a well-known secret key. Tests set
 # PYTEST_VERSION, and run with DEBUG false, so they are exempt.
 if not os.environ.get("PYTEST_VERSION") and not os.environ.get("ARKSERVICE_SKIP_CONFIG_CHECK"):
-    check_production_settings(debug=DEBUG, secret_key=SECRET_KEY, database_url=_DATABASE_URL)
+    check_production_settings(
+        debug=DEBUG,
+        secret_key=SECRET_KEY,
+        database_url=_DATABASE_URL,
+        redis_url=env.str("REDIS_URL", default=""),
+    )
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
@@ -165,27 +170,26 @@ if not DEBUG:
 
 # --- Cache ----------------------------------------------------------------
 # Redis or Valkey in production (any server speaking the Redis protocol; the
-# URL scheme stays redis:// or rediss:// for either): the login lockout counter,
-# the element-name list and the resolved-target cache are only shared between
-# gunicorn workers if the cache is. Falls back to per-process memory so
-# development needs neither.
-#
-# Two caches, because they have different tolerance for eviction. "default" is
-# memoisation and may drop anything at any time. "counters" holds redirect hits
-# that have not reached the database yet, so evicting an entry loses counts —
-# Django's local-memory cache culls at 300 entries by default, which silently
-# discarded them on any busy service.
+# URL scheme stays redis:// or rediss:// for either). The Django cache holds the
+# login lockout counter, the element-name list and the collection statistics,
+# which are only shared between gunicorn workers if the cache is. The public
+# resolver does not read it: its only use of the server is the redirect-hit
+# buffer in core/counters.py, which talks to REDIS_URL directly and falls back to
+# writing the database. Falls back to per-process memory so development needs
+# no server; production refuses to start without REDIS_URL (arkservice/checks.py).
 REDIS_URL = env.str("REDIS_URL", default="")
+# Seconds to wait on the cache server before giving up. A hung or unreachable
+# server must not hold a request thread: callers fall back or fail fast.
+CACHE_SOCKET_TIMEOUT = env.float("CACHE_SOCKET_TIMEOUT", default=0.5)
 if REDIS_URL:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": REDIS_URL,
-        },
-        "counters": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": REDIS_URL,
-            "KEY_PREFIX": "counters",
+            "OPTIONS": {
+                "socket_connect_timeout": CACHE_SOCKET_TIMEOUT,
+                "socket_timeout": CACHE_SOCKET_TIMEOUT,
+            },
         },
     }
 else:
@@ -194,11 +198,6 @@ else:
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "arkservice",
             "OPTIONS": {"MAX_ENTRIES": 10_000},
-        },
-        "counters": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "arkservice-counters",
-            "OPTIONS": {"MAX_ENTRIES": 1_000_000, "CULL_FREQUENCY": 0},
         },
     }
 

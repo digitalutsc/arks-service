@@ -1,18 +1,31 @@
-"""Liveness and readiness, for Apache and systemd to probe."""
+"""Liveness and readiness, for Apache, Docker and systemd to probe."""
 
 from __future__ import annotations
 
-from django.core.cache import caches
+import logging
+
+from django.core.cache import cache
 from django.db import connection
 from django.http import JsonResponse
+
+from core import counters
+
+logger = logging.getLogger(__name__)
 
 
 def healthz(request):
     """
     Report whether this instance can actually serve, not merely that it started.
 
-    Checks the database and the cache, because a resolver that cannot reach
-    either returns 404s and loses counts while looking perfectly alive.
+    Checks the database, the Django cache and the redirect-hit buffer. The
+    endpoint is public, so a failure is reported as a bare "error" and the
+    detail (which can name hosts) goes to the log instead.
+
+    ``counters_flushed_ago`` is informational: seconds since the last flush of
+    buffered redirect counts, or null if unknown. It never makes the check fail,
+    because a stalled scheduler is not a reason to take the resolver out of
+    service, but a number far above RESOLUTION_FLUSH_SECONDS means the scheduler
+    is not running.
     """
     checks: dict[str, str] = {}
 
@@ -21,17 +34,29 @@ def healthz(request):
             cursor.execute("SELECT 1")
             cursor.fetchone()
         checks["database"] = "ok"
-    except Exception as exc:  # noqa: BLE001 - the point is to report it
-        checks["database"] = f"error: {exc}"[:120]
+    except Exception:  # noqa: BLE001 - the point is to report it
+        logger.exception("healthz: database check failed")
+        checks["database"] = "error"
 
     try:
-        caches["counters"].set("healthz", 1, 10)
-        checks["counters"] = "ok" if caches["counters"].get("healthz") == 1 else "error: no value"
-    except Exception as exc:  # noqa: BLE001
-        checks["counters"] = f"error: {exc}"[:120]
+        cache.set("healthz", 1, 10)
+        checks["cache"] = "ok" if cache.get("healthz") == 1 else "error"
+    except Exception:  # noqa: BLE001
+        logger.exception("healthz: cache check failed")
+        checks["cache"] = "error"
+
+    try:
+        checks["counters"] = "ok" if counters.ping() else "error"
+    except Exception:  # noqa: BLE001
+        logger.exception("healthz: counter buffer check failed")
+        checks["counters"] = "error"
 
     healthy = all(state == "ok" for state in checks.values())
     return JsonResponse(
-        {"status": "ok" if healthy else "degraded", "checks": checks},
+        {
+            "status": "ok" if healthy else "degraded",
+            "checks": checks,
+            "counters_flushed_ago": counters.last_flush_age(),
+        },
         status=200 if healthy else 503,
     )

@@ -45,8 +45,20 @@ def test_production_rejects_a_sqlite_database():
 
 def test_a_complete_production_configuration_passes():
     check_production_settings(
-        debug=False, secret_key="a" * 60, database_url="mysql://user:pw@localhost/ark"
+        debug=False,
+        secret_key="a" * 60,
+        database_url="mysql://user:pw@localhost/ark",
+        redis_url="redis://localhost:6379/1",
     )
+
+
+def test_production_requires_a_redis_url():
+    # Without it each gunicorn process gets a private in-memory cache: the login
+    # lockout is per process and the redirect-hit buffer is not shared.
+    with pytest.raises(ConfigurationError, match="REDIS_URL"):
+        check_production_settings(
+            debug=False, secret_key="a" * 60, database_url="mysql://user:pw@localhost/ark"
+        )
 
 
 def test_the_error_names_what_to_fix():

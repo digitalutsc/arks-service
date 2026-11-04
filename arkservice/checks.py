@@ -3,8 +3,10 @@ Boot-time configuration guards.
 
 Development defaults are a convenience; in production they are a hazard. A
 missing ``DATABASE_URL`` would otherwise fall through to a local SQLite file and
-every ARK would 404 with nothing in the log to say why, and a missing
-``DJANGO_SECRET_KEY`` would leave sessions forgeable. Both are refused outright.
+every ARK would 404 with nothing in the log to say why, a missing
+``DJANGO_SECRET_KEY`` would leave sessions forgeable, and a missing ``REDIS_URL``
+would give each gunicorn process its own private cache, so the login lockout and
+the redirect-hit buffer would not be shared. All three are refused outright.
 
 Kept out of ``settings.py`` so it can be tested without importing Django
 settings under a dozen different environments.
@@ -24,7 +26,11 @@ class ConfigurationError(Exception):
 
 
 def check_production_settings(
-    *, debug: bool, secret_key: str | None, database_url: str | None
+    *,
+    debug: bool,
+    secret_key: str | None,
+    database_url: str | None,
+    redis_url: str | None = "",
 ) -> None:
     """
     Raise :class:`ConfigurationError` if this configuration must not run in production.
@@ -55,6 +61,12 @@ def check_production_settings(
         problems.append(
             f"DATABASE_URL points at SQLite ({database_url!r}), which is not supported in "
             "production. Use the MySQL/MariaDB server, e.g. mysql://user:pw@localhost/ark."
+        )
+
+    if not redis_url:
+        problems.append(
+            "REDIS_URL is unset. Production needs the Redis/Valkey server for the shared "
+            "cache and the redirect-hit buffer, e.g. redis://:password@localhost:6379/1."
         )
 
     if problems:

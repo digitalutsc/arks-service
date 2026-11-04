@@ -11,7 +11,7 @@ if str(ROOT) not in sys.path:
 @pytest.fixture(autouse=True)
 def _clear_caches():
     """
-    Element names and resolver targets are cached.
+    Element names and statistics are cached.
 
     Without clearing, one test's data would answer another test's lookup.
     """
