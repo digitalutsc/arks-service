@@ -154,3 +154,18 @@ def test_a_viewer_cannot_bind(client, make_user, ark):
     url = reverse("admin_ui:ark_detail", args=[ark.pk])
     client.post(url, {"action": "bind", "name": "URL", "value": "https://example.org/0"})
     assert not ark.bindings.exists()
+
+
+def test_a_role_is_looked_up_once_per_user_object(make_user, django_assert_num_queries):
+    # Every staff page asked four times: the view guard and three template values.
+    user = make_user("ed", EDITOR)
+    with django_assert_num_queries(1):
+        for _ in range(4):
+            assert role_of(user) == EDITOR
+
+
+def test_changing_a_role_is_seen_at_once(make_user):
+    user = make_user("ed", EDITOR)
+    assert role_of(user) == EDITOR
+    set_role(user, VIEWER)
+    assert role_of(user) == VIEWER

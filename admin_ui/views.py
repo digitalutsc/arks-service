@@ -167,7 +167,7 @@ def collection_detail(request, pk):
             "spec": spec,
             "capacity": capacity,
             **stats,
-            "jobs": collection.bulk_bind_jobs.all()[:5],
+            "jobs": collection.bulk_bind_jobs.select_related("created_by")[:5],
         },
     )
 
@@ -488,7 +488,7 @@ def _variant_headers(text: str, current: str, descending: bool) -> list[dict]:
 
 @require_role(VIEWER)
 def ark_detail(request, pk):
-    ark = get_object_or_404(Ark.objects.select_related("collection"), pk=pk)
+    ark = get_object_or_404(Ark.objects.select_related("collection", "minted_by"), pk=pk)
 
     if request.method == "POST":
         if not can_edit(request.user):
@@ -726,7 +726,10 @@ def bulk_bind(request, pk):
     return render(
         request,
         "admin_ui/bulk_bind.html",
-        {"collection": collection, "jobs": collection.bulk_bind_jobs.all()[:10]},
+        {
+            "collection": collection,
+            "jobs": collection.bulk_bind_jobs.select_related("created_by")[:10],
+        },
     )
 
 

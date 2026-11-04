@@ -39,17 +39,30 @@ def ensure_groups() -> None:
         Group.objects.get_or_create(name=name)
 
 
+#: Attribute caching a user's role on the user object. ``request.user`` is
+#: loaded once per request, so the cache lives exactly as long as the request;
+#: every staff page asked four times (the view guard plus three context values).
+_ROLE_CACHE = "_arkservice_role"
+
+
 def role_of(user) -> str | None:
     """The user's role, or ``None`` if they have not been given one."""
     if not user or not user.is_authenticated:
         return None
     if user.is_superuser:
         return ADMIN
+    cached = getattr(user, _ROLE_CACHE, False)
+    if cached is not False:
+        return cached
     names = set(user.groups.values_list("name", flat=True))
-    for role in ROLES:  # most privileged wins
-        if role in names:
-            return role
-    return None
+    role = next((each for each in ROLES if each in names), None)  # most privileged wins
+    setattr(user, _ROLE_CACHE, role)
+    return role
+
+
+def _forget_role(user) -> None:
+    if hasattr(user, _ROLE_CACHE):
+        delattr(user, _ROLE_CACHE)
 
 
 def set_role(user, role: str) -> None:
@@ -62,12 +75,14 @@ def set_role(user, role: str) -> None:
     with transaction.atomic():
         user.groups.remove(*Group.objects.filter(name__in=ROLES))
         user.groups.add(Group.objects.get(name=role))
+    _forget_role(user)
 
 
 def clear_role(user) -> None:
     """Take every role away, leaving an account that can sign in but do nothing."""
     with transaction.atomic():
         user.groups.remove(*Group.objects.filter(name__in=ROLES))
+    _forget_role(user)
 
 
 def is_last_administrator(user) -> bool:
