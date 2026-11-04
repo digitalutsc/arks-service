@@ -220,6 +220,13 @@ CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_TIME_LIMIT = env.int("CELERY_TASK_TIME_LIMIT", default=3600)
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+# Beat's state file. /tmp because the systemd units make the working directory
+# read-only (ProtectSystem=strict, with PrivateTmp) and the container's /app
+# belongs to the image. The schedules are plain intervals, so losing the file on
+# restart only means the first run happens one interval after start.
+CELERY_BEAT_SCHEDULE_FILENAME = env.str(
+    "CELERY_BEAT_SCHEDULE_FILENAME", default="/tmp/celerybeat-schedule"
+)
 
 # Redirect counts are buffered in the cache and written periodically, so that
 # resolving stays a pure read. This is how often they land.
