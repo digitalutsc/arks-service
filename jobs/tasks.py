@@ -70,12 +70,14 @@ def run_bulk_bind(self, job_id: int) -> dict:
         return {"ok": not job.had_errors, "skipped": True}
 
     try:
+        # No names held for the raw bytes or the decoded text, so each copy of
+        # the file can be freed as soon as the next one exists.
         with job.upload.open("rb") as raw:
-            text = decode_upload(raw.read())
+            handle = io.StringIO(decode_upload(raw.read()))
         with transaction.atomic():
             result = apply_csv(
                 Collection.objects.get(pk=job.collection_id),
-                io.StringIO(text),
+                handle,
                 mint_missing=job.mint_missing,
                 purge_first=job.purge_first,
                 user=job.created_by,

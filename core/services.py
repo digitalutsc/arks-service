@@ -77,37 +77,53 @@ def bulk_upsert_bindings(wanted: dict[tuple[int, str, str], str]) -> tuple[int, 
         for (ark_id, qualifier, name), value in wanted.items()
     }
 
-    # Read existing rows in batches: one IN-list holding every ark id exceeds
-    # MySQL's max_allowed_packet somewhere around four million.
-    ark_ids = sorted({key[0] for key in normalised})
-    existing: dict[tuple[int, str, str], tuple[int, str]] = {}
+    # Work through the ARKs BATCH_SIZE at a time: read what exists for that
+    # chunk, then write its creates and updates, so only one chunk's existing
+    # rows and model instances are in memory at once (a 100k-row file used to
+    # hold all ~400k of them). One IN-list holding every ark id would also
+    # exceed MySQL's max_allowed_packet somewhere around four million.
+    by_ark: dict[int, list[tuple[str, str, str]]] = {}
+    for (ark_id, qualifier, name), value in normalised.items():
+        by_ark.setdefault(ark_id, []).append((qualifier, name, value))
+    del normalised
+
+    ark_ids = sorted(by_ark)
+    now = timezone.now()
+    created = updated = 0
     for start in range(0, len(ark_ids), BATCH_SIZE):
         chunk = ark_ids[start : start + BATCH_SIZE]
-        existing.update(
-            {
-                (ark_id, qualifier, name): (pk, value)
-                for pk, ark_id, qualifier, name, value in Binding.objects.filter(
-                    ark_id__in=chunk
-                ).values_list("id", "ark_id", "qualifier", "name", "value")
-            }
-        )
+        existing = {
+            (ark_id, qualifier, name): (pk, value)
+            for pk, ark_id, qualifier, name, value in Binding.objects.filter(
+                ark_id__in=chunk
+            ).values_list("id", "ark_id", "qualifier", "name", "value")
+        }
 
-    now = timezone.now()
-    to_create, to_update = [], []
-    for (ark_id, qualifier, name), value in normalised.items():
-        found = existing.get((ark_id, qualifier, name))
-        if found is None:
-            to_create.append(Binding(ark_id=ark_id, qualifier=qualifier, name=name, value=value))
-        elif found[1] != value:
-            to_update.append(Binding(id=found[0], value=value, updated_at=now))
+        to_create, to_update = [], []
+        for ark_id in chunk:
+            for qualifier, name, value in by_ark[ark_id]:
+                found = existing.get((ark_id, qualifier, name))
+                if found is None:
+                    to_create.append(
+                        Binding(ark_id=ark_id, qualifier=qualifier, name=name, value=value)
+                    )
+                elif found[1] != value:
+                    to_update.append(Binding(id=found[0], value=value, updated_at=now))
 
-    if to_create:
-        Binding.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
-    if to_update:
-        # bulk_update skips auto_now fields, so updated_at is set explicitly.
-        Binding.objects.bulk_update(to_update, ["value", "updated_at"], batch_size=BATCH_SIZE)
+        if to_create:
+            Binding.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
+        if to_update:
+            # bulk_update skips auto_now fields, so updated_at is set explicitly.
+            Binding.objects.bulk_update(to_update, ["value", "updated_at"], batch_size=BATCH_SIZE)
+        created += len(to_create)
+        updated += len(to_update)
 
-    return len(to_create), len(to_update)
+    return created, updated
+
+
+#: Below this many ARKs the collection pages count live: it costs well under a
+#: second, and staff see their own mint or bulk bind reflected at once.
+LIVE_STATS_MAX_ARKS = 50_000
 
 
 def collection_stats(collection: Collection) -> dict[str, int]:
