@@ -147,3 +147,22 @@ def reap_stale_jobs() -> dict:
             logger.warning("bulk bind job %s was still pending; re-queued", job_id)
 
     return {"interrupted": interrupted, "requeued": requeued}
+
+
+@shared_task
+def prune_bulk_jobs() -> int:
+    """Daily retention, when BULK_BIND_RETENTION_DAYS is set above 0."""
+    from jobs.retention import prune_jobs
+
+    days = getattr(settings, "BULK_BIND_RETENTION_DAYS", 0)
+    if days < 1:
+        return 0
+    return prune_jobs(days).jobs
+
+
+@shared_task
+def clear_expired_sessions() -> None:
+    """Delete expired sessions; Django never does this by itself."""
+    from django.core.management import call_command
+
+    call_command("clearsessions")

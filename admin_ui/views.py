@@ -16,6 +16,7 @@ from datetime import datetime, time
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Sum
 from django.http import Http404, HttpResponse, QueryDict, StreamingHttpResponse
@@ -573,6 +574,33 @@ def ark_purge(request, pk):
 # --- minting --------------------------------------------------------------
 
 
+#: How long the "download the fill-in template" link keeps working after a mint.
+LAST_MINTED_SECONDS = 60 * 60
+
+
+def _last_minted_key(request) -> str:
+    return f"last-minted:{request.session.session_key}"
+
+
+def _remember_minted(request, minted) -> None:
+    """
+    Keep the ids just minted for the template download.
+
+    In the cache, not the session: up to MINT_MAX_PER_REQUEST ids in the session
+    were re-serialised and rewritten on every later request by the same person,
+    because sessions are saved on every request.
+    """
+    if not request.session.session_key:
+        request.session.save()
+    cache.set(_last_minted_key(request), [a.pk for a in minted], LAST_MINTED_SECONDS)
+
+
+def _last_minted(request) -> list[int]:
+    if not request.session.session_key:
+        return []
+    return cache.get(_last_minted_key(request)) or []
+
+
 @require_role(EDITOR)
 def mint_view(request, pk):
     collection = get_object_or_404(Collection, pk=pk)
@@ -589,7 +617,7 @@ def mint_view(request, pk):
             try:
                 minted = mint(collection, count=count, user=request.user)
                 messages.success(request, f"Minted {len(minted)} ARK(s).")
-                request.session["last_minted"] = [a.pk for a in minted]
+                _remember_minted(request, minted)
             except (MintError, TemplateError, ValueError) as exc:
                 messages.error(request, str(exc))
 
@@ -609,7 +637,7 @@ def mint_view(request, pk):
 def mint_template(request, pk):
     """Download the fill-in CSV for the ARKs just minted."""
     collection = get_object_or_404(Collection, pk=pk)
-    ark_ids = request.session.get("last_minted") or []
+    ark_ids = _last_minted(request)
     arks = Ark.objects.filter(pk__in=ark_ids, collection=collection).order_by("sequence")
     if not arks:
         raise Http404("Nothing was minted in this session.")

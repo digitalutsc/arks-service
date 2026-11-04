@@ -253,6 +253,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "jobs.tasks.reap_stale_jobs",
         "schedule": 600,
     },
+    "clear-expired-sessions": {
+        "task": "jobs.tasks.clear_expired_sessions",
+        "schedule": 24 * 60 * 60,
+    },
+    "prune-bulk-jobs": {
+        "task": "jobs.tasks.prune_bulk_jobs",
+        "schedule": 24 * 60 * 60,
+    },
 }
 # Scheduled housekeeping runs on its own queue, consumed by a small dedicated
 # process (the Docker "scheduler" service, deploy/arkservice-beat.service), so
@@ -261,6 +269,8 @@ PERIODIC_QUEUE = "periodic"
 CELERY_TASK_ROUTES = {
     "jobs.tasks.flush_resolution_counters": {"queue": PERIODIC_QUEUE},
     "jobs.tasks.reap_stale_jobs": {"queue": PERIODIC_QUEUE},
+    "jobs.tasks.clear_expired_sessions": {"queue": PERIODIC_QUEUE},
+    "jobs.tasks.prune_bulk_jobs": {"queue": PERIODIC_QUEUE},
 }
 
 # --- Resolver -------------------------------------------------------------
@@ -298,6 +308,9 @@ MINT_MAX_PER_REQUEST = env.int("MINT_MAX_PER_REQUEST", default=10_000)
 # worker's memory before the row check is ever reached.
 BULK_BIND_MAX_ROWS = env.int("BULK_BIND_MAX_ROWS", default=100_000)
 BULK_BIND_MAX_BYTES = env.int("BULK_BIND_MAX_BYTES", default=50 * 1024 * 1024)
+# Days to keep finished bulk-bind jobs and their files; 0 keeps them forever.
+# Pruned daily by the scheduler, or by hand with `manage.py prune_bulk_jobs`.
+BULK_BIND_RETENTION_DAYS = env.int("BULK_BIND_RETENTION_DAYS", default=0)
 DATA_UPLOAD_MAX_MEMORY_SIZE = env.int("DATA_UPLOAD_MAX_MEMORY_SIZE", default=20 * 1024 * 1024)
 FILE_UPLOAD_MAX_MEMORY_SIZE = env.int("FILE_UPLOAD_MAX_MEMORY_SIZE", default=5 * 1024 * 1024)
 
