@@ -378,8 +378,46 @@ the detail goes to the log, because the endpoint is public.
 
 ```bash
 curl -s http://127.0.0.1:8000/healthz
-# {"status": "ok", "checks": {"database": "ok", "counters": "ok"}}
+# {"status": "ok", "checks": {"database": "ok", "cache": "ok", "counters": "ok"},
+#  "counters_flushed_ago": 12}
 ```
+
+`counters_flushed_ago` is the seconds since buffered redirect counts were last
+written to the database (null before the first flush). It never fails the
+check, but a value far above `RESOLUTION_FLUSH_SECONDS` means the scheduler
+(`arkservice-beat`, or the Docker `scheduler` service) is not running.
+
+The resolver itself does not depend on Valkey: a redirect reads its target from
+MySQL, and if the hit buffer is unreachable the hit is written straight to the
+database. With Valkey down, redirects keep working (`/healthz` reports
+degraded); staff sign-in and the admin pages that cache need it back.
+
+### Valkey settings for a host-installed server
+
+The server holds the Celery queue (database 0) and the cache plus buffered hits
+(database 1), so it must not drop keys on its own. In `/etc/valkey/valkey.conf`
+(or `redis.conf`):
+
+```
+appendonly yes
+appendfsync everysec
+maxmemory 256mb
+maxmemory-policy noeviction
+```
+
+Never an `allkeys-*` policy: it would evict queued bulk-bind jobs and unflushed
+redirect counts. With `noeviction` a full server refuses writes; hits then fall
+back to the database and a new bulk bind fails visibly instead of vanishing.
+
+### Database server (MySQL)
+
+At ~100k ARKs the defaults are fine. For a few million ARKs (about 9 GB of data
+and indexes at 4M; see [SCALE.md](SCALE.md)), ask for `innodb_buffer_pool_size`
+of at least 4 GB, so the indexes the resolver uses stay in memory even after a
+free-text search has scanned the bindings table, and check binary-log retention
+against disk space while bulk-loading (each 100k-row bulk bind is one
+transaction). Compressing `core_binding` (`ROW_FORMAT=COMPRESSED`) saves space
+at some write CPU; it is a server-side choice, not part of the migrations.
 
 ## Capacity
 
@@ -526,7 +564,10 @@ tar czf /backup/ark-media-$(date +%F).tar.gz /var/www/arkservice/media
 | Every ARK 404s after deploy | Pointing at the wrong/empty database | Check `DATABASE_URL`; run `manage.py ark_stats` |
 | `…/ark:/x/y?` returns 302 instead of metadata | Apache is missing `nocanon` | See [4.5](#45-apache) |
 | Static files 404 | `collectstatic` not run | `manage.py collectstatic --no-input` |
-| Bulk-bind jobs stay "Pending" | Worker not running or wrong broker | `systemctl status arkservice-worker`; check `CELERY_BROKER_URL` |
+| Bulk-bind jobs stay "Pending" | Worker not running or wrong broker | `systemctl status arkservice-worker`; check `CELERY_BROKER_URL`. A job pending for 15 minutes is re-queued by the reaper |
+| A job says "Interrupted: the worker stopped…" | The worker was restarted or killed mid-job | Nothing from that file was applied; upload it again |
+| Redirect counts never change; `/healthz` `counters_flushed_ago` keeps growing | The scheduler is not running | `systemctl status arkservice-beat` (Docker: `make logs`, look for `scheduler`) |
+| Service will not start: "REDIS_URL is unset" | Production without the cache server configured | Set `REDIS_URL` |
 | `pkg-config: command not found` on install | MySQL client headers absent | `apt install libmysqlclient-dev pkg-config` |
 | Mint-missing crashes with "Column 'ark_id' cannot be null" | Pre-2ecdb88 build on MySQL | Upgrade; `mint()` now reads keys back |
 | `resolve_diff` reports "could not be fetched" | Local port exhaustion | Lower `--workers` |
@@ -569,11 +610,17 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 | `CELERY_RESULT_BACKEND` | same as broker | Results are not stored (`task_ignore_result`); nothing reads them |
 | `CELERY_TASK_ALWAYS_EAGER` | `false` | `true` runs jobs inline — development only |
 | `CELERY_TASK_TIME_LIMIT` | `3600` | Seconds |
-| `MINT_MAX_PER_REQUEST` | `10000` | Largest single mint batch; `0` removes the cap. The mint form runs inside the web request, so a batch that outlasts the gunicorn timeout fails and is rolled back |
+| `MINT_MAX_PER_REQUEST` | `10000` | Largest single mint from the form or the `mint` command; `0` removes the cap. Bulk bind is not subject to it (it is bounded by `BULK_BIND_MAX_ROWS`). A very large form mint can outlast Apache's `ProxyTimeout`: the browser gets an error page, but the mint still completes |
+| `BULK_BIND_RETENTION_DAYS` | `0` | Delete finished bulk-bind jobs and their files after this many days, daily. `0` keeps them forever; `manage.py prune_bulk_jobs --older-than N [--dry-run]` does it by hand |
+| `CELERY_BEAT_SCHEDULE_FILENAME` | `/tmp/celerybeat-schedule` | Beat's state file; must be writable by the scheduler |
 | `BULK_BIND_MAX_ROWS` | `100000` | Largest upload |
 | `DATA_UPLOAD_MAX_MEMORY_SIZE` | `20971520` | 20 MB |
 | `MANIFEST_FETCH_TIMEOUT` | `5` | Seconds. Short by design: the request holds a worker while fetching someone else's server |
-| `MANIFEST_MAX_BYTES` | `10485760` | 10 MB |
+| `MANIFEST_TOTAL_TIMEOUT` | `10` | Seconds for the whole `/manifest` fetch; `MANIFEST_FETCH_TIMEOUT` bounds each read |
+| `MANIFEST_MAX_BYTES` | `10485760` | 10 MB; a larger declared `Content-Length` is refused before reading |
+| `MANIFEST_MAX_CONCURRENT` | `4` | `/manifest` fetches at once per gunicorn process; beyond it, 503 with `Retry-After` |
+| `DB_CONNECT_TIMEOUT` / `DB_READ_TIMEOUT` / `DB_WRITE_TIMEOUT` | `5` / `60` / `60` | MySQL only. Seconds before a stalled server is given up on |
+| `FILE_UPLOAD_MAX_MEMORY_SIZE` | `5242880` | Uploads larger than this are spooled to a temporary file |
 | `MEDIA_ROOT` | `./media` | Uploaded CSVs and results |
 | `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `true` when `DEBUG` false | Set false only for plain-HTTP testing |
 | `SECURE_HSTS_SECONDS` | `0` | Enable once TLS is proven; hard to walk back |

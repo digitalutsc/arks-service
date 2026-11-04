@@ -86,7 +86,8 @@ flowchart TB
 
         subgraph SYSTEMD["systemd units"]
             GU["<b>arkservice</b><br/>gunicorn 127.0.0.1:8000<br/>3 workers"]
-            CW["<b>arkservice-worker</b><br/>celery, concurrency 2"]
+            CW["<b>arkservice-worker</b><br/>celery, queue celery<br/>bulk binds"]
+            CB["<b>arkservice-beat</b><br/>celery beat + queue periodic<br/>counter flush, reaper"]
         end
 
         RD[("Valkey or Redis<br/>broker + cache")]
@@ -98,9 +99,11 @@ flowchart TB
     S -->|"GET /admin/"| AP
     AP -->|"proxy, RAW_URI preserved"| GU
     GU --> DB
-    GU -->|"enqueue bulk bind"| RD
+    GU -->|"enqueue bulk bind,<br/>count hits"| RD
     RD --> CW
+    RD --> CB
     CW --> DB
+    CB -->|"flush counts"| DB
     GU --> MED
     CW --> MED
 ```
@@ -287,11 +290,11 @@ flowchart TD
     F -->|yes| H{"inflection<br/>? ?? ?info"}
     H -->|yes| I["200 · erc: block<br/><i>no counter increment</i>"]
     H -->|no| J{"/manifest?"}
-    J -->|yes| K["check target is public http(s)<br/>fetch · return JSON<br/>502 if refused or unreachable"]
+    J -->|yes| K["check target is public http(s)<br/>fetch (10 s total, 10 MB, 4 at once)<br/>return JSON as received<br/>502/503/504 if refused, busy or slow"]
     J -->|no| L{"URL bound at<br/>this exact qualifier?"}
     L -->|no| M{"WHERE? bound?"}
     M -->|no| N["404<br/><i>no fallback up the hierarchy</i>"]
-    M -->|yes| O["count · 302"]
+    M -->|yes| O["count (Valkey, else MySQL) · 302"]
     L -->|yes| O
 
     style E fill:#eef7f1
