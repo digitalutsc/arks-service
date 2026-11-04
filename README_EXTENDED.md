@@ -115,7 +115,9 @@ the way through. Without `nocanon`, metadata requests silently become redirects.
 also brings its own PostgreSQL (or MySQL) container; for production,
 `docker-compose.external-db.yml` points it at an existing MySQL server and the
 `db` container is not started. The `broker` service runs Valkey by default,
-or Redis with `BROKER_IMAGE=redis:7-alpine`. The stack is defined in the `docker-arks-service`
+or Redis with `BROKER_IMAGE=redis:7-alpine`, and requires a password; in
+production `docker-compose.external-broker.yml` can replace it with an
+existing Valkey or Redis server, logged in to with a user name and password. The stack is defined in the `docker-arks-service`
 repository beside this one, not here. The development shape:
 
 ```mermaid

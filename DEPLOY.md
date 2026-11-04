@@ -126,29 +126,39 @@ top-level Django app needs a matching `COPY --from=src` line** in
 `docker-arks-service/Dockerfile`. Its README says so too.
 
 The stack picks its database with `COMPOSE_FILE` in its `.env`
-(`docker-compose.mysql.yml` runs a MySQL 8.0 container instead of PostgreSQL),
-and its broker with `BROKER_IMAGE`: Valkey when that is unset,
-`BROKER_IMAGE=redis:7-alpine` for Redis.
+(`docker-compose.mysql.yml` runs a MySQL 8.0 container instead of PostgreSQL;
+`POSTGRES_DB`, `POSTGRES_USER` and `POSTGRES_PASSWORD` name the PostgreSQL
+container's database and account), and its broker with `BROKER_IMAGE`: Valkey
+when that is unset, `BROKER_IMAGE=redis:7-alpine` for Redis. The broker
+container requires `BROKER_PASSWORD`, which `make up` generates.
 
 ### Production in Docker
 
 For production the stack runs against an existing MySQL server and starts no
-database container. In `docker-arks-service/.env`:
+database container. The broker can stay a password-protected container, or be
+an existing Valkey or Redis server too. In `docker-arks-service/.env`:
 
 ```ini
-COMPOSE_FILE=docker-compose.yml:docker-compose.external-db.yml
+COMPOSE_FILE=docker-compose.yml:docker-compose.external-db.yml:docker-compose.external-broker.yml
 MYSQL_HOST=<the MySQL endpoint>
 MYSQL_PORT=3306
 MYSQL_DATABASE=ark
 MYSQL_USER=ark
 MYSQL_PASSWORD=<letters and digits, or percent-encoded>
+BROKER_HOST=<the Valkey or Redis endpoint>
+BROKER_PORT=6379
+BROKER_USERNAME=<a named account, or blank for the default user>
+BROKER_PASSWORD=<that account's password>
 ```
 
-The broker is Valkey; add `BROKER_IMAGE=redis:7-alpine` to run Redis instead. The database must exist
-already; `web` runs `migrate` against it on every start. Everything else (the
-caveats about reaching the server from a container, `make clean`, and
-`make import-dump` writing into that database) is in the stack's README under
-"Production: an external MySQL server". Putting the stack behind Apache with
+Leave `:docker-compose.external-broker.yml` and the `BROKER_HOST` block out to
+keep the broker container. For a broker reached over TLS, also set
+`BROKER_SCHEME=rediss` and `BROKER_URL_OPTIONS=?ssl_cert_reqs=required`. The
+database must exist already; `web` runs `migrate` against it on every start.
+Everything else (the caveats about reaching the servers from a container,
+`make clean`, and `make import-dump` writing into that database) is in the
+stack's README under "Production: an external MySQL server" and "Production:
+an external Valkey or Redis server". Putting the stack behind Apache with
 TLS is planned in `DOCKER-DEPLOY.md` at the workspace root and not yet part of
 the stack.
 
@@ -246,8 +256,29 @@ DJANGO_SECRET_KEY=<64 random characters>
 DATABASE_URL=mysql://arkuser:password@localhost:3306/ark
 DJANGO_ALLOWED_HOSTS=ark.digital.utsc.utoronto.ca
 DJANGO_CSRF_TRUSTED_ORIGINS=https://ark.digital.utsc.utoronto.ca
-CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://:<broker password>@localhost:6379/0
+REDIS_URL=redis://:<broker password>@localhost:6379/1
 ```
+
+**Give the broker a password.** Valkey and Redis accept anyone who can reach
+them unless told otherwise, and anyone who can write to the queue can run
+jobs as the application. Set `requirepass <broker password>` in
+`/etc/valkey/valkey.conf` (or `/etc/redis/redis.conf`), restart the service,
+and put the same password in both URLs as above. The form depends on the
+server:
+
+```ini
+# the server's default user, with requirepass
+CELERY_BROKER_URL=redis://:password@localhost:6379/0
+# a named account (ACL user), as a managed service hands out
+CELERY_BROKER_URL=redis://username:password@valkey.example:6379/0
+# over TLS; Celery refuses rediss:// without ssl_cert_reqs
+CELERY_BROKER_URL=rediss://username:password@valkey.example:6380/0?ssl_cert_reqs=required
+```
+
+`REDIS_URL` takes the same form with database `1`. Percent-encode anything but
+letters and digits in the user name and password: `@` as `%40`, `/` as `%2F`,
+`#` as `%23`, `%` as `%25`, `:` as `%3A`.
 
 Generate the key with:
 
@@ -502,8 +533,8 @@ tail -f /var/log/apache2/arkservice-error.log
 | `DJANGO_LOG_LEVEL` | `INFO` | |
 | `DB_CONN_MAX_AGE` | `60` | Seconds a connection is kept for reuse; `0` closes it after each request |
 | `DB_CONN_HEALTH_CHECKS` | `true` | Check a reused connection before using it. Keep it on when MySQL is across a network, where idle connections get dropped ("server has gone away") |
-| `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Redis or Valkey; the scheme is `redis://` (or `rediss://`) for both |
-| `REDIS_URL` | empty | Redis or Valkey, for the login lockout, target cache and buffered counters. **Set it in production** — without it each gunicorn worker has its own |
+| `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Valkey or Redis; the scheme is `redis://` (or `rediss://`) for both. Credentials go in the URL: `redis://:password@host:6379/0`, or `redis://user:password@…` for a named account |
+| `REDIS_URL` | empty | Valkey or Redis, for the login lockout, target cache and buffered counters, with credentials as for `CELERY_BROKER_URL` and a different database number. **Set it in production** — without it each gunicorn worker has its own |
 | `LOGIN_MAX_ATTEMPTS` | `5` | Failures before a username+address is locked out |
 | `LOGIN_LOCKOUT_SECONDS` | `900` | How long the lockout lasts |
 | `TRUST_FORWARDED_FOR` | `false` | Set true only behind a proxy that sets it and when gunicorn is unreachable directly |
