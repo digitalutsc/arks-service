@@ -1,0 +1,15 @@
+# /etc/logrotate.d/arkservice
+#
+# gunicorn's error log and the Celery logs. Apache rotates its own access and
+# error logs through /etc/logrotate.d/apache2. copytruncate because gunicorn
+# and Celery keep their log files open and are not told to reopen them.
+/var/log/arkservice/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su www-data www-data
+}

@@ -295,20 +295,35 @@ python3 -c "import secrets; print(secrets.token_urlsafe(64))"
 ### 4.4 Services
 
 ```bash
-sudo cp deploy/arkservice.service deploy/arkservice-worker.service /etc/systemd/system/
+sudo cp deploy/arkservice.service deploy/arkservice-worker.service \
+    deploy/arkservice-beat.service /etc/systemd/system/
+sudo cp deploy/logrotate-arkservice /etc/logrotate.d/arkservice
 sudo systemctl daemon-reload
-sudo systemctl enable --now arkservice arkservice-worker
-sudo systemctl status arkservice arkservice-worker
+sudo systemctl enable --now arkservice arkservice-worker arkservice-beat
+sudo systemctl status arkservice arkservice-worker arkservice-beat
 ```
 
 - `arkservice` — gunicorn on `127.0.0.1:8000`, 3 processes × 8 threads. Threads
   matter: `/manifest` parks a worker on someone else's server, and with plain
-  processes a few slow targets stalled the whole service.
-- `arkservice-worker` — Celery with `--beat`, concurrency 2. Beat runs the
-  periodic redirect-counter flush; with more than one worker host, run beat on
-  exactly one of them.
+  processes a few slow targets stalled the whole service. Each process is
+  recycled after about 2,000 requests (`--max-requests`). It writes only an
+  error log; Apache's access log already records every request.
+- `arkservice-worker` — Celery, queue `celery`, concurrency 2: bulk binds only.
+  A worker process is replaced after 20 jobs or ~1 GB.
+- `arkservice-beat` — Celery beat plus a one-process worker for queue
+  `periodic`: the redirect-count flush every `RESOLUTION_FLUSH_SECONDS`, the
+  stale-job reaper every 10 minutes, daily session cleanup and optional
+  bulk-bind retention. Kept apart so a long bulk bind can never delay the
+  flush. Run exactly one, even with several worker hosts. Beat's state file is
+  `/tmp/celerybeat-schedule` (`CELERY_BEAT_SCHEDULE_FILENAME`), private to the
+  unit through `PrivateTmp`; the working directory is read-only.
 
-Both run as `www-data` under `ProtectSystem=strict` with explicit
+Upgrading from a release with only two units: copy and enable
+`arkservice-beat.service` and the logrotate file, and restart
+`arkservice-worker`, which no longer runs beat. Without the beat unit nothing
+flushes redirect counts (`/healthz` shows `counters_flushed_ago` growing).
+
+All three run as `www-data` under `ProtectSystem=strict` with explicit
 `ReadWritePaths`, `NoNewPrivileges`, `PrivateTmp`, `PrivateDevices`, kernel and
 cgroup protection, `RestrictAddressFamilies`, an empty `CapabilityBoundingSet`,
 a syscall filter and a memory ceiling.
@@ -330,10 +345,16 @@ that to arrive intact, Apache must proxy with `nocanon`:
 
 ```apache
 ProxyPass        /static/ !
-ProxyPass        / http://127.0.0.1:8000/ nocanon
+ProxyPass        / http://127.0.0.1:8000/ nocanon ttl=3
 ProxyPassReverse / http://127.0.0.1:8000/
 AllowEncodedSlashes NoDecode
 ```
+
+The vhost also sets `ProxyTimeout 120`, `ttl=3` (below gunicorn's 5 s
+keep-alive, so Apache never reuses a connection gunicorn has closed), and
+`LimitRequestBody`: 1 MiB everywhere except the bulk-bind upload, which gets
+55 MiB. Apache refuses an oversized body before it reaches disk; raise that
+number if you raise `BULK_BIND_MAX_BYTES`.
 
 Check it after any Apache change:
 
@@ -471,7 +492,7 @@ sudo -u www-data git -C /var/www/arkservice pull
 sudo -u www-data /var/www/arkservice/.venv/bin/pip install -e '.[mysql]'
 sudo -u www-data /var/www/arkservice/.venv/bin/python manage.py migrate
 sudo -u www-data /var/www/arkservice/.venv/bin/python manage.py collectstatic --no-input
-sudo systemctl restart arkservice arkservice-worker
+sudo systemctl restart arkservice arkservice-worker arkservice-beat
 ```
 
 Resolution is read-only apart from the redirect counter, so a restart is a brief
@@ -513,10 +534,11 @@ tar czf /backup/ark-media-$(date +%F).tar.gz /var/www/arkservice/media
 Logs:
 
 ```bash
-journalctl -u arkservice -f
+journalctl -u arkservice -f          # application log (Django logs to stderr)
 journalctl -u arkservice-worker -f
-tail -f /var/log/arkservice/{access,error,worker}.log
-tail -f /var/log/apache2/arkservice-error.log
+journalctl -u arkservice-beat -f
+tail -f /var/log/arkservice/{error,worker,beat}.log
+tail -f /var/log/apache2/arkservice-{access,error}.log
 ```
 
 ---

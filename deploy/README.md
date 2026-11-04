@@ -6,6 +6,7 @@
   housekeeping (counter flush, stale-job reaper, session cleanup), queue
   `periodic`. Run exactly one.
 - `apache-arkservice.conf` — Apache vhost (note the `nocanon` on `ProxyPass`)
+- `logrotate-arkservice` — goes to `/etc/logrotate.d/arkservice`
 
 These are for the bare install on a VM. The worker unit works with either
 broker package, `valkey-server` (the default) or `redis-server`. Production in

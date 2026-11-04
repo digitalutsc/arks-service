@@ -24,8 +24,17 @@ ExecStart=/var/www/arkservice/.venv/bin/gunicorn \
     --threads 8 \
     --worker-class gthread \
     --timeout 60 \
-    --access-logfile /var/log/arkservice/access.log \
+    --graceful-timeout 30 \
+    --keep-alive 5 \
+    --max-requests 2000 \
+    --max-requests-jitter 200 \
     --error-logfile /var/log/arkservice/error.log
+# No --access-logfile: Apache already logs every request
+# (/var/log/apache2/arkservice-access.log), and a second line per redirect only
+# doubled the disk use. --max-requests recycles each worker process after about
+# 2000 requests, so slow memory growth is returned to the system.
+# --keep-alive 5 must stay above Apache's ttl=3 on ProxyPass (see
+# apache-arkservice.conf), or Apache reuses a connection gunicorn has closed.
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
 RestartSec=5s
