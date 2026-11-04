@@ -15,6 +15,12 @@ from core.search import csv_safe, csv_unsafe
 #: Header of the per-row results file, and of the table the job page draws from it.
 RESULT_COLUMNS = ("row", "ark_id", "status", "message")
 
+#: Shown on a job whose worker stopped while it ran.
+INTERRUPTED_MESSAGE = (
+    "Interrupted: the worker stopped while this job was running. "
+    "Nothing from this file was applied; upload it again."
+)
+
 
 class BulkBindJob(models.Model):
     """One uploaded CSV, and what became of it."""
@@ -69,6 +75,42 @@ class BulkBindJob(models.Model):
         self.task_id = task_id or ""
         self.started_at = timezone.now()
         self.save(update_fields=["status", "task_id", "started_at"])
+
+    def claim(self, task_id: str = "") -> bool:
+        """
+        Move PENDING to RUNNING in one statement; False if someone else got there.
+
+        Celery can deliver the same job twice (redelivery after a lost worker, or
+        the stale-job reaper re-queueing it). Reading the status and then saving
+        it would let both deliveries through; a conditional UPDATE lets one.
+        """
+        now = timezone.now()
+        claimed = (
+            type(self)
+            .objects.filter(pk=self.pk, status=self.Status.PENDING)
+            .update(status=self.Status.RUNNING, task_id=task_id or "", started_at=now)
+        )
+        if claimed:
+            self.status, self.task_id, self.started_at = self.Status.RUNNING, task_id or "", now
+        return bool(claimed)
+
+    def mark_interrupted(self) -> bool:
+        """
+        Fail a job that was RUNNING when its worker went away.
+
+        A run applies the whole file and records the outcome in one transaction,
+        so a job still marked RUNNING committed nothing: saying so is accurate,
+        and re-uploading is safe.
+        """
+        now = timezone.now()
+        failed = (
+            type(self)
+            .objects.filter(pk=self.pk, status=self.Status.RUNNING)
+            .update(status=self.Status.FAILED, error=INTERRUPTED_MESSAGE, finished_at=now)
+        )
+        if failed:
+            self.status, self.error, self.finished_at = self.Status.FAILED, INTERRUPTED_MESSAGE, now
+        return bool(failed)
 
     def mark_failed(self, message: str) -> None:
         self.status = self.Status.FAILED

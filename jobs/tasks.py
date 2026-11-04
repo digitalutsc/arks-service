@@ -10,12 +10,22 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import timedelta
 
 from celery import shared_task
+from django.conf import settings
+from django.core.cache import cache
+from django.db import transaction
+from django.utils import timezone
 
 from core.models import Collection
 from jobs.bulkbind import BulkBindError, apply_csv
 from jobs.models import BulkBindJob
+
+#: A PENDING job older than this has probably lost its queue message.
+STALE_PENDING_SECONDS = 15 * 60
+#: Re-queue a stale PENDING job at most this often.
+REQUEUE_INTERVAL_SECONDS = 60 * 60
 
 logger = logging.getLogger(__name__)
 
@@ -42,27 +52,35 @@ def run_bulk_bind(self, job_id: int) -> dict:
     Apply an uploaded CSV, recording progress on the job row.
 
     ``acks_late`` means a job survives a worker being killed mid-run, which in
-    turn means it can be delivered twice — so a job that is no longer pending is
-    left alone rather than minting a second batch of ARKs.
+    turn means it can be delivered twice. Only a PENDING job is run, claimed in
+    one statement so two deliveries cannot both start it. The file is applied
+    and the outcome recorded in a single transaction, so a job found RUNNING on
+    redelivery committed nothing: it is failed with a message saying so, rather
+    than left "running" forever or run a second time.
     """
     job = BulkBindJob.objects.select_related("collection").get(pk=job_id)
 
-    if job.status != BulkBindJob.Status.PENDING:
+    if job.status == BulkBindJob.Status.RUNNING:
+        if job.mark_interrupted():
+            logger.warning("bulk bind job %s was interrupted; marked failed", job_id)
+        return {"ok": False, "interrupted": True}
+
+    if not job.claim(self.request.id):
         logger.info("bulk bind job %s already %s; skipping redelivery", job_id, job.status)
         return {"ok": not job.had_errors, "skipped": True}
-
-    job.mark_running(self.request.id)
 
     try:
         with job.upload.open("rb") as raw:
             text = decode_upload(raw.read())
-        result = apply_csv(
-            Collection.objects.get(pk=job.collection_id),
-            io.StringIO(text),
-            mint_missing=job.mint_missing,
-            purge_first=job.purge_first,
-            user=job.created_by,
-        )
+        with transaction.atomic():
+            result = apply_csv(
+                Collection.objects.get(pk=job.collection_id),
+                io.StringIO(text),
+                mint_missing=job.mint_missing,
+                purge_first=job.purge_first,
+                user=job.created_by,
+            )
+            job.mark_finished(result)
     except BulkBindError as exc:
         job.mark_failed(str(exc))
         return {"ok": False, "error": str(exc)}
@@ -71,7 +89,6 @@ def run_bulk_bind(self, job_id: int) -> dict:
         job.mark_failed(f"Unexpected error: {exc}")
         return {"ok": False, "error": str(exc)}
 
-    job.mark_finished(result)
     return {
         "ok": result.ok,
         "created": result.created,
@@ -95,3 +112,38 @@ def flush_resolution_counters() -> int:
     if moved:
         logger.info("flushed %s buffered resolution(s)", moved)
     return moved
+
+
+@shared_task
+def reap_stale_jobs() -> dict:
+    """
+    Unstick bulk-bind jobs whose worker or queue message went away.
+
+    - RUNNING for longer than the task time limit (plus a margin): the worker
+      died without Celery redelivering, e.g. the broker lost the message. Failed
+      with the "nothing was applied" message.
+    - PENDING for longer than STALE_PENDING_SECONDS: the queue message was
+      probably lost (a broker restarted without persistence). Re-queued, at most
+      once an hour per job; the atomic claim makes a duplicate delivery harmless.
+    """
+    now = timezone.now()
+    running_limit = timedelta(seconds=settings.CELERY_TASK_TIME_LIMIT + 300)
+    interrupted = 0
+    for job in BulkBindJob.objects.filter(
+        status=BulkBindJob.Status.RUNNING, started_at__lt=now - running_limit
+    ):
+        if job.mark_interrupted():
+            interrupted += 1
+            logger.warning("bulk bind job %s ran past its time limit; marked failed", job.pk)
+
+    requeued = 0
+    for job_id in BulkBindJob.objects.filter(
+        status=BulkBindJob.Status.PENDING,
+        created_at__lt=now - timedelta(seconds=STALE_PENDING_SECONDS),
+    ).values_list("pk", flat=True):
+        if cache.add(f"bulkbind-requeued:{job_id}", 1, REQUEUE_INTERVAL_SECONDS):
+            run_bulk_bind.delay(job_id)
+            requeued += 1
+            logger.warning("bulk bind job %s was still pending; re-queued", job_id)
+
+    return {"interrupted": interrupted, "requeued": requeued}

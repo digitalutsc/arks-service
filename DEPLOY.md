@@ -544,7 +544,7 @@ tail -f /var/log/apache2/arkservice-error.log
 | `RESOLUTION_FLUSH_SECONDS` | `60` | How often buffered redirect counts are written |
 | `ARK_PUBLIC_BASE_URL` | empty | Base URL the admin UI shows for an ARK. Empty derives it from the request (correct behind Apache, which preserves the Host and sets `X-Forwarded-Proto`). Set it only when staff reach the admin on a different hostname than the resolver |
 | `BULK_BIND_MAX_BYTES` | `52428800` | Upload ceiling; `DATA_UPLOAD_MAX_MEMORY_SIZE` does **not** cover file parts |
-| `CELERY_RESULT_BACKEND` | same as broker | |
+| `CELERY_RESULT_BACKEND` | same as broker | Results are not stored (`task_ignore_result`); nothing reads them |
 | `CELERY_TASK_ALWAYS_EAGER` | `false` | `true` runs jobs inline — development only |
 | `CELERY_TASK_TIME_LIMIT` | `3600` | Seconds |
 | `MINT_MAX_PER_REQUEST` | `10000` | Largest single mint batch; `0` removes the cap. The mint form runs inside the web request, so a batch that outlasts the gunicorn timeout fails and is rolled back |

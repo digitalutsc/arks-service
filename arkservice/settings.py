@@ -220,6 +220,13 @@ CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_TIME_LIMIT = env.int("CELERY_TASK_TIME_LIMIT", default=3600)
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+# Nothing reads task results, so don't store them in the broker.
+CELERY_TASK_IGNORE_RESULT = True
+# Bulk binds are long; a worker should not reserve jobs it cannot start yet.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Redis redelivers an unacknowledged task after visibility_timeout. It must be
+# longer than the longest task, or a running bulk bind is handed out again.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": CELERY_TASK_TIME_LIMIT + 600}
 # Beat's state file. /tmp because the systemd units make the working directory
 # read-only (ProtectSystem=strict, with PrivateTmp) and the container's /app
 # belongs to the image. The schedules are plain intervals, so losing the file on
@@ -235,6 +242,10 @@ CELERY_BEAT_SCHEDULE = {
     "flush-resolution-counters": {
         "task": "jobs.tasks.flush_resolution_counters",
         "schedule": RESOLUTION_FLUSH_SECONDS,
+    },
+    "reap-stale-jobs": {
+        "task": "jobs.tasks.reap_stale_jobs",
+        "schedule": 600,
     },
 }
 

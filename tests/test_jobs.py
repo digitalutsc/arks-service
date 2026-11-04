@@ -193,3 +193,90 @@ def test_a_quoted_field_containing_a_newline_stays_one_row(collection):
     job.refresh_from_db()
     assert job.failed == 0
     assert Binding.objects.get(name="NOTE").value == "line one\nline two"
+
+
+# --- jobs that lost their worker or their queue message ------------------
+
+
+def test_a_job_found_running_on_redelivery_is_failed_not_left_running(collection):
+    # A worker killed mid-run (restart, out of memory) leaves the job RUNNING;
+    # Celery redelivers it. It used to be skipped and stay "running" forever.
+    job = make_job(collection, "Ark_ID,URL\n,https://example.org/new\n", mint_missing=True)
+    job.mark_running("first-delivery")
+
+    run_bulk_bind(job.pk)
+
+    job.refresh_from_db()
+    assert job.status == BulkBindJob.Status.FAILED
+    assert "upload it again" in job.error
+    assert Ark.objects.count() == 0, "an interrupted job must not be run a second time"
+
+
+def test_only_one_delivery_can_claim_a_job(collection):
+    job = make_job(collection, "Ark_ID,URL\n,https://example.org/new\n")
+    other = BulkBindJob.objects.get(pk=job.pk)
+    assert job.claim("a") is True
+    assert other.claim("b") is False
+
+
+def test_a_failure_part_way_commits_nothing(collection, monkeypatch):
+    # Applying the file and recording the outcome share one transaction, which
+    # is what makes "interrupted means nothing was applied" true.
+    import jobs.models
+
+    Ark.objects.create(collection=collection, identifier="utsc0", sequence=0)
+    job = make_job(collection, "Ark_ID,URL\n61220/utsc0,https://example.org/0\n")
+
+    def broken(self, result):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(jobs.models.BulkBindJob, "mark_finished", broken)
+    run_bulk_bind(job.pk)
+
+    job.refresh_from_db()
+    assert job.status == BulkBindJob.Status.FAILED
+    assert Binding.objects.count() == 0
+
+
+def test_the_reaper_fails_a_job_running_past_its_time_limit(collection, settings):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from jobs.tasks import reap_stale_jobs
+
+    job = make_job(collection, "Ark_ID,URL\n,https://example.org/new\n")
+    job.mark_running("lost")
+    BulkBindJob.objects.filter(pk=job.pk).update(
+        started_at=timezone.now() - timedelta(seconds=settings.CELERY_TASK_TIME_LIMIT + 400)
+    )
+
+    assert reap_stale_jobs()["interrupted"] == 1
+    job.refresh_from_db()
+    assert job.status == BulkBindJob.Status.FAILED
+
+
+def test_the_reaper_requeues_a_job_whose_message_was_lost(collection, monkeypatch):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    import jobs.tasks
+    from jobs.tasks import reap_stale_jobs
+
+    Ark.objects.create(collection=collection, identifier="utsc0", sequence=0)
+    job = make_job(collection, "Ark_ID,URL\n61220/utsc0,https://example.org/0\n")
+    BulkBindJob.objects.filter(pk=job.pk).update(created_at=timezone.now() - timedelta(hours=1))
+    queued = []
+    monkeypatch.setattr(jobs.tasks.run_bulk_bind, "delay", lambda pk: queued.append(pk))
+
+    assert reap_stale_jobs()["requeued"] == 1
+    assert reap_stale_jobs()["requeued"] == 0, "re-queued at most once an hour"
+    assert queued == [job.pk]
+
+
+def test_the_reaper_leaves_fresh_jobs_alone(collection):
+    from jobs.tasks import reap_stale_jobs
+
+    make_job(collection, "Ark_ID,URL\n,https://example.org/new\n")
+    assert reap_stale_jobs() == {"interrupted": 0, "requeued": 0}
