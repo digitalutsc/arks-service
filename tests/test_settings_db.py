@@ -19,3 +19,15 @@ def test_reused_connections_are_health_checked_by_default():
 def test_connections_are_still_persistent():
     # Health checks only matter for connections that outlive a request.
     assert settings.DATABASES["default"]["CONN_MAX_AGE"] > 0
+
+
+def test_mysql_connections_time_out_rather_than_hang():
+    # A server that stops answering must not hold request threads until the
+    # OS abandons the TCP connection.
+    import pytest
+
+    db = settings.DATABASES["default"]
+    if db["ENGINE"] != "django.db.backends.mysql":
+        pytest.skip("MySQL-only options")
+    for option in ("connect_timeout", "read_timeout", "write_timeout"):
+        assert db["OPTIONS"][option] > 0

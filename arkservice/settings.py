@@ -113,6 +113,12 @@ if DATABASES["default"]["ENGINE"] == "django.db.backends.mysql":
         {
             "charset": "utf8mb4",
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+            # Without these a MySQL server that stops answering (rather than
+            # refusing) holds every request thread until the OS gives up on
+            # the TCP connection, which can be many minutes.
+            "connect_timeout": env.int("DB_CONNECT_TIMEOUT", default=5),
+            "read_timeout": env.int("DB_READ_TIMEOUT", default=60),
+            "write_timeout": env.int("DB_WRITE_TIMEOUT", default=60),
         }
     )
 
