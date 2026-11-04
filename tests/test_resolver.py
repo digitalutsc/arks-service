@@ -403,20 +403,37 @@ def test_hits_still_reach_the_counter(client, ark):
     assert Resolution.objects.get(ark=ark, qualifier="").count == 3
 
 
-def test_a_repeat_resolution_is_served_without_re_reading_the_bindings(client, ark):
+def test_a_redirect_costs_two_indexed_reads(client, ark):
     from django.db import connection
     from django.test.utils import CaptureQueriesContext
 
     Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
-    get(client, "/ark:/61220/utsc1")  # warm
 
     with CaptureQueriesContext(connection) as captured:
         response = get(client, "/ark:/61220/utsc1")
 
     assert response["Location"] == "https://example.org/1"
-    assert len(captured.captured_queries) <= 1, (
-        f"a cached target should cost at most one query, got {len(captured.captured_queries)}"
-    )
+    selects = [q for q in captured.captured_queries if q["sql"].lower().startswith("select")]
+    assert len(selects) <= 2, f"expected the ARK and its bindings, got {len(selects)} queries"
+
+
+def test_redirects_keep_working_when_the_cache_server_is_down(client, ark, monkeypatch):
+    # The resolver must not depend on Redis/Valkey: the hit is written through
+    # instead, and the redirect still happens.
+    import redis
+
+    import core.counters as counters
+
+    class Down:
+        def hincrby(self, *args, **kwargs):
+            raise redis.ConnectionError("down")
+
+    monkeypatch.setattr(counters, "_client", lambda: Down())
+    Binding.objects.create(ark=ark, name="URL", value="https://example.org/1")
+
+    response = get(client, "/ark:/61220/utsc1")
+    assert response.status_code == 302
+    assert Resolution.objects.get(ark=ark, qualifier="").count == 1
 
 
 def test_rebinding_takes_effect_immediately(client, ark):

@@ -23,6 +23,7 @@ dev = [
     "pytest-django>=4.9",
     "pytest-cov>=6.0",
     "ruff>=0.9",
+    "fakeredis>=2.40.0",
 ]
 
 [tool.pytest.ini_options]

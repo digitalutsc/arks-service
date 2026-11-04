@@ -82,13 +82,23 @@ onto `Collection` and refresh them on a schedule.
 
 ### Redirect counts lag
 
-Hits are buffered in the cache and written every 60 seconds
-(`RESOLUTION_FLUSH_SECONDS`). Counts are therefore up to a minute behind, and a
-cache outage loses that window. This is the trade that makes resolution a pure
-read — which in turn is what would let a read replica serve it.
+Hits are buffered in one Valkey/Redis hash (`HINCRBY`, one round trip per hit
+however many ARKs are pending) and written every 60 seconds
+(`RESOLUTION_FLUSH_SECONDS`) by the scheduler, in batches of 500 pairs per
+transaction. Counts are therefore up to a minute behind. This is the trade that
+makes resolution a pure read — which in turn is what would let a read replica
+serve it.
 
-If the cache (Redis or Valkey) is unreachable, counting falls back to writing directly, so counts are
-never silently abandoned.
+If Valkey/Redis is unreachable (0.5 s timeout), the hit is written straight to
+the database, so counts are never silently abandoned and the redirect still
+happens. A flush interrupted part-way is finished by the next one; the only
+possible error is one batch counted twice if the scheduler dies in the instant
+between a commit and clearing that batch from the hash.
+
+*Changed 2026-11-04:* the earlier buffer kept a pickled set of pending pairs,
+read and rewritten on every redirect. Concurrent hits dropped each other, the
+flush lost hits that landed between reading and clearing a counter, and the cost
+per hit grew with the number of distinct ARKs hit.
 
 ### Deployment capacity
 
