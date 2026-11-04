@@ -100,6 +100,9 @@ manage.py unbind 61220/utsc1 URL          # or --all
 manage.py bulk_bind utsc /tmp/batch.csv --results /tmp/out.csv
 manage.py export_arks --collection utsc --out /tmp/utsc.csv
 manage.py ark_stats
+manage.py refresh_collection_stats [utsc]
+manage.py prune_bulk_jobs --older-than 180 [--dry-run]
+manage.py flush_counters
 manage.py import_legacy --legacy-dump /srv/ARK_CORE.sql --report review.csv
 manage.py resolve_diff --legacy-base https://old --new-base http://127.0.0.1:8000 \
     --known review.csv

@@ -18,7 +18,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Count, Sum
+from django.db.models import Sum
 from django.http import Http404, HttpResponse, QueryDict, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -44,8 +44,13 @@ from admin_ui.roles import (
 )
 from core.models import Ark, Binding, Collection, Organisation, Resolution
 from core.search import (
+    COUNT_CAP,
     DEFAULT_SORT,
     SORT_DESC_FIRST,
+    TEXT_CONTAINS,
+    TEXT_MODES,
+    TEXT_STARTS,
+    TooManyMatches,
     counted,
     element_names,
     export_rows,
@@ -53,7 +58,7 @@ from core.search import (
     search_arks,
     sort_arks,
 )
-from core.services import bind_element, collection_stats, unbind_elements
+from core.services import bind_element, current_stats, unbind_elements
 from jobs.bulkbind import STATUS_ERROR, STATUS_MINTED, STATUS_OK, TEMPLATE_COLUMNS, template_csv
 from jobs.models import RESULT_COLUMNS, BulkBindJob
 from jobs.tasks import run_bulk_bind
@@ -74,7 +79,15 @@ MAX_PAGE = 1000
 
 @require_role(VIEWER)
 def collection_list(request):
-    collections = list(Collection.objects.annotate(ark_count=Count("arks")).order_by("name"))
+    # Counts come from current_stats: live for small collections, the stored
+    # figures for large ones (a COUNT over 4M ARKs on every dashboard view was
+    # seconds per load).
+    collections = list(Collection.objects.order_by("name"))
+    oldest = None
+    for collection in collections:
+        _, as_of = current_stats(collection)
+        if as_of is not None and (oldest is None or as_of < oldest):
+            oldest = as_of
     return render(
         request,
         "admin_ui/collection_list.html",
@@ -82,9 +95,8 @@ def collection_list(request):
             "collections": collections,
             "organisation": Organisation.load(),
             "collection_count": len(collections),
-            # Summed from the per-collection counts already fetched rather than
-            # a second COUNT(*) over the whole ARK table.
             "ark_total": sum(c.ark_count for c in collections),
+            "stats_as_of": oldest,
             "running_jobs": BulkBindJob.objects.filter(
                 status__in=(BulkBindJob.Status.PENDING, BulkBindJob.Status.RUNNING)
             ).count(),
@@ -152,7 +164,7 @@ def collection_detail(request, pk):
             )
         return redirect("admin_ui:collection_detail", pk=pk)
 
-    stats = collection_stats(collection)
+    stats, stats_as_of = current_stats(collection)
     try:
         spec = collection.spec
         capacity = "unlimited" if spec.unlimited else f"{spec.total:,}"
@@ -167,6 +179,7 @@ def collection_detail(request, pk):
             "spec": spec,
             "capacity": capacity,
             **stats,
+            "stats_as_of": stats_as_of,
             "jobs": collection.bulk_bind_jobs.select_related("created_by")[:5],
         },
     )
@@ -191,7 +204,33 @@ def as_int(value) -> int | None:
         return None
 
 
+def text_mode_of(request) -> str:
+    """The free-text mode asked for; staff search defaults to starts-with."""
+    mode = request.GET.get("match", "")
+    return mode if mode in TEXT_MODES else TEXT_STARTS
+
+
 def _search_from_request(request):
+    """
+    ``(collection, queryset)`` for the browse and export filters in the request.
+
+    A starts-with search that matches too much returns no rows and a message
+    saying how to narrow it, rather than a silently truncated list.
+    """
+    try:
+        return _build_search(request)
+    except TooManyMatches as exc:
+        messages.warning(request, str(exc))
+        collection_pk = as_int(request.GET.get("collection"))
+        collection = (
+            Collection.objects.filter(pk=collection_pk).first()
+            if collection_pk is not None
+            else None
+        )
+        return collection, Ark.objects.none()
+
+
+def _build_search(request):
     collection = None
     collection_pk = as_int(request.GET.get("collection"))
     if collection_pk is not None:
@@ -208,6 +247,7 @@ def _search_from_request(request):
     return collection, search_arks(
         collection=collection,
         text=request.GET.get("q", "").strip(),
+        text_mode=text_mode_of(request),
         element=request.GET.get("element", "").strip(),
         value=request.GET.get("value", "").strip(),
         bound=bound,
@@ -299,6 +339,10 @@ def _sort_headers(request, current: str, descending: bool) -> list[dict]:
     return headers
 
 
+#: Sorts that annotate a per-ARK subquery; refused above SORT_SUBQUERY_MAX_ROWS.
+SUBQUERY_SORTS = frozenset({"redirects", "elements"})
+
+
 @require_role(VIEWER)
 def ark_list(request):
     collection, queryset = _search_from_request(request)
@@ -308,16 +352,34 @@ def ark_list(request):
 
     # Paginator would run COUNT(*) over the filtered set on every page view —
     # a full index scan on a large table, and with a free-text filter it runs
-    # the whole LIKE plan a second time just to render a number.
-    # Counted before sorting: the redirect and element sorts annotate a
-    # subquery, and the capped count would evaluate it for every row it looks at.
-    total, capped = counted(queryset)
-    queryset = sort_arks(queryset, sort_key, descending)
+    # the whole LIKE plan a second time just to render a number. So the count
+    # is capped, and skipped altogether when the first page holds everything.
+    # Any count is taken before sorting: the redirect and element sorts
+    # annotate a subquery, and a count would evaluate it for every row.
+    total = capped = None
+    sort_refused = False
+    if sort_key in SUBQUERY_SORTS:
+        # Those sorts evaluate a subquery for every matching ARK before the
+        # database can pick one page: tens of seconds over a large collection.
+        limit = settings.SORT_SUBQUERY_MAX_ROWS
+        size, _ = counted(queryset, cap=limit + 1)
+        if size > limit:
+            sort_refused = True
+            sort_key, descending = DEFAULT_SORT, False
+        else:
+            total, capped = min(size, COUNT_CAP), size >= COUNT_CAP
+
+    sorted_queryset = sort_arks(queryset, sort_key, descending)
     number = max(1, min(as_int(request.GET.get("page")) or 1, MAX_PAGE))
     offset = (number - 1) * PAGE_SIZE
-    arks = list(queryset[offset : offset + PAGE_SIZE + 1])
+    arks = list(sorted_queryset[offset : offset + PAGE_SIZE + 1])
     has_next = len(arks) > PAGE_SIZE
     arks = arks[:PAGE_SIZE]
+    if total is None:
+        if number == 1 and not has_next:
+            total, capped = len(arks), False
+        else:
+            total, capped = counted(queryset)
     bindings: dict[int, list] = {}
     for binding in Binding.objects.filter(ark__in=arks).order_by("qualifier", "name"):
         bindings.setdefault(binding.ark_id, []).append(binding)
@@ -349,6 +411,10 @@ def ark_list(request):
             else _sort_param(sort_key, descending)
         ),
         "is_htmx": is_htmx,
+        "text_mode": text_mode_of(request),
+        "text_modes": ((TEXT_STARTS, "Starts with"), (TEXT_CONTAINS, "Contains (slow)")),
+        "sort_refused": sort_refused,
+        "sort_limit": settings.SORT_SUBQUERY_MAX_ROWS,
     }
     template = "admin_ui/_ark_table.html" if is_htmx else "admin_ui/ark_list.html"
     return render(request, template, context)
@@ -654,6 +720,21 @@ def mint_template(request, pk):
 @require_role(VIEWER)
 def export(request):
     collection, queryset = _search_from_request(request)
+    limit = settings.EXPORT_SYNC_MAX_ROWS
+    size, _ = counted(queryset, cap=limit + 1)
+    if size > limit:
+        # Streaming 4M rows holds a web thread for the better part of 20
+        # minutes; the command line does the same export without one.
+        target = f"--collection {collection.prefix} " if collection else ""
+        messages.warning(
+            request,
+            f"This export has more than {limit:,} rows, too many to stream from the "
+            f"browser. Run it on the server instead: manage.py export_arks {target}"
+            '--out arks.csv (in Docker: make manage ARGS="export_arks '
+            f'{target}--out /data/media/arks.csv"). It takes the same filters.',
+        )
+        query = request.GET.urlencode()
+        return redirect(reverse("admin_ui:ark_list") + (f"?{query}" if query else ""))
     stamp = timezone.now().strftime("%Y%m%d-%H%M")
     return _csv_response(export_rows(queryset, collection), f"arks-{stamp}.csv")
 

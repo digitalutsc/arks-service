@@ -68,11 +68,59 @@ MAX_ELEMENT_NAMES = 500
 #: billion-row table, for a number nobody reads past the first digit.
 COUNT_CAP = 10_000
 
+#: Free-text modes. "starts" looks up identifiers and values that begin with
+#: the text, through indexes; "contains" finds the text anywhere, which on
+#: MySQL is a LIKE scan over every binding (about 16 s at 4M ARKs).
+TEXT_STARTS = "starts"
+TEXT_CONTAINS = "contains"
+TEXT_MODES = (TEXT_STARTS, TEXT_CONTAINS)
+
+#: Most ARKs a starts-with search collects. It gathers matching ids first (two
+#: index lookups) and then shows them; the browse table cannot page past
+#: 50,000 rows anyway (MAX_PAGE x PAGE_SIZE in admin_ui.views).
+STARTS_WITH_CAP = 50_000
+
+
+class TooManyMatches(Exception):
+    """A starts-with search matched more ARKs than STARTS_WITH_CAP."""
+
+
+def _starts_with_ids(text: str, collection=None) -> set[int]:
+    """
+    Ids of ARKs whose identifier, or any bound value, begins with ``text``.
+
+    Two separate index range lookups, then the union in Python. A single query
+    with ``identifier LIKE 'x%' OR EXISTS (...)`` across the two tables cannot
+    use either index and walks every ARK. The value lookup goes through the
+    (name, value_prefix) index one element name at a time, which is why the
+    known element names are passed in.
+    """
+    arks = Ark.objects.all()
+    if collection is not None:
+        arks = arks.filter(collection=collection)
+    by_identifier = arks.filter(identifier__istartswith=text).values_list("pk", flat=True)
+
+    names = element_names(getattr(collection, "pk", collection))
+    by_value = Binding.objects.filter(
+        name__in=names, value_prefix__istartswith=value_prefix(text)
+    ).values_list("ark_id", flat=True)
+
+    ids = set(by_identifier[: STARTS_WITH_CAP + 1])
+    if len(ids) <= STARTS_WITH_CAP:
+        ids.update(by_value[: STARTS_WITH_CAP + 1])
+    if len(ids) > STARTS_WITH_CAP:
+        raise TooManyMatches(
+            f"More than {STARTS_WITH_CAP:,} ARKs start with {text!r}. "
+            "Add more characters, or narrow the search with other filters."
+        )
+    return ids
+
 
 def search_arks(
     *,
     collection=None,
     text: str = "",
+    text_mode: str = TEXT_CONTAINS,
     element: str = "",
     value: str = "",
     bound: bool | None = None,
@@ -81,13 +129,21 @@ def search_arks(
     min_redirects: int | None = None,
     order_by: str = "naan",
 ) -> QuerySet[Ark]:
-    """Build a queryset of ARKs matching the given filters."""
+    """
+    Build a queryset of ARKs matching the given filters.
+
+    ``text_mode`` is TEXT_CONTAINS (anywhere in the identifier or a value; the
+    default here and on the command line) or TEXT_STARTS (the staff search's
+    default; index-backed, and raises TooManyMatches past STARTS_WITH_CAP).
+    """
     queryset = Ark.objects.all()
 
     if collection is not None:
         queryset = queryset.filter(collection=collection)
 
-    if text:
+    if text and text_mode == TEXT_STARTS:
+        queryset = queryset.filter(pk__in=_starts_with_ids(text, collection))
+    elif text:
         matching = Binding.objects.filter(ark=OuterRef("pk"), value__icontains=text)
         queryset = queryset.filter(Q(identifier__icontains=text) | Exists(matching))
 
@@ -263,31 +319,44 @@ def export_rows(queryset: QuerySet[Ark], collection=None) -> Iterator[list[str]]
 
 def _id_chunks(queryset: QuerySet[Ark], size: int) -> Iterator[list[int]]:
     """
-    Yield primary keys in bounded batches, streamed from the database.
+    Yield primary keys in bounded batches, in (naan, identifier) order.
 
-    ``.iterator()`` keeps a server-side cursor rather than loading every id, so
-    an export of any size uses a fixed amount of memory.
+    Pages by key: each batch asks for the next ``size`` ARKs after the last one
+    seen, through the unique (naan, identifier) index. ``.iterator()`` looked
+    equivalent, but MySQL's client library buffers the whole result before the
+    first row arrives, so an export held every id of the collection in memory
+    (4M ids at 4M ARKs) however small the batches.
     """
-    chunk: list[int] = []
-    for pk in queryset.values_list("id", flat=True).iterator(chunk_size=size):
-        chunk.append(pk)
-        if len(chunk) >= size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
+    ordered = queryset.order_by("naan", "identifier")
+    last: tuple[str, str] | None = None
+    while True:
+        page = ordered
+        if last is not None:
+            naan, identifier = last
+            page = page.filter(Q(naan__gt=naan) | Q(naan=naan, identifier__gt=identifier))
+        rows = list(page.values_list("id", "naan", "identifier")[:size])
+        if not rows:
+            return
+        yield [pk for pk, _, _ in rows]
+        if len(rows) < size:
+            return
+        last = rows[-1][1:]
 
 
-def element_names(collection_id=None) -> list[str]:
+def element_names(
+    collection_id=None, *, refresh: bool = False, lifetime: int | None = None
+) -> list[str]:
     """
     Distinct element names, for export headers and the search datalist.
 
-    Scoped to one collection when possible. Unscoped this is a full scan of the
-    binding name index — 5 billion entries at 1B ARKs — so it is cached; a new
-    element name appears in the list within CACHE_SECONDS.
+    Scoped to one collection when possible. Either way it is a scan over the
+    bindings (a DISTINCT over ~18M rows at 4M ARKs), so it is cached, and the
+    scheduler rebuilds the cache every COLLECTION_STATS_SECONDS (``refresh``)
+    with a lifetime longer than that, so requests normally only read it. A new
+    element name appears in the list within that interval.
     """
     key = f"element-names:{collection_id or 'all'}"
-    names = cache.get(key)
+    names = None if refresh else cache.get(key)
     if names is None:
         bindings = Binding.objects.all()
         if collection_id is not None:
@@ -295,5 +364,5 @@ def element_names(collection_id=None) -> list[str]:
         names = sorted(
             bindings.order_by().values_list("name", flat=True).distinct()[:MAX_ELEMENT_NAMES]
         )
-        cache.set(key, names, ELEMENT_NAMES_CACHE_SECONDS)
+        cache.set(key, names, lifetime or ELEMENT_NAMES_CACHE_SECONDS)
     return names

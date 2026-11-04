@@ -168,3 +168,24 @@ def clear_expired_sessions() -> None:
     from django.core.management import call_command
 
     call_command("clearsessions")
+
+
+@shared_task
+def refresh_collection_stats() -> int:
+    """
+    Recount every collection and rebuild the element-name lists.
+
+    Runs every COLLECTION_STATS_SECONDS so that no staff page has to count a
+    large collection, or scan every binding for its element names, on request.
+    """
+    from core.models import Collection
+    from core.search import element_names
+    from core.services import refresh_collection_stats as refresh
+
+    lifetime = settings.COLLECTION_STATS_SECONDS * 3
+    collections = list(Collection.objects.all())
+    for collection in collections:
+        refresh(collection)
+        element_names(collection.pk, refresh=True, lifetime=lifetime)
+    element_names(None, refresh=True, lifetime=lifetime)
+    return len(collections)

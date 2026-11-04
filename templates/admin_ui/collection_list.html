@@ -22,6 +22,9 @@
   <div class="stat {% if running_jobs %}is-warn{% endif %}"><div class="n">{{ running_jobs }}</div>
     <span class="l">Jobs running</span></div>
 </div>
+{% if stats_as_of %}
+  <p class="muted">ARK counts as of {{ stats_as_of|date:"H:i" }}; large collections are recounted in the background every few minutes.</p>
+{% endif %}
 
 {% if collections %}
 <div class="table-wrap">

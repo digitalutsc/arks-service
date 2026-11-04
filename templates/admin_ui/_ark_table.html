@@ -2,6 +2,14 @@
 {# The filter form sits outside #results, so a header click has to reach in and #}
 {# update its copy of the sort — otherwise the next filter change would drop it. #}
 {% if is_htmx %}<input type="hidden" id="sort-field" name="sort" value="{{ sort_param }}" hx-swap-oob="true">{% endif %}
+{# A full page shows messages from base.html; a table swapped in by htmx shows its own. #}
+{% if is_htmx and messages %}{% for message in messages %}
+  <div class="msg {{ message.tags }}">{{ message }}</div>
+{% endfor %}{% endif %}
+{% if sort_refused %}
+  <p class="muted">Sorting by redirects or elements is offered for up to {{ sort_limit|intcomma:False }} ARKs;
+    this result is larger, so it is in ARK order. Narrow the search to sort it.</p>
+{% endif %}
 <p class="meta">{{ total|intcomma:False }}{% if capped %}+{% endif %} ARK{{ total|pluralize }}
   {% if total %}
     · <a href="{% url 'admin_ui:export' %}?{{ query.urlencode }}">Export these as CSV</a>

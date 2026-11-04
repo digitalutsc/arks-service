@@ -26,6 +26,9 @@
   <div class="stat"><div class="n">{{ elements|intcomma:False }}</div><span class="l">Elements</span></div>
   <div class="stat"><div class="n">{{ redirects|intcomma:False }}</div><span class="l">Redirects</span></div>
 </div>
+{% if stats_as_of %}
+  <p class="muted">Counts as of {{ stats_as_of|date:"H:i" }}; large collections are recounted in the background every few minutes.</p>
+{% endif %}
 
 {% if can_administer %}
 <div class="card">

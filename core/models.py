@@ -61,6 +61,15 @@ class Collection(models.Model):
     term = models.CharField(max_length=16, choices=Term.choices, default=Term.MEDIUM)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Statistics, refreshed by the scheduler (core.services.refresh_collection_stats).
+    # Counting a large collection on every page view is a full index scan:
+    # about 8 s at 4M ARKs. Small collections are still counted live.
+    ark_count = models.BigIntegerField(default=0)
+    bound_count = models.BigIntegerField(default=0)
+    binding_count = models.BigIntegerField(default=0)
+    redirect_total = models.BigIntegerField(default=0)
+    stats_refreshed_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ["name"]
         constraints = [

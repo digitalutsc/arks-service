@@ -244,6 +244,9 @@ CELERY_BEAT_SCHEDULE_FILENAME = env.str(
 # Redirect counts are buffered in the cache and written periodically, so that
 # resolving stays a pure read. This is how often they land.
 RESOLUTION_FLUSH_SECONDS = env.int("RESOLUTION_FLUSH_SECONDS", default=60)
+# How often collection statistics and element-name lists are recounted in the
+# background. Large collections show these stored figures ("as of HH:MM").
+COLLECTION_STATS_SECONDS = env.int("COLLECTION_STATS_SECONDS", default=300)
 CELERY_BEAT_SCHEDULE = {
     "flush-resolution-counters": {
         "task": "jobs.tasks.flush_resolution_counters",
@@ -261,6 +264,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "jobs.tasks.prune_bulk_jobs",
         "schedule": 24 * 60 * 60,
     },
+    "refresh-collection-stats": {
+        "task": "jobs.tasks.refresh_collection_stats",
+        "schedule": COLLECTION_STATS_SECONDS,
+    },
 }
 # Scheduled housekeeping runs on its own queue, consumed by a small dedicated
 # process (the Docker "scheduler" service, deploy/arkservice-beat.service), so
@@ -271,6 +278,7 @@ CELERY_TASK_ROUTES = {
     "jobs.tasks.reap_stale_jobs": {"queue": PERIODIC_QUEUE},
     "jobs.tasks.clear_expired_sessions": {"queue": PERIODIC_QUEUE},
     "jobs.tasks.prune_bulk_jobs": {"queue": PERIODIC_QUEUE},
+    "jobs.tasks.refresh_collection_stats": {"queue": PERIODIC_QUEUE},
 }
 
 # --- Resolver -------------------------------------------------------------
@@ -301,6 +309,14 @@ MANIFEST_MAX_CONCURRENT = env.int("MANIFEST_MAX_CONCURRENT", default=4)
 # outlasts the gunicorn timeout is rolled back and the user sees an error page;
 # bulk bind mints in the worker and has no such ceiling.
 MINT_MAX_PER_REQUEST = env.int("MINT_MAX_PER_REQUEST", default=10_000)
+
+# Staff-side limits that keep whole-collection work out of web requests.
+# Sorting by redirects or elements evaluates a subquery for every matching ARK,
+# so it is only offered on result sets up to this size.
+SORT_SUBQUERY_MAX_ROWS = env.int("SORT_SUBQUERY_MAX_ROWS", default=50_000)
+# Exports from the staff UI larger than this point to the export_arks command
+# instead of holding a web thread for minutes.
+EXPORT_SYNC_MAX_ROWS = env.int("EXPORT_SYNC_MAX_ROWS", default=100_000)
 
 # Upload guardrails for bulk bind. DATA_UPLOAD_MAX_MEMORY_SIZE does NOT cover
 # multipart file parts, so an explicit byte ceiling is needed as well as a row

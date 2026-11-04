@@ -5,7 +5,8 @@
   <div class="titles">
     <span class="eyebrow">Browse</span>
     <h1>ARKs{% if selected_collection %} · {{ selected_collection.name }}{% endif %}</h1>
-    <p class="sub">Free text searches identifiers and every bound value, whatever the element is called.</p>
+    <p class="sub">Free text searches identifiers and every bound value, whatever the element is called.
+      "Starts with" is fast at any size; "Contains" reads every bound value and can take many seconds on a large collection.</p>
   </div>
 </div>
 
@@ -16,6 +17,12 @@
   <div class="form-grid">
     <div class="field grow"><label for="q">Free text</label>
       <input id="q" name="q" value="{{ query.q|default:'' }}"></div>
+    <div class="field"><label for="match">Match</label>
+      <select id="match" name="match">
+        {% for value, label in text_modes %}
+          <option value="{{ value }}" {% if text_mode == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select></div>
     <div class="field"><label for="collection">Collection</label>
       <select id="collection" name="collection">
         <option value="">All</option>

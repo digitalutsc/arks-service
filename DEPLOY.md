@@ -605,6 +605,9 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 | `TRUST_FORWARDED_FOR` | `false` | Set true only behind a proxy that sets it and when gunicorn is unreachable directly |
 | `SESSION_COOKIE_AGE` | `28800` | Eight hours, refreshed on activity |
 | `RESOLUTION_FLUSH_SECONDS` | `60` | How often buffered redirect counts are written |
+| `COLLECTION_STATS_SECONDS` | `300` | How often the scheduler recounts collections and rebuilds element-name lists. Collections of 50,000+ ARKs show these stored counts |
+| `SORT_SUBQUERY_MAX_ROWS` | `50000` | Largest result the staff list will sort by Redirects or Elements |
+| `EXPORT_SYNC_MAX_ROWS` | `100000` | Largest export the staff interface streams; bigger ones point to `export_arks` |
 | `ARK_PUBLIC_BASE_URL` | empty | Base URL the admin UI shows for an ARK. Empty derives it from the request (correct behind Apache, which preserves the Host and sets `X-Forwarded-Proto`). Set it only when staff reach the admin on a different hostname than the resolver |
 | `BULK_BIND_MAX_BYTES` | `52428800` | Upload ceiling; `DATA_UPLOAD_MAX_MEMORY_SIZE` does **not** cover file parts |
 | `CELERY_RESULT_BACKEND` | same as broker | Results are not stored (`task_ignore_result`); nothing reads them |

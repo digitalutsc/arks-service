@@ -127,7 +127,7 @@ LIVE_STATS_MAX_ARKS = 50_000
 
 
 def collection_stats(collection: Collection) -> dict[str, int]:
-    """The counts both the collection page and `ark_stats` report."""
+    """The counts both the collection page and `ark_stats` report, counted now."""
     arks = Ark.objects.filter(collection=collection)
     total = arks.count()
     bound = arks.filter(Exists(Binding.objects.filter(ark=OuterRef("pk")))).count()
@@ -141,3 +141,40 @@ def collection_stats(collection: Collection) -> dict[str, int]:
         )["total"]
         or 0,
     }
+
+
+def refresh_collection_stats(collection: Collection) -> dict[str, int]:
+    """Count ``collection`` now and store the result on it. Returns the counts."""
+    stats = collection_stats(collection)
+    now = timezone.now()
+    fields = {
+        "ark_count": stats["total"],
+        "bound_count": stats["bound"],
+        "binding_count": stats["elements"],
+        "redirect_total": stats["redirects"],
+        "stats_refreshed_at": now,
+    }
+    Collection.objects.filter(pk=collection.pk).update(**fields)
+    for name, value in fields.items():
+        setattr(collection, name, value)
+    return stats
+
+
+def current_stats(collection: Collection):
+    """
+    The collection's counts for a page, and when they were taken.
+
+    Returns ``(stats, as_of)``. ``as_of`` is None when the counts were taken
+    just now; otherwise it is when the scheduler last refreshed them (every
+    COLLECTION_STATS_SECONDS). Large collections are never counted on request.
+    """
+    if collection.stats_refreshed_at and collection.ark_count >= LIVE_STATS_MAX_ARKS:
+        stats = {
+            "total": collection.ark_count,
+            "bound": collection.bound_count,
+            "unbound": collection.ark_count - collection.bound_count,
+            "elements": collection.binding_count,
+            "redirects": collection.redirect_total,
+        }
+        return stats, collection.stats_refreshed_at
+    return refresh_collection_stats(collection), None

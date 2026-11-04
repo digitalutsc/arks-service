@@ -296,18 +296,35 @@ every bound value.
 value, bound/unbound, minimum redirects, minted-after / minted-before. Any
 result can be exported with *Export these as CSV*.
 
+Free text has two modes, chosen with *Match*:
+
+- **Starts with** (the default) finds ARKs whose identifier, or any bound
+  value, *begins* with the text, ignoring case: `utsc12` finds `utsc12` and
+  `utsc1234`; `islandora:7` finds the ARK whose PID is `islandora:7…`. It uses
+  indexes, so it is quick at any collection size. If more than 50,000 ARKs
+  match, it says so and asks for more characters instead of showing a partial
+  list.
+- **Contains** finds the text anywhere. It reads every bound value, which on a
+  collection of millions of ARKs takes many seconds per search.
+
+An export from the staff interface is limited to `EXPORT_SYNC_MAX_ROWS`
+(100,000 by default). A bigger one, such as a whole large collection, shows the
+equivalent `export_arks` command to run on the server instead.
+
 Click a column heading to sort by it, and again to reverse the order. *ARK* and
 *Public URL* sort alike, *Elements* sorts by how many elements are bound, and
 *Redirects* by the total across qualifiers. The order is part of the address
 (`?sort=-minted`), so it survives paging, a change of filter and a bookmark; it
 does not affect an export. Sorting by *Elements* or *Redirects* has no index to
-lean on, so on a very large list narrow it with a filter first.
+lean on, so they are only offered when the list holds at most
+`SORT_SUBQUERY_MAX_ROWS` ARKs (50,000 by default); a larger list stays in ARK
+order and says to narrow it first.
 
 **Command line**
 
 ```bash
 manage.py export_arks --collection utsc --out /tmp/utsc.csv
-manage.py export_arks --text "utsc:4242" --out /tmp/found.csv
+manage.py export_arks --text "utsc:4242" --out /tmp/found.csv   # contains, anywhere
 manage.py export_arks --element PID --value islandora:7 --out /tmp/one.csv
 manage.py export_arks --collection utsc --unbound --out /tmp/todo.csv
 manage.py export_arks --min-redirects 500 --out /tmp/popular.csv
@@ -419,7 +436,23 @@ Most used elements:
 ```
 
 The collection page in the staff interface shows the same counts, plus recent
-bulk-bind jobs.
+bulk-bind jobs. A collection of 50,000 ARKs or more is not recounted on every
+view: the scheduler recounts every collection every `COLLECTION_STATS_SECONDS`
+(five minutes by default) and the page says when ("Counts as of 14:05"). To
+recount now:
+
+```bash
+manage.py refresh_collection_stats          # every collection
+manage.py refresh_collection_stats utsc     # one
+```
+
+Finished bulk-bind jobs keep their uploaded file and results file. To clear out
+old ones (or set `BULK_BIND_RETENTION_DAYS` to do it daily):
+
+```bash
+manage.py prune_bulk_jobs --older-than 180 --dry-run
+manage.py prune_bulk_jobs --older-than 180
+```
 
 For anything more specific, filter in the ARKs table and export.
 
