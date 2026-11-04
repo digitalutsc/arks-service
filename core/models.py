@@ -189,7 +189,9 @@ class Binding(models.Model):
             # prefix length, so search filters on name and scans values (see
             # README: LIKE is the portable baseline).
             models.Index(fields=["name", "value_prefix"], name="binding_name_value_idx"),
-            models.Index(fields=["ark", "qualifier"], name="binding_ark_qualifier_idx"),
+            # No separate (ark, qualifier) index: the unique (ark, qualifier,
+            # name) above starts with the same columns and serves those lookups
+            # and the ark_id foreign key. A second copy cost every write.
         ]
         ordering = ["name"]
 
