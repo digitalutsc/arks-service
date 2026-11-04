@@ -178,19 +178,25 @@ def _identifier_for(collection: Collection, spec: TemplateSpec, sequence: int) -
 
 
 @transaction.atomic
-def mint(collection: Collection, count: int = 1, user=None) -> list[Ark]:
+def mint(
+    collection: Collection, count: int = 1, user=None, *, enforce_cap: bool = True
+) -> list[Ark]:
     """
     Mint ``count`` new ARKs in ``collection`` and return them.
 
     All or nothing: if the template runs out part way, nothing is created.
     Concurrent callers are serialised on the collection row, and the unique
     constraint on (naan, identifier) is the backstop if anything slips past.
+
+    ``MINT_MAX_PER_REQUEST`` caps interactive callers (the mint form, the
+    ``mint`` command). Bulk bind passes ``enforce_cap=False``: it runs in the
+    worker and is already bounded by ``BULK_BIND_MAX_ROWS``.
     """
     if count < 1:
         raise ValueError("count must be at least 1")
     # 0 switches the cap off.
     limit = getattr(settings, "MINT_MAX_PER_REQUEST", 10_000)
-    if limit and count > limit:
+    if enforce_cap and limit and count > limit:
         raise ValueError(
             f"Refusing to mint {count:,} identifiers in one go; at most {limit:,} per request. "
             "Run it as several batches."

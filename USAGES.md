@@ -122,9 +122,10 @@ batches would build every identifier inside one transaction while holding the
 collection lock, blocking other minters. Run several batches instead.
 
 The cap is a deployment setting: raise `MINT_MAX_PER_REQUEST`, or set it to `0`
-to remove it. The staff form mints inside the web request, so a batch that takes
-longer than the gunicorn timeout fails — nothing is minted — however high the
-cap is set.
+to remove it. Bulk bind is not subject to it; its own ceiling is
+`BULK_BIND_MAX_ROWS`. The staff form mints inside the web request: a very large
+batch can outlast Apache's proxy timeout, in which case the browser shows an
+error page but the mint still completes. Check the collection before retrying.
 
 Minting is safe to run concurrently: two people minting at the same moment
 cannot produce the same ARK.

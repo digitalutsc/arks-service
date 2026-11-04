@@ -227,9 +227,10 @@ def apply_csv(
 
     # Mint the blank rows now that the file is known to be well formed. "Well
     # formed" means no row failed for a reason other than awaiting its mint.
-    blocked = [row for row in result.errors if row.number not in set(to_mint)]
+    awaiting_mint = set(to_mint)
+    blocked = [row for row in result.errors if row.number not in awaiting_mint]
     if to_mint and not blocked:
-        minted = mint(collection, count=len(to_mint), user=user)
+        minted = mint(collection, count=len(to_mint), user=user, enforce_cap=False)
         result.minted = len(minted)
         by_number = {row.number: row for row in result.rows}
         for number, ark in zip(to_mint, minted, strict=True):

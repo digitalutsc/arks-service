@@ -353,3 +353,23 @@ def test_a_large_file_is_looked_up_in_chunks(collection, settings):
             default=0,
         )
         assert values <= 60, f"IN-list of {values}: {query['sql'][:120]}"
+
+
+def test_many_blank_rows_mint_quickly_and_past_the_interactive_cap(collection, settings):
+    # Each blank row is recorded as an error until it is minted, and the check
+    # for "did anything else fail" rebuilt a set per error row: quadratic, so a
+    # 20k-row file took minutes before minting started. Bulk bind is also not
+    # subject to MINT_MAX_PER_REQUEST, which caps the interactive mint form.
+    import io
+    import time
+
+    settings.MINT_MAX_PER_REQUEST = 1_000
+    body = "Ark_ID,URL\n" + "".join(f",https://example.org/{n}\n" for n in range(20_000))
+
+    started = time.monotonic()
+    result = apply_csv(collection, io.StringIO(body), mint_missing=True)
+    elapsed = time.monotonic() - started
+
+    assert result.minted == 20_000
+    assert result.failed == 0
+    assert elapsed < 10, f"20k blank rows took {elapsed:.1f}s"
