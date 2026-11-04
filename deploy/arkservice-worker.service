@@ -1,6 +1,9 @@
 # /etc/systemd/system/arkservice-worker.service
 [Unit]
 Description=ARK identifier service (celery worker for bulk binds)
+# Scheduled housekeeping (the redirect-count flush, the stale-job reaper,
+# session cleanup) runs in arkservice-beat.service, on its own queue, so a long
+# bulk bind here can never delay it.
 # The broker is Redis or Valkey, whichever is installed: Debian and Ubuntu
 # name their units redis-server and valkey-server. systemd ignores a wanted
 # unit that does not exist, so both are listed and this file needs no edit.
@@ -15,12 +18,18 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/arkservice
 EnvironmentFile=/var/www/arkservice/.env
-# --beat runs the periodic redirect-counter flush alongside the worker. With
-# more than one worker host, run beat on exactly one of them instead.
-ExecStart=/var/www/arkservice/.venv/bin/celery -A arkservice worker --beat \
-    --loglevel=info --concurrency=2 --logfile=/var/log/arkservice/worker.log
+# -Q celery: bulk binds only. --max-tasks-per-child and --max-memory-per-child
+# (KiB) replace a worker process after 20 jobs or once it has grown past ~1 GB,
+# so the memory a 100k-row file needed is given back.
+ExecStart=/var/www/arkservice/.venv/bin/celery -A arkservice worker -Q celery \
+    --loglevel=info --concurrency=2 --max-tasks-per-child 20 \
+    --max-memory-per-child 1000000 --logfile=/var/log/arkservice/worker.log
 Restart=on-failure
 RestartSec=5s
+# Celery's warm shutdown waits for running jobs. Give a bulk bind two minutes
+# to finish before systemd kills it; a job killed anyway is marked failed
+# ("nothing was applied") on redelivery or by the stale-job reaper.
+TimeoutStopSec=120
 
 NoNewPrivileges=true
 PrivateTmp=true

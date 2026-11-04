@@ -5,7 +5,10 @@ Description=ARK identifier service (gunicorn)
 # first request needs a route to it, not merely configured interfaces. The
 # mysql.service ordering only matters when the server is on this VM; on a VM
 # without one, systemd ignores it.
-After=network-online.target mysql.service
+# The cache server (valkey-server or redis-server, whichever is installed) is
+# ordered first too, so the first requests do not find it missing. Neither is
+# required: the resolver keeps working without it.
+After=network-online.target mysql.service valkey-server.service redis-server.service
 Wants=network-online.target mysql.service
 
 [Service]

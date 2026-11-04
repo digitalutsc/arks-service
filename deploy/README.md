@@ -1,7 +1,10 @@
 # Deployment files
 
 - `arkservice.service` — systemd unit for gunicorn
-- `arkservice-worker.service` — systemd unit for the Celery worker
+- `arkservice-worker.service` — systemd unit for the Celery worker (bulk binds, queue `celery`)
+- `arkservice-beat.service` — systemd unit for Celery beat and the scheduled
+  housekeeping (counter flush, stale-job reaper, session cleanup), queue
+  `periodic`. Run exactly one.
 - `apache-arkservice.conf` — Apache vhost (note the `nocanon` on `ProxyPass`)
 
 These are for the bare install on a VM. The worker unit works with either

@@ -248,6 +248,14 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 600,
     },
 }
+# Scheduled housekeeping runs on its own queue, consumed by a small dedicated
+# process (the Docker "scheduler" service, deploy/arkservice-beat.service), so
+# long bulk binds on the default queue can never delay the counter flush.
+PERIODIC_QUEUE = "periodic"
+CELERY_TASK_ROUTES = {
+    "jobs.tasks.flush_resolution_counters": {"queue": PERIODIC_QUEUE},
+    "jobs.tasks.reap_stale_jobs": {"queue": PERIODIC_QUEUE},
+}
 
 # --- Resolver -------------------------------------------------------------
 # Public base URL the admin UI uses when it shows an ARK's resolvable address.
