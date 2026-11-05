@@ -16,6 +16,7 @@ from datetime import datetime, time
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Sum
@@ -27,6 +28,7 @@ from django.utils.dateparse import parse_date
 from django.utils.http import urlencode
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
+from django_htmx.http import HttpResponseClientRedirect
 
 from admin_ui.roles import (
     ADMIN,
@@ -58,12 +60,23 @@ from core.search import (
     search_arks,
     sort_arks,
 )
-from core.services import bind_element, current_stats, unbind_elements
-from jobs.bulkbind import STATUS_ERROR, STATUS_MINTED, STATUS_OK, TEMPLATE_COLUMNS, template_csv
+from core.services import LIVE_STATS_MAX_ARKS, bind_element, current_stats, unbind_elements
+from jobs.bulkbind import (
+    STATUS_BOUND,
+    STATUS_ERROR,
+    STATUS_MINTED,
+    STATUS_OK,
+    STATUS_UNCHANGED,
+    TEMPLATE_COLUMNS,
+    template_csv,
+)
 from jobs.models import RESULT_COLUMNS, BulkBindJob
+from jobs.progress import describe as describe_progress
+from jobs.progress import read as read_progress
 from jobs.tasks import run_bulk_bind
 from minting.minter import MintError, mint
 from minting.noid import TemplateError, template_choices
+from resolver import fallback
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +88,98 @@ MAX_PAGE = 1000
 
 
 # --- collections ----------------------------------------------------------
+
+#: Which tab of the shared collection header each view sits under.
+COLLECTION_TABS = {
+    "collection_detail": "overview",
+    "ark_list": "browse",
+    "ark_detail": "browse",
+    "export": "browse",
+    "mint": "mint",
+    "mint_template": "mint",
+    "bulk_bind": "bulk",
+    "job_detail": "bulk",
+    "job_results": "bulk",
+}
+
+
+def _header(request, collection, stats=None) -> dict:
+    """
+    What `_collection_header.html` needs: the collection, its size, and which
+    tab the current view is. Every page inside a collection renders the same
+    header, so "where am I" is answered the same way everywhere.
+    """
+    if stats is not None:
+        ark_count = stats["total"]
+    elif collection.stats_refreshed_at and collection.ark_count >= LIVE_STATS_MAX_ARKS:
+        ark_count = collection.ark_count  # large: the scheduler's figure, never a COUNT
+    else:
+        ark_count = collection.arks.count()
+    try:
+        gen_type = collection.spec.gen_type
+    except TemplateError:
+        gen_type = ""
+    name = request.resolver_match.url_name if request.resolver_match else ""
+    return {
+        "collection": collection,
+        "tab": COLLECTION_TABS.get(name, ""),
+        "ark_count": ark_count,
+        "gen_type": gen_type,
+    }
+
+
+def _activity(collection) -> dict | None:
+    """
+    The one line the ARK list shows about bulk binds: the job running now, with
+    its progress, or else the latest one. None when the collection never had a job.
+    """
+    jobs = collection.bulk_bind_jobs
+    latest = jobs.first()  # Meta.ordering is newest first
+    if latest is None:
+        return None
+    active = (
+        jobs.filter(status__in=(BulkBindJob.Status.PENDING, BulkBindJob.Status.RUNNING))
+        .order_by("created_at")
+        .first()
+    )
+    activity = {"collection": collection, "active": active, "latest": latest}
+    if active is not None:
+        activity["progress"] = describe_progress(
+            read_progress("bulkbind", active.pk),
+            pending=active.status == BulkBindJob.Status.PENDING,
+        )
+    return activity
+
+
+@require_role(VIEWER)
+def collection_activity(request, pk):
+    """The activity strip on its own, for the poll while a job runs."""
+    collection = get_object_or_404(Collection, pk=pk)
+    return render(
+        request, "admin_ui/_collection_activity.html", {"activity": _activity(collection)}
+    )
+
+
+def _require_collection(request):
+    """
+    ``(collection, None)`` for the collection the query names, or
+    ``(None, response)`` sending the visitor to choose one.
+
+    ARKs are browsed per collection only. For an htmx request the redirect goes
+    in the HX-Redirect header, so the browser navigates instead of swapping the
+    Collections page into the results table.
+    """
+    collection_pk = as_int(request.GET.get("collection"))
+    collection = (
+        Collection.objects.filter(pk=collection_pk).first() if collection_pk is not None else None
+    )
+    if collection is not None:
+        return collection, None
+    messages.info(request, "Choose a collection to browse its ARKs.")
+    url = reverse("admin_ui:collection_list")
+    if request.headers.get("HX-Request"):
+        return None, HttpResponseClientRedirect(url)
+    return None, redirect(url)
 
 
 @require_role(VIEWER)
@@ -176,6 +281,7 @@ def collection_detail(request, pk):
         "admin_ui/collection_detail.html",
         {
             "collection": collection,
+            "header": _header(request, collection, stats),
             "spec": spec,
             "capacity": capacity,
             **stats,
@@ -345,6 +451,9 @@ SUBQUERY_SORTS = frozenset({"redirects", "elements"})
 
 @require_role(VIEWER)
 def ark_list(request):
+    collection, bounce = _require_collection(request)
+    if bounce is not None:
+        return bounce
     collection, queryset = _search_from_request(request)
     sort_key, descending = parse_sort(request.GET.get("sort"))
     is_htmx = bool(request.headers.get("HX-Request"))
@@ -416,6 +525,11 @@ def ark_list(request):
         "sort_refused": sort_refused,
         "sort_limit": settings.SORT_SUBQUERY_MAX_ROWS,
     }
+    if not is_htmx:
+        # The header and the activity strip sit outside #results, so only a
+        # full page needs them.
+        context["header"] = _header(request, collection)
+        context["activity"] = _activity(collection)
     template = "admin_ui/_ark_table.html" if is_htmx else "admin_ui/ark_list.html"
     return render(request, template, context)
 
@@ -692,6 +806,7 @@ def mint_view(request, pk):
         "admin_ui/mint.html",
         {
             "collection": collection,
+            "header": _header(request, collection),
             "minted": minted,
             "columns": TEMPLATE_COLUMNS,
             "mint_limit": settings.MINT_MAX_PER_REQUEST,
@@ -719,6 +834,9 @@ def mint_template(request, pk):
 
 @require_role(VIEWER)
 def export(request):
+    collection, bounce = _require_collection(request)
+    if bounce is not None:
+        return bounce
     collection, queryset = _search_from_request(request)
     limit = settings.EXPORT_SYNC_MAX_ROWS
     size, _ = counted(queryset, cap=limit + 1)
@@ -809,18 +927,22 @@ def bulk_bind(request, pk):
         "admin_ui/bulk_bind.html",
         {
             "collection": collection,
+            "header": _header(request, collection),
             "jobs": collection.bulk_bind_jobs.select_related("created_by")[:10],
         },
     )
 
 
 #: Filters over a job's per-row results: query value, label. "all" is every row;
-#: the rest are the statuses bulk bind writes.
+#: the rest are the statuses bulk bind writes. "ok" survives only on a file that
+#: failed as a whole: the row was valid, and nothing was applied.
 RESULT_FILTERS = (
     ("all", "All"),
     (STATUS_ERROR, "Errors"),
     (STATUS_MINTED, "Minted"),
-    (STATUS_OK, "OK"),
+    (STATUS_BOUND, "Bound"),
+    (STATUS_UNCHANGED, "Unchanged"),
+    (STATUS_OK, "Not applied"),
 )
 
 
@@ -868,6 +990,14 @@ def job_detail(request, pk):
     job = get_object_or_404(BulkBindJob.objects.select_related("collection"), pk=pk)
     context = {"job": job}
 
+    if not job.is_finished:
+        # The worker reports where it is through the cache (jobs/progress.py);
+        # the row itself only changes when the whole file is done.
+        context["progress"] = describe_progress(
+            read_progress("bulkbind", job.pk),
+            pending=job.status == BulkBindJob.Status.PENDING,
+        )
+
     if job.status == BulkBindJob.Status.FINISHED and job.results:
         status = request.GET.get("status")
         if status not in dict(RESULT_FILTERS):
@@ -909,9 +1039,10 @@ def job_detail(request, pk):
             },
         )
 
-    template = (
-        "admin_ui/_job_status.html" if request.headers.get("HX-Request") else "admin_ui/job.html"
-    )
+    is_htmx = bool(request.headers.get("HX-Request"))
+    if not is_htmx:
+        context["header"] = _header(request, job.collection)
+    template = "admin_ui/_job_status.html" if is_htmx else "admin_ui/job.html"
     return render(request, template, context)
 
 
@@ -928,6 +1059,45 @@ def job_results(request, pk):
 
 
 # --- users ----------------------------------------------------------------
+#
+# A superuser is an Admin whatever the groups say (roles.role_of), so a role
+# control on a superuser's row would do nothing; and nobody edits their own
+# role, so nobody locks themselves out by accident. Adding and deleting
+# accounts is for superusers only; the Admin role changes other people's roles.
+
+
+def _user_rows(request) -> list[dict]:
+    """Every account with its role and what the signed-in user may do to it."""
+    rows = []
+    for user in User.objects.order_by("username"):
+        is_self = user.pk == request.user.pk
+        rows.append(
+            {
+                "user": user,
+                "role": role_of(user),
+                "is_self": is_self,
+                "can_change": not user.is_superuser and not is_self,
+                "can_delete": request.user.is_superuser and not user.is_superuser and not is_self,
+            }
+        )
+    return rows
+
+
+def _render_users(request, *, form_errors=None, form_values=None):
+    return render(
+        request,
+        "admin_ui/user_list.html",
+        {
+            "people": _user_rows(request),
+            "roles": ROLES,
+            "can_manage_accounts": request.user.is_superuser,
+            "form_errors": form_errors or {},
+            "form_values": form_values or {"role": VIEWER},
+            # Read-only: the pages are files on the server (resolver/fallback.py).
+            "fallback_dir": fallback.directory() if request.user.is_superuser else None,
+            "fallback_pages": fallback.active() if request.user.is_superuser else [],
+        },
+    )
 
 
 @require_role(ADMIN)
@@ -940,8 +1110,14 @@ def user_list(request):
         role = request.POST.get("role")
         if target is None:
             messages.error(request, "No such user.")
-            return redirect("admin_ui:user_list")
-        if role != ADMIN and role_of(target) == ADMIN and is_last_administrator(target):
+        elif target.pk == request.user.pk:
+            messages.error(request, "You cannot change your own role. Ask another administrator.")
+        elif target.is_superuser:
+            messages.error(
+                request,
+                f"{target.username} is a superuser and is always an Admin; roles do not apply.",
+            )
+        elif role != ADMIN and role_of(target) == ADMIN and is_last_administrator(target):
             messages.error(
                 request,
                 f"{target.username} is the only Admin. Give someone else the Admin role first, "
@@ -955,5 +1131,89 @@ def user_list(request):
             messages.success(request, f"{target.username} has no role.")
         return redirect("admin_ui:user_list")
 
-    people = [{"user": user, "role": role_of(user)} for user in User.objects.order_by("username")]
-    return render(request, "admin_ui/user_list.html", {"people": people, "roles": ROLES})
+    return _render_users(request)
+
+
+@require_POST
+@require_role(ADMIN)
+def user_create(request):
+    """Add an ordinary account. Superusers only; superusers themselves come from the server."""
+    if not request.user.is_superuser:
+        raise PermissionDenied("Only a superuser can add accounts.")
+
+    values = {
+        key: request.POST.get(key, "").strip()
+        for key in ("username", "email", "first_name", "last_name", "role")
+    }
+    password = request.POST.get("password", "")
+    confirm = request.POST.get("password_confirm", "")
+    errors: dict[str, str] = {}
+
+    if not values["username"]:
+        errors["username"] = "A username is required."
+    elif User.objects.filter(username__iexact=values["username"]).exists():
+        errors["username"] = "That username is taken."
+    if values["role"] not in ROLES and values["role"] != "none":
+        errors["role"] = "Choose a role, or 'No role'."
+    if not password:
+        errors["password"] = "A password is required."
+    elif password != confirm:
+        errors["password"] = "The two passwords do not match."
+    else:
+        candidate = User(
+            username=values["username"],
+            email=values["email"],
+            first_name=values["first_name"],
+            last_name=values["last_name"],
+        )
+        try:
+            validate_password(password, candidate)
+        except ValidationError as exc:
+            errors["password"] = " ".join(exc.messages)
+
+    if errors:
+        return _render_users(request, form_errors=errors, form_values=values)
+
+    user = User.objects.create_user(
+        values["username"],
+        email=values["email"],
+        password=password,
+        first_name=values["first_name"],
+        last_name=values["last_name"],
+    )
+    if values["role"] in ROLES:
+        set_role(user, values["role"])
+        messages.success(request, f"Added {user.username} as {values['role']}.")
+    else:
+        messages.success(request, f"Added {user.username} with no role.")
+    return redirect("admin_ui:user_list")
+
+
+@require_POST
+@require_role(ADMIN)
+def user_delete(request, pk):
+    """
+    Remove an account outright. Superusers only.
+
+    Every foreign key to a user is SET_NULL (Ark.minted_by, BulkBindJob.created_by),
+    so the person's ARKs and uploads stay and simply show no owner.
+    """
+    if not request.user.is_superuser:
+        raise PermissionDenied("Only a superuser can delete accounts.")
+    target = get_object_or_404(User, pk=pk)
+
+    if target.pk == request.user.pk:
+        messages.error(request, "You cannot delete your own account.")
+    elif target.is_superuser:
+        messages.error(
+            request, f"{target.username} is a superuser; superusers are managed on the server."
+        )
+    elif role_of(target) == ADMIN and is_last_administrator(target):
+        messages.error(request, f"{target.username} is the only Admin and cannot be deleted.")
+    else:
+        username = target.username
+        target.delete()
+        messages.success(
+            request, f"Deleted {username}. Their ARKs and uploads are kept and now show no owner."
+        )
+    return redirect("admin_ui:user_list")

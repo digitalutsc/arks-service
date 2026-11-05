@@ -66,19 +66,24 @@ def test_it_returns_to_the_list_exactly_as_it_was_left(make_client, ark, collect
     )
 
 
-def test_an_unfiltered_list_is_a_list_to_return_to(make_client, ark):
+def test_an_unfiltered_list_is_a_list_to_return_to(make_client, ark, collection):
     client = make_client()
-    client.get(LIST)
-    assert back(client, ark)[0] == {"url": LIST, "label": "Back to ARKs"}
+    client.get(LIST, {"collection": collection.pk})
+    assert back(client, ark)[0] == {
+        "url": f"{LIST}?collection={collection.pk}",
+        "label": "Back to ARKs",
+    }
 
 
-def test_the_list_as_left_by_an_htmx_swap_counts(make_client, ark):
+def test_the_list_as_left_by_an_htmx_swap_counts(make_client, ark, collection):
     # Paging and filtering swap the table in place; the address bar follows,
     # so the way back must too.
     client = make_client()
-    client.get(LIST, {"q": "utsc"})
-    client.get(LIST, {"q": "utsc", "page": "2"}, HTTP_HX_REQUEST="true")
-    assert back(client, ark)[0]["url"] == f"{LIST}?q=utsc&page=2"
+    client.get(LIST, {"collection": collection.pk, "q": "utsc"})
+    client.get(
+        LIST, {"collection": collection.pk, "q": "utsc", "page": "2"}, HTTP_HX_REQUEST="true"
+    )
+    assert back(client, ark)[0]["url"] == f"{LIST}?collection={collection.pk}&q=utsc&page=2"
 
 
 def test_a_list_of_another_collection_is_not_offered(make_client, ark, collection):
@@ -89,15 +94,18 @@ def test_a_list_of_another_collection_is_not_offered(make_client, ark, collectio
     assert back(client, ark)[0]["url"] == f"{LIST}?collection={collection.pk}"
 
 
-def test_the_way_back_survives_an_edit(make_client, ark):
+def test_the_way_back_survives_an_edit(make_client, ark, collection):
     client = make_client(EDITOR)
-    client.get(LIST, {"q": "utsc", "sort": "-redirects"})
+    client.get(LIST, {"collection": collection.pk, "q": "utsc", "sort": "-redirects"})
     response = client.post(
         reverse("admin_ui:ark_detail", args=[ark.pk]),
         {"action": "bind", "name": "URL", "value": "https://example.org/", "qualifier": ""},
         follow=True,
     )
-    assert response.context["back"]["url"] == f"{LIST}?q=utsc&sort=-redirects"
+    assert (
+        response.context["back"]["url"]
+        == f"{LIST}?collection={collection.pk}&q=utsc&sort=-redirects"
+    )
 
 
 def test_the_way_back_is_the_first_thing_on_the_page(make_client, ark):

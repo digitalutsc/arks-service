@@ -1,0 +1,29 @@
+{% load humanize %}
+{% comment %}
+One line under the collection header on the ARK list: is a bulk bind changing
+these rows right now, and where is the last one. Served on its own to htmx
+while a job runs (collection_activity), which is why the polling attributes
+live here. Nothing is rendered for a collection that has never had a job.
+{% endcomment %}
+{% if activity %}
+<div id="activity" class="activity{% if activity.active %} is-live{% endif %}"
+     {% if activity.active %}hx-get="{% url 'admin_ui:collection_activity' activity.collection.pk %}"
+     hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% if activity.active %}
+    <span class="dot" aria-hidden="true"></span>
+    <span>Bulk bind #{{ activity.active.pk }} {{ activity.active.get_status_display|lower }}
+      · {{ activity.progress.label }}
+      · <a href="{% url 'admin_ui:job_detail' activity.active.pk %}">View</a></span>
+  {% else %}
+    <span>Last bulk bind {{ activity.latest.created_at|date:"Y-m-d H:i" }}
+      · {{ activity.latest.get_status_display|lower }}{% if activity.latest.status == 'finished' %}{% if activity.latest.failed %}
+      · {{ activity.latest.failed|intcomma:False }} row{{ activity.latest.failed|pluralize }} in error, nothing written{% else %}{% if activity.latest.created %}
+      · {{ activity.latest.created|intcomma:False }} created{% endif %}{% if activity.latest.updated %}
+      · {{ activity.latest.updated|intcomma:False }} updated{% endif %}{% if activity.latest.minted %}
+      · {{ activity.latest.minted|intcomma:False }} minted{% endif %}{% if not activity.latest.created and not activity.latest.updated and not activity.latest.minted %}
+      · no changes{% endif %}{% endif %}{% endif %}
+      · <a href="{% url 'admin_ui:job_detail' activity.latest.pk %}">Details</a>
+      · <a href="{% url 'admin_ui:collection_detail' activity.collection.pk %}#recent-jobs">All recent bulk binds</a></span>
+  {% endif %}
+</div>
+{% endif %}

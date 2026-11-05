@@ -21,6 +21,7 @@ from django.utils import timezone
 from core.models import Collection
 from jobs.bulkbind import BulkBindError, apply_csv
 from jobs.models import BulkBindJob
+from jobs.progress import Reporter
 
 #: A PENDING job older than this has probably lost its queue message.
 STALE_PENDING_SECONDS = 15 * 60
@@ -69,7 +70,12 @@ def run_bulk_bind(self, job_id: int) -> dict:
         logger.info("bulk bind job %s already %s; skipping redelivery", job_id, job.status)
         return {"ok": not job.had_errors, "skipped": True}
 
+    # Progress goes to the cache, where the job page can read it while the
+    # transaction below is still open; the key is removed once the row holds
+    # the final counts.
+    report = Reporter("bulkbind", job_id)
     try:
+        report("reading", 0, None)
         # No names held for the raw bytes or the decoded text, so each copy of
         # the file can be freed as soon as the next one exists.
         with job.upload.open("rb") as raw:
@@ -81,6 +87,7 @@ def run_bulk_bind(self, job_id: int) -> dict:
                 mint_missing=job.mint_missing,
                 purge_first=job.purge_first,
                 user=job.created_by,
+                progress=report,
             )
             job.mark_finished(result)
     except BulkBindError as exc:
@@ -90,6 +97,8 @@ def run_bulk_bind(self, job_id: int) -> dict:
         logger.exception("bulk bind job %s crashed", job_id)
         job.mark_failed(f"Unexpected error: {exc}")
         return {"ok": False, "error": str(exc)}
+    finally:
+        report.finish()
 
     return {
         "ok": result.ok,

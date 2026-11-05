@@ -21,8 +21,6 @@
     <nav class="sidebar-nav" aria-label="Sections">
       <a href="{% url 'admin_ui:collection_list' %}"
          {% if section == 'collections' %}aria-current="page"{% endif %}>Collections</a>
-      <a href="{% url 'admin_ui:ark_list' %}"
-         {% if section == 'arks' %}aria-current="page"{% endif %}>ARKs</a>
       {% if can_administer %}
         <a href="{% url 'admin_ui:user_list' %}"
            {% if section == 'users' %}aria-current="page"{% endif %}>Users</a>

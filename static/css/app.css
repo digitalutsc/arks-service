@@ -493,6 +493,73 @@ label { display: block; font-size: .82rem; font-weight: 500; color: var(--muted)
 .elements .el-name { font-weight: 500; }
 .elements .el-value { color: var(--muted); overflow-wrap: anywhere; }
 
+/* --- the collection header and its tabs ---------------------------------- */
+/* Four views of one collection share one header; the tabs are the second level
+ * of navigation now that the sidebar has no cross-collection ARKs entry. The
+ * chips are the job page's filter chips, so nothing new is learned. */
+.collection-header { margin-bottom: .6rem; }
+.collection-header h1 { margin-bottom: .15rem; }
+.tabs {
+  display: flex; gap: .4rem; margin: 0 0 1.3rem;
+  overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;
+  padding-bottom: .2rem; scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tabs .tab {
+  font: 500 .86rem/1.35 var(--sans); padding: .38rem .85rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+  text-decoration: none; flex: 0 0 auto;
+}
+.tabs .tab:hover { border-color: var(--action); color: var(--action-deep); text-decoration: none; }
+.tabs .tab[aria-current="page"] {
+  background: var(--action-soft); border-color: var(--action); color: var(--action-deep);
+}
+.tabs .tab:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.tabs + h2 { margin-top: 0; }
+.result-line { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+
+/* --- the activity strip ---------------------------------------------------- */
+.activity {
+  display: flex; align-items: center; gap: .55rem; margin: -.5rem 0 1.1rem;
+  font-size: .86rem; color: var(--muted);
+}
+.activity a { color: var(--action); }
+.activity.is-live {
+  color: var(--action-deep); background: var(--action-soft);
+  border: 1px solid #c3d6e8; border-radius: var(--radius-sm); padding: .45rem .75rem;
+}
+.activity .dot {
+  width: .5rem; height: .5rem; border-radius: 50%; background: var(--action);
+  flex: 0 0 auto; animation: activity-pulse 1.4s ease-in-out infinite;
+}
+@keyframes activity-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* --- job progress --------------------------------------------------------- */
+/* The bar is a native <progress>; without a value it is indeterminate, which
+ * is what a job that is queued, or still reading its file, should look like. */
+progress.job-progress {
+  display: block; width: 100%; height: .6rem; margin: .55rem 0 .4rem;
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid var(--line); border-radius: 999px; overflow: hidden;
+  background: var(--ground); color: var(--action);
+}
+progress.job-progress::-webkit-progress-bar { background: var(--ground); }
+progress.job-progress::-webkit-progress-value { background: var(--action); border-radius: 999px; transition: width .3s; }
+progress.job-progress::-moz-progress-bar { background: var(--action); border-radius: 999px; }
+progress.job-progress:indeterminate {
+  background: linear-gradient(90deg, var(--ground) 0 35%, var(--action-soft) 50%, var(--ground) 65% 100%);
+  background-size: 200% 100%; animation: progress-sweep 1.6s linear infinite;
+}
+progress.job-progress:indeterminate::-webkit-progress-bar { background: transparent; }
+progress.job-progress:indeterminate::-moz-progress-bar { background: transparent; }
+@keyframes progress-sweep { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.progress-label { margin: 0 0 .3rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.progress-card .muted { margin-bottom: 0; }
+form .busy { margin-top: .9rem; }
+form .busy .progress-label { font-size: .9rem; color: var(--muted); font-weight: 400; }
+button.danger, .btn.danger { color: var(--bad); border-color: #eec9c6; }
+button.danger:hover, .btn.danger:hover { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+
 /* --- narrow screens ------------------------------------------------------ */
 @media (max-width: 880px) {
   .shell { display: block; }

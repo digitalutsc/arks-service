@@ -24,21 +24,26 @@ def organisation(request):
 
 #: Which sidebar entry each view belongs under. Kept here rather than passed
 #: from eleven render() calls, where it would drift the first time a view moved.
+# ARKs are browsed per collection, so every ARK page lights the Collections entry.
 SECTIONS = {
     "collections": frozenset(
         {
             "collection_list",
             "collection_create",
             "collection_detail",
+            "collection_activity",
             "mint",
             "mint_template",
             "bulk_bind",
             "job_detail",
             "job_results",
+            "ark_list",
+            "ark_detail",
+            "ark_purge",
+            "export",
         }
     ),
-    "arks": frozenset({"ark_list", "ark_detail", "ark_purge", "export"}),
-    "users": frozenset({"user_list"}),
+    "users": frozenset({"user_list", "user_create", "user_delete"}),
 }
 
 

@@ -177,6 +177,11 @@ def _proxy_manifest(ark: Ark, target: str) -> HttpResponse:
 
 def landing(request):
     """Minimal public page: who runs this service and what an ARK is."""
+    from resolver.fallback import landing_response
+
+    configured = landing_response()
+    if configured is not None:
+        return configured
     return render(
         request,
         "resolver/landing.html",

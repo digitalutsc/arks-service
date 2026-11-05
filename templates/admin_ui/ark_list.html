@@ -1,19 +1,16 @@
 {% extends "base.html" %}
-{% block title %}ARKs{% endblock %}
+{% block title %}ARKs · {{ selected_collection.name }}{% endblock %}
 {% block body %}
-<div class="page-header">
-  <div class="titles">
-    <span class="eyebrow">Browse</span>
-    <h1>ARKs{% if selected_collection %} · {{ selected_collection.name }}{% endif %}</h1>
-    <p class="sub">Free text searches identifiers and every bound value, whatever the element is called.
-      "Starts with" is fast at any size; "Contains" reads every bound value and can take many seconds on a large collection.</p>
-  </div>
-</div>
+{% include "admin_ui/_collection_header.html" %}
+{% include "admin_ui/_collection_activity.html" %}
 
 <form class="card" method="get" action="{% url 'admin_ui:ark_list' %}"
       hx-get="{% url 'admin_ui:ark_list' %}" hx-target="#results" hx-push-url="true"
       hx-trigger="submit, change from:select, change from:input[type=number]">
   <input type="hidden" id="sort-field" name="sort" value="{{ sort_param }}">
+  <input type="hidden" name="collection" value="{{ selected_collection.pk }}">
+  <p class="hint">Free text searches identifiers and every bound value, whatever the element is called.
+    "Starts with" is fast at any size; "Contains" reads every bound value and can take many seconds on a large collection.</p>
   <div class="form-grid">
     <div class="field grow"><label for="q">Free text</label>
       <input id="q" name="q" value="{{ query.q|default:'' }}"></div>
@@ -21,13 +18,6 @@
       <select id="match" name="match">
         {% for value, label in text_modes %}
           <option value="{{ value }}" {% if text_mode == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select></div>
-    <div class="field"><label for="collection">Collection</label>
-      <select id="collection" name="collection">
-        <option value="">All</option>
-        {% for c in collections %}
-          <option value="{{ c.pk }}" {% if selected_collection and selected_collection.pk == c.pk %}selected{% endif %}>{{ c.name }}</option>
         {% endfor %}
       </select></div>
     <div class="field"><label for="element">Element</label>
@@ -50,8 +40,8 @@
   </div>
   <div class="form-actions">
     <button type="submit">Search</button>
-    {% if query.urlencode %}
-      <a class="btn subtle" href="{% url 'admin_ui:ark_list' %}">Clear filters</a>
+    {% if query.q or query.element or query.value or query.bound or query.min_redirects or query.minted_after or query.minted_before %}
+      <a class="btn subtle" href="{% url 'admin_ui:ark_list' %}?collection={{ selected_collection.pk }}">Clear filters</a>
     {% endif %}
   </div>
 </form>

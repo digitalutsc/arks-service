@@ -12,7 +12,7 @@
 
 {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
 
-<form method="post" class="card">{% csrf_token %}
+<form method="post" class="card" data-busy="Creating…">{% csrf_token %}
   <div class="field {% if errors.name %}field-error{% endif %}">
     <label for="name">Collection name</label>
     <input id="name" name="name" class="wide" value="{{ values.name|default:'' }}" required>

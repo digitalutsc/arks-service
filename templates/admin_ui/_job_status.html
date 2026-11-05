@@ -69,7 +69,7 @@ attributes and the #status wrapper live here rather than in job.html.
           <tr>
             <td class="num muted">{{ number|intcomma:False }}</td>
             <td class="nowrap"><code>{{ ark_id }}</code></td>
-            <td><span class="pill {% if status == 'error' %}bad{% elif status == 'minted' %}run{% else %}ok{% endif %}">{{ status }}</span></td>
+            <td><span class="pill{% if status == 'error' %} bad{% elif status == 'minted' %} run{% elif status == 'bound' %} ok{% endif %}">{{ status }}</span></td>
             <td>{{ message }}</td>
           </tr>
         {% endfor %}
@@ -93,9 +93,14 @@ attributes and the #status wrapper live here rather than in job.html.
       {% endif %}
     {% endif %}
   {% else %}
-    <div class="card">
+    <div class="card progress-card">
       <p class="card-title"><span class="pill run">{{ job.get_status_display }}</span></p>
-      <p class="muted">Working… this page updates itself. You can close the tab and come back.</p>
+      {# No value while the size of the work is unknown: the bar is then indeterminate. #}
+      <progress class="job-progress"{% if progress.total %} value="{{ progress.done }}" max="{{ progress.total }}"{% endif %}
+                aria-label="{{ progress.label }}"></progress>
+      <p class="progress-label">{{ progress.label }}</p>
+      <p class="muted">Nothing is written until the whole file passes. This page updates itself;
+        you can close the tab and come back.</p>
     </div>
   {% endif %}
 </div>

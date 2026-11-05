@@ -2,22 +2,7 @@
 {% load humanize %}
 {% block title %}{{ collection.name }}{% endblock %}
 {% block body %}
-<div class="page-header">
-  <div class="titles">
-    <span class="eyebrow">Collection</span>
-    <h1>{{ collection.name }}</h1>
-    <p class="sub"><code>{{ collection.firstpart }}</code> · template <code>{{ collection.template }}</code>
-      {% if spec %}· {{ spec.gen_type }} · capacity {{ capacity }}{% endif %}</p>
-  </div>
-  <div class="actions">
-    <a class="btn" href="{% url 'admin_ui:ark_list' %}?collection={{ collection.pk }}">Browse ARKs</a>
-    {% if can_edit %}
-      <a class="btn secondary" href="{% url 'admin_ui:mint' collection.pk %}">Mint</a>
-      <a class="btn secondary" href="{% url 'admin_ui:bulk_bind' collection.pk %}">Bulk bind</a>
-    {% endif %}
-    <a class="btn subtle" href="{% url 'admin_ui:export' %}?collection={{ collection.pk }}">Export CSV</a>
-  </div>
-</div>
+{% include "admin_ui/_collection_header.html" %}
 
 <div class="stats">
   <div class="stat"><div class="n">{{ total|intcomma:False }}</div><span class="l">ARKs</span></div>
@@ -26,9 +11,10 @@
   <div class="stat"><div class="n">{{ elements|intcomma:False }}</div><span class="l">Elements</span></div>
   <div class="stat"><div class="n">{{ redirects|intcomma:False }}</div><span class="l">Redirects</span></div>
 </div>
-{% if stats_as_of %}
-  <p class="muted">Counts as of {{ stats_as_of|date:"H:i" }}; large collections are recounted in the background every few minutes.</p>
-{% endif %}
+<p class="meta">{% if spec %}Capacity {{ capacity }}. {% endif %}{% if stats_as_of %}Counts as of {{ stats_as_of|date:"H:i" }};
+  large collections are recounted in the background every few minutes. {% endif %}
+  {% if total %}<a class="btn subtle" href="{% url 'admin_ui:export' %}?collection={{ collection.pk }}">Export all {{ total|intcomma:False }} as CSV</a>{% endif %}
+</p>
 
 {% if can_administer %}
 <div class="card">
@@ -47,7 +33,7 @@
 {% endif %}
 
 {% if jobs %}
-<h2>Recent bulk binds</h2>
+<h2 id="recent-jobs">Recent bulk binds</h2>
 <div class="table-wrap"><table>
   <thead><tr><th>When</th><th>Status</th><th class="num">Created</th><th class="num">Updated</th>
     <th class="num">Failed</th><th></th></tr></thead>

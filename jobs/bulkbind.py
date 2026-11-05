@@ -13,6 +13,7 @@ the collection half-updated with no record of where it stopped.
 from __future__ import annotations
 
 import csv
+from collections import Counter
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 
@@ -32,10 +33,24 @@ TEMPLATE_COLUMNS = ["URL", "PID", "LOCAL_ID", "COLLECTION"]
 #: memory an upload uses, whatever the size of the collection.
 LOOKUP_CHUNK = 2000
 
-#: Row statuses reported back to the operator.
+#: Rows validated between two progress reports.
+CHECK_EVERY = 1000
+
+#: Row statuses reported back to the operator. A row is ``ok`` only while the
+#: file is being checked; once the file has been applied it is ``bound``,
+#: ``unchanged`` or ``minted``, and stays ``ok`` only when another row failed
+#: and nothing was written.
 STATUS_OK = "ok"
 STATUS_MINTED = "minted"
 STATUS_ERROR = "error"
+STATUS_BOUND = "bound"
+STATUS_UNCHANGED = "unchanged"
+
+#: Left on the valid rows of a file that failed as a whole.
+NOT_APPLIED_MESSAGE = "Not applied: another row in the file failed."
+
+#: Order the per-row message lists outcomes in.
+OUTCOME_ORDER = ("created", "replaced", "unchanged")
 
 
 class BulkBindError(Exception):
@@ -132,6 +147,7 @@ def apply_csv(
     mint_missing: bool = False,
     purge_first: bool = False,
     user=None,
+    progress=None,
 ) -> BulkBindResult:
     """
     Apply a CSV to ``collection``.
@@ -139,10 +155,18 @@ def apply_csv(
     Returns a :class:`BulkBindResult`. If any row failed, nothing is written at
     all — the transaction is rolled back and the result reports every problem so
     the whole file can be fixed in one pass.
+
+    ``progress(phase, done, total)``, when given, is told where the work is:
+    ``reading`` (total unknown), ``checking`` rows, ``minting`` blank rows,
+    ``purging``, then ``writing`` bindings. It is cosmetic; the CLI passes none.
     """
     from minting.minter import mint  # imported here to avoid a circular import
 
+    report = progress or _no_progress
+    report("reading", 0, None)
     fieldnames, rows = _read(handle)
+    total_rows = len(rows)
+    report("checking", 0, total_rows)
     ark_column = _ark_column(fieldnames)
     element_columns = [name for name in fieldnames if name != ark_column and name]
 
@@ -154,6 +178,9 @@ def apply_csv(
 
     result = BulkBindResult()
     planned: dict[tuple[int, str, str], str] = {}
+    # Which planned keys each row contributed, so the outcome of the write can
+    # be folded back onto the row afterwards.
+    row_keys: dict[int, list[tuple[int, str, str]]] = {}
     # Every (ark, qualifier) the file names, whether or not it binds anything.
     # Purge works from this, so a row with all cells blank still clears what it
     # names, and a row naming a qualifier never touches the rest of the ARK.
@@ -162,6 +189,9 @@ def apply_csv(
     to_mint: list[int] = []
 
     for number, row in enumerate(rows, start=2):  # row 1 is the header
+        checked = number - 2
+        if checked and checked % CHECK_EVERY == 0:
+            report("checking", checked, total_rows)
         raw_ark = (row.get(ark_column) or "").strip()
 
         if not raw_ark:
@@ -221,17 +251,22 @@ def apply_csv(
                 break
             seen.add(key)
             planned[(ark_pk, parsed.qualifier, column.upper())] = value
+            row_keys.setdefault(number, []).append((ark_pk, parsed.qualifier, column.upper()))
 
         if not duplicate:
             result.rows.append(RowResult(number, parsed.name + parsed.qualifier, STATUS_OK))
+
+    report("checking", total_rows, total_rows)
 
     # Mint the blank rows now that the file is known to be well formed. "Well
     # formed" means no row failed for a reason other than awaiting its mint.
     awaiting_mint = set(to_mint)
     blocked = [row for row in result.errors if row.number not in awaiting_mint]
     if to_mint and not blocked:
+        report("minting", 0, len(to_mint))
         minted = mint(collection, count=len(to_mint), user=user, enforce_cap=False)
         result.minted = len(minted)
+        report("minting", len(minted), len(to_mint))
         by_number = {row.number: row for row in result.rows}
         for number, ark in zip(to_mint, minted, strict=True):
             by_number[number].ark_id = ark.name
@@ -242,6 +277,7 @@ def apply_csv(
                 value = (rows[number - 2].get(column) or "").strip()
                 if value:
                     planned[(ark.pk, "", column.upper())] = value
+                    row_keys.setdefault(number, []).append((ark.pk, "", column.upper()))
 
     if not result.ok:
         # Nothing has been written yet — every row is validated above, and both
@@ -250,13 +286,52 @@ def apply_csv(
         # before validation finishes: returning normally from an atomic block
         # would otherwise commit that partial work.
         transaction.set_rollback(True)
+        for row in result.rows:
+            if row.status == STATUS_OK:
+                row.message = NOT_APPLIED_MESSAGE
         return result
 
     if purge_first:
+        report("purging", 0, None)
         _purge(named)
 
-    _write(planned, result)
+    outcomes: dict[tuple[int, str, str], str] = {}
+    _write(planned, result, report, outcomes)
+    _stamp(result, row_keys, outcomes, purge_first=purge_first)
     return result
+
+
+def _stamp(result: BulkBindResult, row_keys, outcomes, *, purge_first: bool) -> None:
+    """
+    Say on each row what happened to its elements, once they are written.
+
+    Done after ``_write`` so a row never claims a binding that was rolled back.
+    A minted row keeps its status and gains the count; a checked row becomes
+    ``bound`` when anything was created or replaced (or when the row was purged,
+    which is itself a change), otherwise ``unchanged``.
+    """
+    for row in result.rows:
+        if row.status == STATUS_ERROR:
+            continue
+        counts = Counter(outcomes.get(key, "unchanged") for key in row_keys.get(row.number, ()))
+        parts = [f"{counts[kind]} {kind}" for kind in OUTCOME_ORDER if counts[kind]]
+        if row.status == STATUS_MINTED:
+            row.message = f"minted; {counts['created']} created"
+            continue
+        message = ", ".join(parts) or "nothing to bind"
+        if purge_first:
+            row.status = STATUS_BOUND
+            row.message = f"{message} (previous elements removed)"
+        elif counts["created"] or counts["replaced"]:
+            row.status = STATUS_BOUND
+            row.message = message
+        else:
+            row.status = STATUS_UNCHANGED
+            row.message = message
+
+
+def _no_progress(phase: str, done: int, total: int | None) -> None:
+    """The default ``progress`` callback: nobody is watching."""
 
 
 def _purge(named: set[tuple[int, str]]) -> None:
@@ -271,5 +346,9 @@ def _purge(named: set[tuple[int, str]]) -> None:
         Binding.objects.filter(condition).delete()
 
 
-def _write(planned: dict[tuple[int, str, str], str], result: BulkBindResult) -> None:
-    result.created, result.updated = bulk_upsert_bindings(planned)
+def _write(
+    planned: dict[tuple[int, str, str], str], result: BulkBindResult, report, outcomes
+) -> None:
+    result.created, result.updated = bulk_upsert_bindings(
+        planned, progress=report, outcomes=outcomes
+    )

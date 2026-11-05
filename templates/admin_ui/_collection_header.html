@@ -1,0 +1,23 @@
+{% load humanize %}
+{% comment %}
+One header for every page inside a collection: the collection page (Overview),
+its ARK list, Mint, Bulk bind and a job page. The view supplies `header`
+(collection, tab, ark_count, gen_type); the tab row is the second level of
+navigation now that the sidebar has no cross-collection ARKs entry.
+{% endcomment %}
+<div class="page-header collection-header">
+  <div class="titles">
+    <span class="eyebrow"><a href="{% url 'admin_ui:collection_list' %}">Collections</a></span>
+    <h1>{{ header.collection.name }}</h1>
+    <p class="sub"><code>{{ header.collection.firstpart }}</code> · template <code>{{ header.collection.template }}</code>
+      {% if header.gen_type %}· {{ header.gen_type }} {% endif %}· {{ header.ark_count|intcomma:False }} ARK{{ header.ark_count|pluralize }}</p>
+  </div>
+</div>
+<nav class="tabs" aria-label="Views of this collection">
+  <a class="tab" href="{% url 'admin_ui:collection_detail' header.collection.pk %}"{% if header.tab == 'overview' %} aria-current="page"{% endif %}>Overview</a>
+  <a class="tab" href="{% url 'admin_ui:ark_list' %}?collection={{ header.collection.pk }}"{% if header.tab == 'browse' %} aria-current="page"{% endif %}>Browse ARKs</a>
+  {% if can_edit %}
+    <a class="tab" href="{% url 'admin_ui:mint' header.collection.pk %}"{% if header.tab == 'mint' %} aria-current="page"{% endif %}>Mint</a>
+    <a class="tab" href="{% url 'admin_ui:bulk_bind' header.collection.pk %}"{% if header.tab == 'bulk' %} aria-current="page"{% endif %}>Bulk bind</a>
+  {% endif %}
+</nav>

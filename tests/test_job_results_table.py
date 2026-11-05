@@ -85,9 +85,9 @@ def test_a_finished_job_lists_every_row_under_the_csv_column_names(editor, clean
     body = response.content.decode()
 
     assert shown(response) == [
-        (2, "61220/utsc0", "ok"),
-        (3, "61220/utsc1", "ok"),
-        (4, "61220/utsc2", "ok"),
+        (2, "61220/utsc0", "bound"),
+        (3, "61220/utsc1", "bound"),
+        (4, "61220/utsc2", "bound"),
     ]
     for column in ("row", "ark_id", "status", "message"):
         assert f">{column}</th>" in body
@@ -121,7 +121,7 @@ def test_every_row_is_one_click_away(editor, job_with_a_bad_row):
 def test_each_filter_says_how_many_rows_it_holds(editor, job_with_a_bad_row):
     response = page(editor, job_with_a_bad_row)
     counts = {f["value"]: f["count"] for f in response.context["result_filters"]}
-    assert counts == {"all": 2, "error": 1, "minted": 0, "ok": 1}
+    assert counts == {"all": 2, "error": 1, "minted": 0, "bound": 0, "unchanged": 0, "ok": 1}
     assert "Errors (1)" in response.content.decode()
     assert [f["value"] for f in response.context["result_filters"] if f["active"]] == ["error"]
 
@@ -161,12 +161,12 @@ def test_a_message_cannot_inject_markup(editor, collection):
 
 def test_search_finds_rows_by_ark(editor, clean_job):
     response = page(editor, clean_job, q="utsc1")
-    assert shown(response) == [(3, "61220/utsc1", "ok")]
+    assert shown(response) == [(3, "61220/utsc1", "bound")]
     assert response.context["result_query"] == "utsc1"
 
 
 def test_search_ignores_case_and_surrounding_space(editor, clean_job):
-    assert shown(page(editor, clean_job, q="  UTSC2 ")) == [(4, "61220/utsc2", "ok")]
+    assert shown(page(editor, clean_job, q="  UTSC2 ")) == [(4, "61220/utsc2", "bound")]
 
 
 def test_search_reaches_the_message(editor, job_with_a_bad_row):
@@ -177,7 +177,14 @@ def test_search_reaches_the_message(editor, job_with_a_bad_row):
 
 def test_the_filter_counts_follow_the_search(editor, job_with_a_bad_row):
     response = page(editor, job_with_a_bad_row, status="all", q="utsc0")
-    assert response.context["results"]["counts"] == {"all": 1, "error": 0, "minted": 0, "ok": 1}
+    assert response.context["results"]["counts"] == {
+        "all": 1,
+        "error": 0,
+        "minted": 0,
+        "bound": 0,
+        "unchanged": 0,
+        "ok": 1,
+    }
 
 
 def test_search_and_filter_combine(editor, job_with_a_bad_row):
@@ -191,10 +198,10 @@ def test_the_filters_and_the_pager_keep_the_search(editor, clean_job, monkeypatc
     monkeypatch.setattr(views, "PAGE_SIZE", 1)
     response = page(editor, clean_job, status="all", q="61220/utsc")
     body = response.content.decode()
-    assert 'href="?status=ok&amp;q=61220%2Futsc"' in body
+    assert 'href="?status=bound&amp;q=61220%2Futsc"' in body
     assert 'href="?status=all&amp;q=61220%2Futsc&amp;page=2"' in body
     second = page(editor, clean_job, status="all", q="61220/utsc", page="2")
-    assert shown(second) == [(3, "61220/utsc1", "ok")]
+    assert shown(second) == [(3, "61220/utsc1", "bound")]
 
 
 def test_the_search_box_remembers_what_was_asked_and_keeps_the_filter(editor, job_with_a_bad_row):
@@ -222,18 +229,18 @@ def test_an_absurdly_long_search_is_cut_short(editor, clean_job):
 def test_the_table_is_paged_and_the_pager_keeps_the_filter(editor, clean_job, monkeypatch):
     monkeypatch.setattr(views, "PAGE_SIZE", 2)
 
-    first = page(editor, clean_job, status="ok")
+    first = page(editor, clean_job, status="bound")
     assert [number for number, _, _ in shown(first)] == [2, 3]
     assert first.context["results"]["has_next"] is True
     assert first.context["results"]["has_previous"] is False
-    assert 'href="?status=ok&amp;page=2"' in first.content.decode()
+    assert 'href="?status=bound&amp;page=2"' in first.content.decode()
 
-    second = page(editor, clean_job, status="ok", page="2")
+    second = page(editor, clean_job, status="bound", page="2")
     assert [number for number, _, _ in shown(second)] == [4]
     assert second.context["results"]["has_next"] is False
     assert second.context["results"]["has_previous"] is True
     # Page 1 is left unsaid, so the way back is the plain filter address.
-    assert second.context["result_links"]["previous"] == "status=ok"
+    assert second.context["result_links"]["previous"] == "status=bound"
     # Counts cover the whole file, not the page.
     assert second.context["results"]["counts"]["all"] == 3
 

@@ -94,7 +94,7 @@ def test_a_configured_base_url_keeps_exactly_one_trailing_slash(admin_client, se
 
 def test_browsing_arks_shows_the_full_public_url_for_this_environment(admin_client, ark):
     body = admin_client.get(
-        reverse("admin_ui:ark_list"), HTTP_HOST="localhost:8000"
+        reverse("admin_ui:ark_list"), {"collection": ark.collection_id}, HTTP_HOST="localhost:8000"
     ).content.decode()
     assert 'href="http://localhost:8000/ark:61220/utsc1"' in body
     assert 'data-copy="http://localhost:8000/ark:61220/utsc1"' in body
@@ -103,7 +103,10 @@ def test_browsing_arks_shows_the_full_public_url_for_this_environment(admin_clie
 def test_the_url_column_follows_the_environment(admin_client, ark, settings):
     settings.ALLOWED_HOSTS = [PROD_HOST]
     body = admin_client.get(
-        reverse("admin_ui:ark_list"), HTTP_HOST=PROD_HOST, HTTP_X_FORWARDED_PROTO="https"
+        reverse("admin_ui:ark_list"),
+        {"collection": ark.collection_id},
+        HTTP_HOST=PROD_HOST,
+        HTTP_X_FORWARDED_PROTO="https",
     ).content.decode()
     assert f'href="https://{PROD_HOST}/ark:61220/utsc1"' in body
     assert "localhost" not in body
@@ -157,7 +160,7 @@ def admin_pages(collection, ark, job):
         reverse("admin_ui:collection_detail", args=[collection.pk]),
         reverse("admin_ui:mint", args=[collection.pk]),
         reverse("admin_ui:bulk_bind", args=[collection.pk]),
-        reverse("admin_ui:ark_list"),
+        reverse("admin_ui:ark_list") + f"?collection={collection.pk}",
         reverse("admin_ui:ark_detail", args=[ark.pk]),
         reverse("admin_ui:job_detail", args=[job.pk]),
         reverse("admin_ui:user_list"),

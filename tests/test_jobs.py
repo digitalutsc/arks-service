@@ -99,7 +99,8 @@ def test_the_results_can_be_read_back_row_by_row(collection):
         (2, "61220/utsc0", "ok"),
         (3, "61220/nope", "error"),
     ]
-    assert rows[0][3] == ""
+    # The valid row was not applied, because the other one failed; it says so.
+    assert rows[0][3] == "Not applied: another row in the file failed."
     assert rows[1][3]
 
 

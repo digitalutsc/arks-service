@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{organisation_name}} · ARK identifiers</title>
+  <link rel="stylesheet" href="/fallback/style.css">
+</head>
+<body>
+  <main class="page">
+    <p class="eyebrow">Persistent identifiers</p>
+    <h1>{{organisation_name}}</h1>
+    <p class="lead">This service resolves <a href="https://arks.org/about/">ARK identifiers</a>
+      of the form <code>/ark:/&lt;naan&gt;/&lt;identifier&gt;</code>. An ARK is a permanent
+      name for a digital object; following it takes you to wherever the object lives today.</p>
+
+    <h2>Naming authorities served here</h2>
+    {{naa_table}}
+
+    <p class="muted">Questions about an identifier? Contact the institution at
+      <a href="{{organisation_website}}">{{organisation_website}}</a>.</p>
+  </main>
+</body>
+</html>

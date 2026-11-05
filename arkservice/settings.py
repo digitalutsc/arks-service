@@ -281,6 +281,15 @@ CELERY_TASK_ROUTES = {
     "jobs.tasks.refresh_collection_stats": {"queue": PERIODIC_QUEUE},
 }
 
+# --- Fallback pages ---------------------------------------------------------
+# A directory on the server holding index.html, 403.html, 404.html, 500.html and
+# their assets (resolver/fallback.py). Empty means Django's defaults, as before.
+# Files, not database rows: the pages are public and must work with the
+# database down, and whoever edits them should need shell access.
+FALLBACK_PAGES_DIR = env.str("FALLBACK_PAGES_DIR", default="")
+# A CSRF failure is the one public 403 and bypasses handler403, so it has its own hook.
+CSRF_FAILURE_VIEW = "resolver.fallback.csrf_failure"
+
 # --- Resolver -------------------------------------------------------------
 # Public base URL the admin UI uses when it shows an ARK's resolvable address.
 # Empty means "derive it from the request", which is right whenever staff reach

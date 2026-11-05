@@ -5,38 +5,122 @@
   <div class="titles">
     <span class="eyebrow">Access</span>
     <h1>Users and roles</h1>
-    <p class="sub">Accounts are created with <code>manage.py createsuperuser</code> or the Django admin.
-      A user with no role can sign in but do nothing.</p>
+    <p class="sub">
+      {% if can_manage_accounts %}Add accounts below and give each a role.
+      {% else %}A superuser adds and removes accounts; you can change roles.{% endif %}
+      A user with no role can sign in but do nothing. Nobody changes their own role.</p>
   </div>
 </div>
 
 <div class="table-wrap"><table>
-  <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Change to</th></tr></thead>
+  <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Change to</th>{% if can_manage_accounts %}<th></th>{% endif %}</tr></thead>
   <tbody>
   {% for person in people %}
     <tr>
-      <td>{{ person.user.username }}{% if person.user.is_superuser %} <span class="pill">superuser</span>{% endif %}</td>
+      <td>{{ person.user.username }}{% if person.is_self %} <span class="muted">(you)</span>{% endif %}</td>
       <td class="muted">{{ person.user.get_full_name|default:"—" }}</td>
-      <td>{{ person.role|default:"—" }}</td>
       <td>
-        <form class="form-row" method="post">{% csrf_token %}
+        {% if person.user.is_superuser %}<span class="pill">Superuser</span>
+        {% else %}{{ person.role|default:"—" }}{% endif %}
+      </td>
+      <td>
+        {% if person.can_change %}
+        <form class="form-row" method="post" action="{% url 'admin_ui:user_list' %}">{% csrf_token %}
           <input type="hidden" name="user" value="{{ person.user.pk }}">
           <select name="role" aria-label="Role for {{ person.user.username }}">
             {% for role in roles %}<option value="{{ role }}" {% if person.role == role %}selected{% endif %}>{{ role }}</option>{% endfor %}
-            <option value="none">No role</option>
+            <option value="none" {% if not person.role %}selected{% endif %}>No role</option>
           </select>
           <button class="secondary" type="submit">Save</button>
         </form>
+        {% elif person.user.is_superuser %}
+          <span class="muted">Always Admin</span>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
       </td>
+      {% if can_manage_accounts %}
+      <td class="acts">
+        {% if person.can_delete %}
+        <form method="post" action="{% url 'admin_ui:user_delete' person.user.pk %}"
+              data-confirm="Delete {{ person.user.username }}? Their ARKs and uploads are kept and will show no owner.">
+          {% csrf_token %}
+          <button class="secondary danger" type="submit">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+      {% endif %}
     </tr>
   {% endfor %}
   </tbody>
 </table></div>
 
+{% if can_manage_accounts %}
+<form method="post" action="{% url 'admin_ui:user_create' %}" class="card" data-busy="Adding…">{% csrf_token %}
+  <p class="card-title">Add a user</p>
+  <div class="form-grid">
+    <div class="field {% if form_errors.username %}field-error{% endif %}">
+      <label for="new-username">Username</label>
+      <input id="new-username" name="username" value="{{ form_values.username|default:'' }}" autocomplete="off" required>
+      {% if form_errors.username %}<span class="hint error">{{ form_errors.username }}</span>{% endif %}
+    </div>
+    <div class="field"><label for="new-email">Email</label>
+      <input id="new-email" name="email" type="email" value="{{ form_values.email|default:'' }}"></div>
+    <div class="field"><label for="new-first">First name</label>
+      <input id="new-first" name="first_name" value="{{ form_values.first_name|default:'' }}"></div>
+    <div class="field"><label for="new-last">Last name</label>
+      <input id="new-last" name="last_name" value="{{ form_values.last_name|default:'' }}"></div>
+    <div class="field {% if form_errors.password %}field-error{% endif %}">
+      <label for="new-password">Password</label>
+      <input id="new-password" name="password" type="password" autocomplete="new-password" required>
+      {% if form_errors.password %}<span class="hint error">{{ form_errors.password }}</span>{% endif %}
+    </div>
+    <div class="field"><label for="new-password-confirm">Password again</label>
+      <input id="new-password-confirm" name="password_confirm" type="password" autocomplete="new-password" required></div>
+    <div class="field {% if form_errors.role %}field-error{% endif %}">
+      <label for="new-role">Role</label>
+      <select id="new-role" name="role">
+        {% for role in roles %}<option value="{{ role }}" {% if form_values.role == role %}selected{% endif %}>{{ role }}</option>{% endfor %}
+        <option value="none" {% if form_values.role == 'none' %}selected{% endif %}>No role</option>
+      </select>
+      {% if form_errors.role %}<span class="hint error">{{ form_errors.role }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="form-actions"><button type="submit">Add user</button></div>
+  <p class="hint">Superusers are created on the server with <code>manage.py createsuperuser</code>.</p>
+</form>
+{% endif %}
+
+{% if can_manage_accounts %}
+<div class="card">
+  <p class="card-title">Fallback pages</p>
+  {% if fallback_dir %}
+    <p class="hint">Served from <code>{{ fallback_dir }}</code> on the server (<code>FALLBACK_PAGES_DIR</code>).
+      Edit the files there; this page only shows what is in place. Changes show within a minute.</p>
+    <table><tbody>
+      {% for page in fallback_pages %}
+        <tr>
+          <td><code>{{ page.file }}</code></td>
+          <td>{% if page.key == 'index' %}the default page at <code>/</code>{% else %}shown for a {{ page.key }}{% endif %}</td>
+          <td>{% if page.present %}<span class="pill ok">active</span>{% else %}<span class="pill">missing</span>{% endif %}</td>
+          <td class="acts">{% if page.present %}<a href="{% url 'fallback_preview' page.key %}" target="_blank" rel="noopener">Preview</a>{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody></table>
+  {% else %}
+    <p class="hint">Not configured: the built-in landing page and Django's plain error pages are shown.
+      Set <code>FALLBACK_PAGES_DIR</code> to a directory holding <code>index.html</code>,
+      <code>403.html</code>, <code>404.html</code> and <code>500.html</code>; a starting kit is in
+      <code>docs/fallback-example/</code> in the application repository.</p>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="card">
   <p class="card-title">What each role can do</p>
   <table><tbody>
-    <tr><td><strong>Admin</strong></td><td>Everything: collections, purging, users.</td></tr>
+    <tr><td><strong>Superuser</strong></td><td>Everything an Admin can, and add and remove accounts. Created on the server, not here.</td></tr>
+    <tr><td><strong>Admin</strong></td><td>Collections, purging, and other people's roles.</td></tr>
     <tr><td><strong>Editor</strong></td><td>Mint, bind, unbind, bulk bind, export.</td></tr>
     <tr><td><strong>Viewer</strong></td><td>Search and export only.</td></tr>
   </tbody></table>

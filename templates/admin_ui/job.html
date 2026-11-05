@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Bulk bind #{{ job.pk }}{% endblock %}
 {% block body %}
+{% include "admin_ui/_collection_header.html" %}
 <div class="page-header">
   <div class="titles">
-    <span class="eyebrow"><a href="{% url 'admin_ui:collection_detail' job.collection.pk %}">{{ job.collection.name }}</a></span>
-    <h1>Bulk bind #{{ job.pk }}</h1>
+    <h2>Bulk bind #{{ job.pk }}</h2>
     <p class="sub">Uploaded {{ job.created_at|date:"Y-m-d H:i" }}{% if job.created_by %} by {{ job.created_by.username }}{% endif %}</p>
   </div>
   <div class="actions">
     <a class="btn secondary" href="{% url 'admin_ui:bulk_bind' job.collection.pk %}">Upload another</a>
+    <a class="btn secondary" href="{% url 'admin_ui:ark_list' %}?collection={{ job.collection.pk }}">Browse these ARKs</a>
   </div>
 </div>
 

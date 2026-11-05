@@ -1,0 +1,15 @@
+/* Fallback pages: quiet, readable, no dependencies. Edit freely. */
+:root { --ink: #14213d; --muted: #5b6672; --ground: #f4f6f8; --line: #dfe4ea; --action: #1a56c4; }
+body { margin: 0; font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--ground); }
+.page { max-width: 40rem; margin: 10vh auto; padding: 0 1.25rem 4rem; }
+.eyebrow { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font-size: 1.8rem; line-height: 1.2; margin: .2rem 0 1rem; }
+h2 { font-size: 1.1rem; margin: 2rem 0 .6rem; }
+.lead { font-size: 1.05rem; }
+.muted { color: var(--muted); }
+a { color: var(--action); }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .92em; }
+table.naa { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+table.naa th, table.naa td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--line); }
+table.naa th { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+table.naa tr:last-child td { border-bottom: 0; }

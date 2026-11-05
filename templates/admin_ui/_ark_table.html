@@ -10,9 +10,9 @@
   <p class="muted">Sorting by redirects or elements is offered for up to {{ sort_limit|intcomma:False }} ARKs;
     this result is larger, so it is in ARK order. Narrow the search to sort it.</p>
 {% endif %}
-<p class="meta">{{ total|intcomma:False }}{% if capped %}+{% endif %} ARK{{ total|pluralize }}
+<p class="meta result-line">{{ total|intcomma:False }}{% if capped %}+{% endif %} ARK{{ total|pluralize }} match
   {% if total %}
-    · <a href="{% url 'admin_ui:export' %}?{{ query.urlencode }}">Export these as CSV</a>
+    <a class="btn subtle" href="{% url 'admin_ui:export' %}?{{ query.urlencode }}">Export these {{ total|intcomma:False }}{% if capped %}+{% endif %} as CSV</a>
   {% endif %}
 </p>
 

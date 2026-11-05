@@ -59,12 +59,20 @@ def unbind_elements(ark: Ark, name: str | None = None, qualifier: str | None = N
     return removed
 
 
-def bulk_upsert_bindings(wanted: dict[tuple[int, str, str], str]) -> tuple[int, int]:
+def bulk_upsert_bindings(
+    wanted: dict[tuple[int, str, str], str], *, progress=None, outcomes=None
+) -> tuple[int, int]:
     """
     Write ``{(ark_id, qualifier, element): value}`` in bulk.
 
     Returns ``(created, updated)``. Values that have not changed are left alone,
     so a re-import or a re-uploaded CSV is a cheap no-op.
+
+    ``progress(phase, done, total)``, when given, is called after each chunk with
+    how many of the wanted elements have been dealt with (created, updated or
+    left alone), so a caller can show a bar. ``outcomes``, when a dict is given,
+    is filled with ``key -> "created" | "replaced" | "unchanged"`` for every key,
+    so a caller can say what happened to each row of its file.
 
     Row-at-a-time ``update_or_create`` costs two queries per element, which for
     a 100k-ARK collection is over 800k round trips.
@@ -85,11 +93,12 @@ def bulk_upsert_bindings(wanted: dict[tuple[int, str, str], str]) -> tuple[int, 
     by_ark: dict[int, list[tuple[str, str, str]]] = {}
     for (ark_id, qualifier, name), value in normalised.items():
         by_ark.setdefault(ark_id, []).append((qualifier, name, value))
+    total = len(normalised)
     del normalised
 
     ark_ids = sorted(by_ark)
     now = timezone.now()
-    created = updated = 0
+    created = updated = done = 0
     for start in range(0, len(ark_ids), BATCH_SIZE):
         chunk = ark_ids[start : start + BATCH_SIZE]
         existing = {
@@ -107,8 +116,14 @@ def bulk_upsert_bindings(wanted: dict[tuple[int, str, str], str]) -> tuple[int, 
                     to_create.append(
                         Binding(ark_id=ark_id, qualifier=qualifier, name=name, value=value)
                     )
+                    outcome = "created"
                 elif found[1] != value:
                     to_update.append(Binding(id=found[0], value=value, updated_at=now))
+                    outcome = "replaced"
+                else:
+                    outcome = "unchanged"
+                if outcomes is not None:
+                    outcomes[(ark_id, qualifier, name)] = outcome
 
         if to_create:
             Binding.objects.bulk_create(to_create, batch_size=BATCH_SIZE)
@@ -117,6 +132,9 @@ def bulk_upsert_bindings(wanted: dict[tuple[int, str, str], str]) -> tuple[int, 
             Binding.objects.bulk_update(to_update, ["value", "updated_at"], batch_size=BATCH_SIZE)
         created += len(to_create)
         updated += len(to_update)
+        done += sum(len(by_ark[ark_id]) for ark_id in chunk)
+        if progress is not None:
+            progress("writing", done, total)
 
     return created, updated
 

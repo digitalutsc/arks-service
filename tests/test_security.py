@@ -74,14 +74,15 @@ def admin(client, make_user):
     ],
 )
 def test_bad_search_parameters_do_not_error(viewer, collection, params):
-    response = viewer.get(reverse("admin_ui:ark_list"), params)
-    assert response.status_code == 200, f"{params} produced {response.status_code}"
+    # A bad collection sends the visitor to choose one; anything else is ignored.
+    response = viewer.get(reverse("admin_ui:ark_list"), {"collection": collection.pk, **params})
+    assert response.status_code in (200, 302), f"{params} produced {response.status_code}"
 
 
 @pytest.mark.parametrize("params", [{"collection": "abc"}, {"min_redirects": "²"}])
 def test_bad_export_parameters_do_not_error(viewer, collection, params):
-    response = viewer.get(reverse("admin_ui:export"), params)
-    assert response.status_code == 200
+    response = viewer.get(reverse("admin_ui:export"), {"collection": collection.pk, **params})
+    assert response.status_code in (200, 302)
 
 
 def test_minting_over_the_cap_is_a_message_not_a_crash(editor, collection, settings):

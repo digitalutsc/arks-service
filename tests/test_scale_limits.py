@@ -74,17 +74,20 @@ def test_the_browse_page_defaults_to_starts_with(viewer, collection):
     first, second = make_arks(collection, 2)
     Binding.objects.create(ark=second, name="NOTE", value="mentions utsc0 in passing")
 
-    starts = viewer.get(reverse("admin_ui:ark_list"), {"q": "utsc0"})
+    starts = viewer.get(reverse("admin_ui:ark_list"), {"collection": collection.pk, "q": "utsc0"})
     assert [a.pk for a in starts.context["arks"]] == [first.pk]
 
-    contains = viewer.get(reverse("admin_ui:ark_list"), {"q": "utsc0", "match": "contains"})
+    contains = viewer.get(
+        reverse("admin_ui:ark_list"),
+        {"collection": collection.pk, "q": "utsc0", "match": "contains"},
+    )
     assert {a.pk for a in contains.context["arks"]} == {first.pk, second.pk}
 
 
 def test_too_many_matches_on_the_browse_page_says_how_to_narrow(viewer, collection, monkeypatch):
     make_arks(collection, 5)
     monkeypatch.setattr(search, "STARTS_WITH_CAP", 3)
-    response = viewer.get(reverse("admin_ui:ark_list"), {"q": "utsc"})
+    response = viewer.get(reverse("admin_ui:ark_list"), {"collection": collection.pk, "q": "utsc"})
     assert response.status_code == 200
     assert response.context["arks"] == []
     assert b"Add more characters" in response.content
@@ -95,8 +98,12 @@ def test_too_many_matches_on_the_browse_page_says_how_to_narrow(viewer, collecti
 
 def test_a_result_that_fits_one_page_is_not_counted_separately(viewer, collection):
     make_arks(collection, 3)
+    # The table alone, as htmx fetches it: the full page also renders the
+    # collection header, whose own size figure is a separate matter.
     with CaptureQueriesContext(connection) as captured:
-        response = viewer.get(reverse("admin_ui:ark_list"), {"collection": collection.pk})
+        response = viewer.get(
+            reverse("admin_ui:ark_list"), {"collection": collection.pk}, HTTP_HX_REQUEST="true"
+        )
     assert response.context["total"] == 3
     counts = [q["sql"] for q in captured.captured_queries if "COUNT(" in q["sql"].upper()]
     assert not counts, f"the page already held every row: {counts[:1]}"

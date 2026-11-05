@@ -50,4 +50,23 @@
     if (!form) return;
     if (!window.confirm(form.getAttribute("data-confirm"))) event.preventDefault();
   });
+
+  // Forms that take a moment say so. The button is disabled and relabelled
+  // (data-busy holds the label) and any .busy block inside the form is shown;
+  // it holds an indeterminate <progress>. Registered after the confirm handler
+  // so a cancelled confirmation leaves the form untouched. A normal POST then
+  // replaces the page, which is what resets everything.
+  document.addEventListener("submit", function (event) {
+    var form = event.target.closest("form[data-busy]");
+    if (!form || event.defaultPrevented) return;
+    var button = form.querySelector('button[type="submit"], button:not([type])');
+    if (button) {
+      button.textContent = form.getAttribute("data-busy");
+      // Disable after this tick: a button disabled during submit is left out
+      // of the submission in some browsers.
+      window.setTimeout(function () { button.disabled = true; }, 0);
+    }
+    var blocks = form.querySelectorAll(".busy[hidden]");
+    for (var i = 0; i < blocks.length; i++) blocks[i].hidden = false;
+  });
 })();

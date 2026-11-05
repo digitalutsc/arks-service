@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Not allowed{% endblock %}
+{% block body %}
+<div class="page-header">
+  <div class="titles">
+    <span class="eyebrow">Access</span>
+    <h1>You can't do that here</h1>
+    <p class="sub">{{ message|default:"This page needs a role your account does not have." }}</p>
+  </div>
+</div>
+<div class="card">
+  <p>Roles are given on the Users page by an administrator. Your current role is shown at the
+    bottom of the sidebar.</p>
+  <div class="form-actions">
+    <a class="btn" href="{% url 'admin_ui:collection_list' %}">Back to Collections</a>
+  </div>
+</div>
+{% endblock %}

@@ -2,15 +2,11 @@
 {% load humanize %}
 {% block title %}Bulk bind · {{ collection.name }}{% endblock %}
 {% block body %}
-<div class="page-header">
-  <div class="titles">
-    <span class="eyebrow"><a href="{% url 'admin_ui:collection_detail' collection.pk %}">{{ collection.name }}</a></span>
-    <h1>Bulk bind</h1>
-    <p class="sub">Upload a CSV to bind elements to many ARKs at once.</p>
-  </div>
-</div>
+{% include "admin_ui/_collection_header.html" %}
+<h2>Bulk bind</h2>
+<p class="sub">Upload a CSV to bind elements to many ARKs at once.</p>
 
-<form method="post" enctype="multipart/form-data" class="card">{% csrf_token %}
+<form method="post" enctype="multipart/form-data" class="card" data-busy="Uploading…">{% csrf_token %}
   <div class="field"><label for="file">CSV file</label>
     <input id="file" name="file" type="file" accept=".csv,text/csv" required></div>
   <div class="field">
@@ -22,6 +18,11 @@
       Remove existing elements from these ARKs first</label>
   </div>
   <div class="form-actions"><button type="submit">Upload and run</button></div>
+  {# Revealed by app.js on submit: a large file takes a visible moment to arrive. #}
+  <div class="busy" hidden>
+    <progress class="job-progress" aria-label="Uploading"></progress>
+    <p class="progress-label">Uploading the file… the job page opens once it has arrived.</p>
+  </div>
 </form>
 
 <div class="card">

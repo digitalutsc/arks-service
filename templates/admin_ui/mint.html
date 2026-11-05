@@ -2,21 +2,22 @@
 {% load humanize %}
 {% block title %}Mint · {{ collection.name }}{% endblock %}
 {% block body %}
-<div class="page-header">
-  <div class="titles">
-    <span class="eyebrow"><a href="{% url 'admin_ui:collection_detail' collection.pk %}">{{ collection.name }}</a></span>
-    <h1>Mint ARKs</h1>
-    <p class="sub"><code>{{ collection.firstpart }}</code> · template <code>{{ collection.template }}</code></p>
-  </div>
-</div>
+{% include "admin_ui/_collection_header.html" %}
+<h2>Mint ARKs</h2>
+<p class="sub">New identifiers in <code>{{ collection.firstpart }}</code>. They do not resolve until something is bound to them.</p>
 
-<form method="post" class="card">{% csrf_token %}
+<form method="post" class="card" data-busy="Minting…">{% csrf_token %}
   <div class="form-grid">
     <div class="field"><label for="count">How many</label>
       <input id="count" name="count" type="number" min="1"{% if mint_limit %} max="{{ mint_limit }}"{% endif %} value="1" required autofocus>
       {% if mint_limit %}<p class="hint">Up to {{ mint_limit|intcomma }} per request.</p>{% endif %}</div>
   </div>
   <div class="form-actions"><button type="submit">Mint</button></div>
+  {# Revealed by app.js when the form is submitted; the mint runs inside this request. #}
+  <div class="busy" hidden>
+    <progress class="job-progress" aria-label="Minting"></progress>
+    <p class="progress-label">Minting… this takes a moment. The new ARKs appear when it is done.</p>
+  </div>
 </form>
 
 {% if minted %}

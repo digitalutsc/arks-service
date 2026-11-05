@@ -12,6 +12,7 @@ urlpatterns = [
     path("", views.collection_list, name="collection_list"),
     path("collections/new/", views.collection_create, name="collection_create"),
     path("collections/<int:pk>/", views.collection_detail, name="collection_detail"),
+    path("collections/<int:pk>/activity/", views.collection_activity, name="collection_activity"),
     path("collections/<int:pk>/mint/", views.mint_view, name="mint"),
     path("collections/<int:pk>/mint/template.csv", views.mint_template, name="mint_template"),
     path("collections/<int:pk>/bulk-bind/", views.bulk_bind, name="bulk_bind"),
@@ -22,4 +23,6 @@ urlpatterns = [
     path("jobs/<int:pk>/", views.job_detail, name="job_detail"),
     path("jobs/<int:pk>/results.csv", views.job_results, name="job_results"),
     path("users/", views.user_list, name="user_list"),
+    path("users/new/", views.user_create, name="user_create"),
+    path("users/<int:pk>/delete/", views.user_delete, name="user_delete"),
 ]

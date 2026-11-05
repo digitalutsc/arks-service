@@ -7,6 +7,7 @@ silently resets under the reader. The value comes from a query string, so junk
 must fall back to the default order rather than reach ``order_by()``.
 """
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -57,6 +58,8 @@ def shown(response):
 
 
 def browse(client, **params):
+    # Browsing is per collection; every test here has exactly one.
+    params.setdefault("collection", Collection.objects.order_by("pk").first().pk)
     return client.get(reverse("admin_ui:ark_list"), params)
 
 
@@ -96,7 +99,13 @@ def test_sorted_rows_still_show_their_own_redirect_totals(viewer, arks):
 
 
 def headers(response):
-    return {h["label"]: h for h in response.context["headers"]}
+    # Every header link also carries the collection the list is scoped to;
+    # these tests are about the sort, so that parameter is set aside here.
+    found = {}
+    for h in response.context["headers"]:
+        rest = [p for p in h["query"].split("&") if not p.startswith("collection=")]
+        found[h["label"]] = {**h, "query": "&".join(rest)}
+    return found
 
 
 def test_an_unsorted_table_offers_each_columns_natural_first_direction(viewer, arks):
@@ -148,7 +157,8 @@ def test_the_pager_keeps_the_sort(viewer, arks, monkeypatch):
     monkeypatch.setattr(views, "PAGE_SIZE", 1)
     first = browse(viewer, sort="-redirects")
     assert shown(first) == ["utsc0"]
-    assert 'href="?sort=-redirects&page=2"' in first.content.decode()
+    next_link = re.search(r'href="\?([^"]*)">Next</a>', first.content.decode()).group(1)
+    assert "sort=-redirects" in next_link and "page=2" in next_link
     assert shown(browse(viewer, sort="-redirects", page="2")) == ["utsc2"]
 
 
@@ -165,12 +175,18 @@ def test_the_default_order_leaves_the_form_field_empty(viewer, arks):
 
 def test_an_htmx_swap_updates_the_forms_copy_of_the_sort(viewer, arks):
     # The form is outside #results, so the partial reaches it out of band.
-    response = viewer.get(reverse("admin_ui:ark_list"), {"sort": "-minted"}, HTTP_HX_REQUEST="true")
+    response = viewer.get(
+        reverse("admin_ui:ark_list"),
+        {"collection": arks[0].collection_id, "sort": "-minted"},
+        HTTP_HX_REQUEST="true",
+    )
     body = response.content.decode()
     assert 'id="sort-field" name="sort" value="-minted" hx-swap-oob="true"' in body
     assert "<form" not in body
 
 
 def test_export_is_not_upset_by_a_sort_parameter(viewer, arks):
-    response = viewer.get(reverse("admin_ui:export"), {"sort": "-redirects"})
+    response = viewer.get(
+        reverse("admin_ui:export"), {"collection": arks[0].collection_id, "sort": "-redirects"}
+    )
     assert response.status_code == 200
