@@ -98,8 +98,9 @@ make rebuild     # clean, then install
 
 `make up` generates a secret key and an administrator password, fetches the
 application if there is no checkout, builds the image if there is none, brings
-up `web` (gunicorn), `worker` (celery), `broker` (Valkey) and `db` (PostgreSQL 16), waits
-until `/healthz` answers, creates the administrator, and prints the login.
+up `web` (gunicorn), `worker` (celery, bulk binds), `scheduler` (celery beat and
+the periodic queue), `broker` (Valkey) and `db` (PostgreSQL 16), waits until
+`/healthz` answers, creates the administrator, and prints the login.
 Re-running it changes nothing that is already set, so it is also the everyday
 way to start the stack.
 
@@ -158,9 +159,10 @@ database must exist already; `web` runs `migrate` against it on every start.
 Everything else (the caveats about reaching the servers from a container,
 `make clean`, and `make import-dump` writing into that database) is in the
 stack's README under "Production: an external MySQL server" and "Production:
-an external Valkey or Redis server". Putting the stack behind Apache with
-TLS is planned in `DOCKER-DEPLOY.md` at the workspace root and not yet part of
-the stack.
+an external Valkey or Redis server". Behind Apache with TLS, add
+`docker-compose.proxy.yml` (loopback-only port, secure cookies, trusted
+`X-Forwarded-For`); the stack's README section "Behind a reverse proxy with
+TLS" has the vhost shape.
 
 ---
 
@@ -285,6 +287,16 @@ Generate the key with:
 ```bash
 python3 -c "import secrets; print(secrets.token_urlsafe(64))"
 ```
+
+Optional, for a branded landing page and error pages:
+
+```ini
+FALLBACK_PAGES_DIR=/srv/ark/fallback
+```
+
+Copy `docs/fallback-example/` there and edit it; `ProtectSystem=strict` leaves
+the directory readable, which is all the service needs. Its README has the
+rules; a superuser can preview the pages from the Users page.
 
 > **systemd `EnvironmentFile` is not dotenv.** systemd keeps everything after
 > the `=`, including inline `#` comments and trailing spaces, where python-dotenv
@@ -617,6 +629,7 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 | `BULK_BIND_RETENTION_DAYS` | `0` | Delete finished bulk-bind jobs and their files after this many days, daily. `0` keeps them forever; `manage.py prune_bulk_jobs --older-than N [--dry-run]` does it by hand |
 | `CELERY_BEAT_SCHEDULE_FILENAME` | `/tmp/celerybeat-schedule` | Beat's state file; must be writable by the scheduler |
 | `BULK_BIND_MAX_ROWS` | `100000` | Largest upload |
+| `FALLBACK_PAGES_DIR` | empty | A directory holding operator-written `index.html`, `403.html`, `404.html`, `500.html` and their assets, served in place of the built-in landing page and Django's plain error pages (`resolver/fallback.py`). Empty means off. Starting kit: `docs/fallback-example/` |
 | `DATA_UPLOAD_MAX_MEMORY_SIZE` | `20971520` | 20 MB |
 | `MANIFEST_FETCH_TIMEOUT` | `5` | Seconds. Short by design: the request holds a worker while fetching someone else's server |
 | `MANIFEST_TOTAL_TIMEOUT` | `10` | Seconds for the whole `/manifest` fetch; `MANIFEST_FETCH_TIMEOUT` bounds each read |
@@ -635,9 +648,10 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 
 - **Uniqueness is `(naan, identifier)`**, not `(collection, identifier)`.
   Stricter, and it is what makes resolution unambiguous.
-- **`bindings` is indexed on `name` only.** `value` is unbounded `TEXT`, which
-  MySQL cannot index without a prefix length, so value search is a scan —
-  about a quarter of a second over 418k rows at current scale.
+- **`bindings` is indexed on `(name, value_prefix)`**, a generated column holding
+  the first characters of the value, because `value` is unbounded `TEXT`, which
+  MySQL cannot index without a prefix length. Starts-with search and exact-value
+  lookups use that index; *contains* search is still a scan over every value.
 - **NAA lives on the collection**, mirroring the legacy `:/naa` row, rather than
   on the organisation. Where several collections share a NAAN, `/ark:/<naan>/`
   answers with the lowest collection name, deterministically.

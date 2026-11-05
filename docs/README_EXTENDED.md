@@ -127,11 +127,14 @@ repository beside this one, not here. The development shape:
 flowchart LR
     B["Browser :8000"] --> W["web<br/>gunicorn + WhiteNoise"]
     W --> P[("db<br/>PostgreSQL 16")]
-    W --> R[("broker<br/>Valkey, or Redis")]
-    R --> K["worker<br/>celery"]
+    W --> R[("broker<br/>Valkey, or Redis<br/>DB 0 queues · DB 1 cache")]
+    R --> K["worker<br/>celery, queue celery<br/>bulk binds"]
+    R --> C["scheduler<br/>celery beat + queue periodic<br/>counter flush, stats, reaper"]
     K --> P
+    C --> P
     W -.-> V[("media volume")]
     K -.-> V
+    W -.-> F[("FALLBACK_DIR<br/>read-only, optional")]
 ```
 
 ---
@@ -327,7 +330,40 @@ flowchart LR
 
 Roles are Django groups. `@require_role(VIEWER|EDITOR|ADMIN)` guards each view,
 and POST handlers inside a Viewer-readable view re-check before writing — so
-posting straight to a URL is refused, not just hidden from the menu.
+posting straight to a URL is refused, not just hidden from the menu. A refused
+staff request renders a small page inside the staff shell with the exact
+message ("This needs the Editor role; yours is Viewer."), not the public 403.
+
+**Shape of the interface (since 2026-11-05).** The sidebar has two entries,
+Collections and (for Admins) Users. ARKs are browsed **per collection**: every
+page inside a collection shares one header with a tab row — Overview, Browse
+ARKs, and for Editors Mint and Bulk bind — and `/admin/arks/` without a
+collection sends the visitor back to Collections. Export sits beside the thing
+it exports ("Export these 1,204 as CSV" on the list, "Export all 97,596 as CSV"
+on the Overview). Under the list header an **activity strip** says when a bulk
+bind is changing the rows underneath you, with its live progress, and otherwise
+what the last one did.
+
+**Progress.** The bulk-bind job page polls every 2 s and shows a `<progress>`
+bar fed from one cache key the worker writes (`jobs/progress.py`): reading the
+file, checking rows, minting, writing bindings. The key lives in the cache, not
+the job row, because the row's transaction is still open while the work runs.
+Minting stays inside the web request (a capped mint is a second or two); its
+form shows a busy state while the browser waits. Each result row of a finished
+job says what happened to its elements: `bound` ("3 created, 1 replaced,
+2 unchanged"), `unchanged`, `minted`, or `ok` with "Not applied: another row in
+the file failed."
+
+**Accounts.** A superuser adds and deletes accounts on the Users page and sees a
+read-only card of the configured fallback pages; the Admin role changes other
+people's roles; nobody changes their own, and a superuser's row has no role
+control because groups do not affect a superuser.
+
+**Fallback pages.** The landing page at `/` and the 403/404/500 pages can be
+replaced by files in `FALLBACK_PAGES_DIR` on the server (`resolver/fallback.py`),
+served as written with the real status code; `index.html` may use three
+placeholders. Files rather than a GUI because the pages are public on the
+resolver's hostname and must work when the database does not.
 
 ---
 
@@ -344,9 +380,9 @@ flowchart TD
     B -->|yes| C["SELECT … FOR UPDATE<br/>on the collection row"]
     C --> D{"template order"}
     D -->|sequential| E["highest recorded<br/>sequence + 1"]
-    D -->|random| F{"space > half full?"}
-    F -->|no| G["CSPRNG draw,<br/>retry on collision"]
-    F -->|yes| H["enumerate what is free,<br/>pick from that"]
+    D -->|random| F["CSPRNG draws, checked against<br/>the database 1,000 at a time,<br/>up to 8 rounds"]
+    F -->|still short| H["sweep the space in<br/>1,000-id chunks for free ids"]
+    F -->|enough| G["chosen"]
     E --> I["n2xdig(n, mask)<br/>+ firstpart<br/>+ check character"]
     G --> I
     H --> I
@@ -506,10 +542,12 @@ still failing when a single binding value is changed.
 | XSS | Django autoescaping; no `\|safe` anywhere. The purge confirmation passes the ARK through a `data-` attribute rather than interpolating it into a JS string |
 | CSRF | Django middleware; tokens on all POST forms |
 | SSRF | `/manifest` is the only server-side fetch. `http`/`https` only; private, loopback, link-local, reserved and multicast addresses refused; redirects refused; oversized bodies rejected rather than silently truncated |
-| Misconfiguration | Boot guards refuse to start without a real `SECRET_KEY` and `DATABASE_URL` when `DEBUG` is false |
+| Misconfiguration | Boot guards refuse to start without a real `SECRET_KEY`, a non-SQLite `DATABASE_URL` and a `REDIS_URL` when `DEBUG` is false |
+| Account administration | Adding and deleting accounts is for superusers only, on the Users page; nobody changes their own role; a superuser's row has no role control. Superusers are created only on the server |
+| Operator-supplied pages | Landing and error pages come from files in `FALLBACK_PAGES_DIR`, never from the web; served as written with the real status; assets only by bare filename inside the directory; inline styles allowed on those pages only, scripts never |
 | Transport | Apache terminates TLS; secure cookies and `SECURE_PROXY_SSL_HEADER` when `DEBUG` is false; HSTS available, off until TLS is proven |
 
-The public surface is exactly one view. Everything else is behind a login.
+The public surface is the resolver, the landing page, `/healthz` and, when configured, the fallback pages and their assets. Everything else is behind a login.
 
 ---
 
@@ -538,7 +576,7 @@ concurrent minting and the resolution-counter race need real row locking.
 
 ## Testing strategy
 
-Roughly 2,900 tests. Three ideas do most of the work.
+About 3,450 tests (run `pytest --co -q | tail -1` for today's number). Three ideas do most of the work.
 
 **1. Conformance vectors.** `tests/fixtures/generate_vectors.php` runs the
 *legacy PHP* and dumps ~1,450 expected values for template parsing, base
@@ -584,3 +622,8 @@ DATABASE_URL=mysql://root:root@127.0.0.1:3306/ark ./.venv/bin/python -m pytest -
 | **Portable SQL subset** | Production is MySQL and dev is PostgreSQL; CI on both is what actually enforces it |
 | **Roles, not one superuser** | Legacy had a single all-powerful account. Most staff work is minting and binding, which does not need to imply dropping collections |
 | **ARKs are never reissued** | Purging removes elements and keeps the identifier, so an ARK can never come to mean something else |
+| **ARKs are browsed per collection** | A list of every ARK in the service confused people and scaled badly; a collection header with tabs makes the four views of one collection one place |
+| **Minting stays synchronous** | A capped mint is seconds long; a background job would add a model, a second job kind and an asynchronous result page for a bar nobody would read. Real progress is built where the work is minutes long: bulk bind |
+| **Progress in the cache, not the job row** | The upload is applied in one transaction, so a progress column would be invisible until commit; a cache key is visible at once and expires on its own |
+| **Fallback pages are files named in `.env`** | They are shown to the anonymous public on the resolver's hostname and must render when the database is down; both argue for the server's credential and a file read over a GUI |
+| **Account administration is for superusers** | Adding and deleting people is rarer and more consequential than changing a role; the Admin role keeps the everyday part |

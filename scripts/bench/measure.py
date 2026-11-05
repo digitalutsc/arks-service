@@ -198,7 +198,7 @@ def _measure_flush(collection, pairs: int) -> None:
 
 
 def _report_sizes() -> None:
-    """Table and index sizes, MySQL only: what SCALE.md's storage figures come from."""
+    """Table and index sizes, MySQL only: what docs/SCALE.md's storage figures come from."""
     if connection.vendor != "mysql":
         return
     with connection.cursor() as cursor:

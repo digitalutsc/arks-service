@@ -46,17 +46,20 @@ alias ark='sudo -u www-data /var/www/arkservice/.venv/bin/python /var/www/arkser
 
 ## Who can do what
 
-| | Admin | Editor | Viewer |
-|---|:--:|:--:|:--:|
-| Search, browse, export | ✅ | ✅ | ✅ |
-| Mint | ✅ | ✅ | — |
-| Bind / unbind, bulk bind | ✅ | ✅ | — |
-| Create / edit collections | ✅ | — | — |
-| Purge all elements from an ARK | ✅ | — | — |
-| Manage users and roles | ✅ | — | — |
+| | Superuser | Admin | Editor | Viewer |
+|---|:--:|:--:|:--:|:--:|
+| Browse a collection's ARKs, search, export | ✅ | ✅ | ✅ | ✅ |
+| Mint | ✅ | ✅ | ✅ | — |
+| Bind / unbind, bulk bind | ✅ | ✅ | ✅ | — |
+| Create / edit collections | ✅ | ✅ | — | — |
+| Purge all elements from an ARK | ✅ | ✅ | — | — |
+| Change other people's roles | ✅ | ✅ | — | — |
+| Add and delete accounts | ✅ | — | — | — |
 
-A user with **no** role can sign in and do nothing — accounts are inert until an
-Admin assigns a role at `/admin/users/`. A Django superuser is always Admin.
+A user with **no** role can sign in and do nothing — accounts are inert until
+someone assigns a role at `/admin/users/`. A Django superuser (`createsuperuser`)
+is always Admin, whatever groups it is in, so its row has no role control; and
+nobody changes their own role from the page, so nobody locks themselves out.
 
 ---
 
@@ -111,8 +114,9 @@ manage.py mint utsc 500                              # print the new ARKs
 manage.py mint utsc 500 --template /tmp/batch.csv    # ...and write a fill-in CSV
 ```
 
-**Staff interface** — Collections → *(collection)* → **Mint**. Enter a count,
-then download the pre-filled template from the result page.
+**Staff interface** — Collections → *(collection)* → **Mint** tab. Enter a count,
+then download the pre-filled template from the result page. The mint runs while
+the page waits (the button reads "Minting…"); a capped batch takes a second or two.
 
 The collection can be named by prefix or by name; `utsc` and
 `"UTSC Digital Collections"` both work.
@@ -203,9 +207,11 @@ correctly too, but UTF-8 avoids any doubt.
 manage.py bulk_bind utsc /tmp/batch.csv --results /tmp/results.csv
 ```
 
-**Staff interface** — Collections → *(collection)* → **Bulk bind**. The job runs
-in the background; the page refreshes itself, and you can close the tab and come
-back to it.
+**Staff interface** — Collections → *(collection)* → **Bulk bind** tab. The job
+runs in the background; the job page refreshes itself with a progress bar
+(reading the file, checking rows, minting, writing bindings), and you can close
+the tab and come back to it. The collection's **Browse ARKs** tab shows a line
+while a bulk bind is running there, and afterwards says what the last one did.
 
 ### If something is wrong with the file
 
@@ -215,16 +221,26 @@ and you get a per-row results CSV:
 
 ```csv
 row,ark_id,status,message
-2,61220/utsc0,ok,
+2,61220/utsc0,ok,Not applied: another row in the file failed.
 3,61220/nope,error,61220/nope is not an ARK in this collection. Mint it first.
 ```
 
 Fix those rows and upload the whole file again.
 
+When the file succeeds, every row says what happened to its elements:
+
+| Status | Meaning | Message |
+|---|---|---|
+| `bound` | at least one element was created or replaced | `3 created, 1 replaced, 2 unchanged` (with `--purge-first`: `6 created (previous elements removed)`) |
+| `unchanged` | every non-empty cell already held that value | `6 unchanged`, or `nothing to bind` |
+| `minted` | blank `Ark_ID`; a new ARK was minted and its cells bound | `minted; 6 created` |
+| `ok` | the row was valid but **nothing was applied**, because another row failed | `Not applied: another row in the file failed.` |
+| `error` | the row itself was rejected | the reason |
+
 In the staff interface the job page (*Recent uploads* → **Details**) lists the
 same rows under the same four columns, fifty to a page, with a count for *All*,
-*Errors*, *Minted* and *OK*. A job with failures opens on *Errors*, so the rows
-to fix are in front of you however long the file was. The search box above the
+*Errors*, *Minted*, *Bound*, *Unchanged* and *Not applied*. A job with failures
+opens on *Errors*, so the rows to fix are in front of you however long the file was. The search box above the
 table finds rows by ARK or by message, ignoring case; the counts on the filters
 follow the search, so they show which status the matches are under. The table is
 read from the results file itself, so it always matches the download.
@@ -292,9 +308,12 @@ removing from a variant brings you back to its row.
 Search reaches **any element name**, and free text searches identifiers and
 every bound value.
 
-**Staff interface** — ARKs. Filters: free text, collection, element name, exact
-value, bound/unbound, minimum redirects, minted-after / minted-before. Any
-result can be exported with *Export these as CSV*.
+**Staff interface** — Collections → *(collection)* → **Browse ARKs** tab. ARKs
+are browsed one collection at a time; `/admin/arks/` without a collection sends
+you back to Collections. Filters: free text, element name, exact value,
+bound/unbound, minimum redirects, minted-after / minted-before. The result line
+offers *Export these N as CSV* for the rows that match; the collection's
+*Overview* tab offers *Export all N as CSV*.
 
 Free text has two modes, chosen with *Match*:
 
@@ -466,11 +485,27 @@ Accounts are created on the server; roles are assigned in the UI.
 manage.py createsuperuser          # always an Admin
 ```
 
-**Staff interface** — Users (Admin only). Pick a role per account, or *No role*
-to suspend someone's access without deleting them.
+**Staff interface** — Users (Admin and superusers). Pick a role per account, or
+*No role* to suspend someone's access without deleting them. You cannot change
+your own role, and a superuser's row has no role control (a superuser is always
+Admin).
+
+A **superuser** can also add accounts on the same page (username, optional
+email and name, a password that passes Django's validators, an initial role)
+and delete them. Deleting is final; the person's ARKs and uploads are kept and
+show no owner afterwards. Superusers themselves are only ever created on the
+server with `createsuperuser`.
 
 Legacy staff accounts are **not** migrated — they used a reversible password
 scheme that had to go. Create accounts fresh.
+
+**Fallback pages** (superusers). The landing page at `/`, the 404 for an unknown
+or unbound ARK and the 500 page can be replaced by files in a directory on the
+server named by `FALLBACK_PAGES_DIR` (`docs/fallback-example/` is a starting
+kit, `docs/fallback-example/` from the repository root). They are edited on the server, not here; the bottom of the Users page
+shows which are in place and previews each. Signed-in staff who open a page
+above their role see the staff interface's own message, not the public
+`403.html`.
 
 ---
 
@@ -495,7 +530,7 @@ lists the few rows that could not be carried over exactly, and `resolve_diff`
 exits non-zero until every path that is not in it matches.
 
 To rehearse the whole thing in Docker instead, see
-[`MIGRATION.md` in `docker-arks-service`](https://github.com/digitalutsc/docker-arks-service/blob/main/MIGRATION.md).
+[`MIGRATION.md` in `docker-arks-service`](https://github.com/digitalutsc/docker-arks-service/blob/main/docs/MIGRATION.md).
 
 ---
 
@@ -513,7 +548,7 @@ character.
 | `.sdd` | sequential 2-digit numbers | 100 |
 | `.rddd` | random 3-digit numbers | 1,000 |
 | `.rdddd` | random 4-digit numbers | 10,000 |
-| `.rdedk` | random mixed digits plus a check character | 8,410 |
+| `.rdedk` | random mixed digits plus a check character | 2,900 |
 | `.reedeedk` | random, 6 mixed characters plus a check character | 70,728,100 |
 
 - **`z`** sequential, unlimited · **`s`** sequential, fixed width · **`r`** random
@@ -531,7 +566,9 @@ than silently resolving to the wrong thing; they cost nothing but length.
 is neither fails the job with a message rather than corrupting values.
 
 **Required column** — `Ark_ID` (case-insensitive). Every other column becomes an
-element named after the column header, upper-cased.
+element named after the column header, upper-cased. The per-row results file
+(`--results`, or the job page) has `row,ark_id,status,message` with the statuses
+listed under [If something is wrong with the file](#if-something-is-wrong-with-the-file).
 
 **Cells**
 

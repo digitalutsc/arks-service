@@ -10,11 +10,13 @@ anything is switched over.
 
 | | |
 |---|---|
-| [DEPLOY.md](DEPLOY.md) | Local, Docker, CI and production deployment; environment variables; troubleshooting |
-| [MIGRATION.md](MIGRATION.md) | Moving the legacy service's data here: what maps to what, the review report, the cutover runbook |
-| [USAGES.md](USAGES.md) | Every task, in the staff interface and on the command line |
-| [README_EXTENDED.md](README_EXTENDED.md) | Architecture, components, data model and diagrams of every request path |
-| [SCALE.md](SCALE.md) | Measured performance and capacity, what grows and what does not |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Local, Docker, CI and production deployment; environment variables; troubleshooting |
+| [docs/MIGRATION.md](docs/MIGRATION.md) | Moving the legacy service's data here: what maps to what, the review report, the cutover runbook |
+| [docs/USAGES.md](docs/USAGES.md) | Every task, in the staff interface and on the command line |
+| [docs/README_EXTENDED.md](docs/README_EXTENDED.md) | Architecture, components, data model and diagrams of every request path |
+| [docs/GUIDES.md](docs/GUIDES.md) | The code study guide: every package, model, flow and setting, with diagrams |
+| [docs/fallback-example/](docs/fallback-example/) | Starting kit for operator-supplied landing and error pages (`FALLBACK_PAGES_DIR`) |
+| [docs/SCALE.md](docs/SCALE.md) | Measured performance and capacity, what grows and what does not |
 | [deploy/](deploy/) | systemd units and the Apache vhost |
 | [../docker-arks-service/](../docker-arks-service/) | The Docker stack for development and demos, driven by `make` |
 
@@ -46,7 +48,7 @@ fetches a copy of this repository for itself. After changing code here,
 That repository holds every Docker file; this one holds none. In production
 the same stack can run against an existing MySQL server instead of its own
 database container, or the service can run bare on the VM without Docker
-([DEPLOY.md](DEPLOY.md)). Either way the broker and cache is Valkey by default, or Redis.
+([docs/DEPLOY.md](docs/DEPLOY.md)). Either way the broker and cache is Valkey by default, or Redis.
 
 ## How it fits together
 
@@ -76,8 +78,8 @@ Eight concurrent minters cannot produce a duplicate — that is a test, not a ho
 inflections, `/manifest` JSON proxying, per-qualifier redirect counters, and the
 NAA response for a bare NAAN.
 
-**Staff interface.** A sidebar console: dashboard, collections, ARK search,
-users. Every ARK is shown with the URL it actually resolves at *in the
+**Staff interface.** A sidebar console: dashboard, collections (each with its own ARK
+browser), users. Every ARK is shown with the URL it actually resolves at *in the
 environment you are looking at* — derived from the request, so Docker shows
 `http://localhost:8000/ark:/…` and production shows the real domain. Override
 with `ARK_PUBLIC_BASE_URL` only when staff reach the admin on a different
@@ -88,7 +90,7 @@ test enforces it.
 
 **No HTTP API.** The admin UI talks to the ORM directly; scripts use management
 commands. Legacy `admin/rest.php` goes away at cutover — check your access logs
-for callers first ([DEPLOY.md](DEPLOY.md#step-0--find-out-who-calls-the-old-rest-endpoint)).
+for callers first ([docs/DEPLOY.md](docs/DEPLOY.md#step-0--find-out-who-calls-the-old-rest-endpoint)).
 
 ## Command line
 

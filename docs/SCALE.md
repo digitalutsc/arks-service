@@ -183,8 +183,9 @@ Not reachable on one VM without operational changes:
   past ~500M rows.
 - **Media.** Uploaded CSVs and results are on local disk, which blocks running
   a second application host. Move to shared or object storage first.
-- **Retention.** `BulkBindJob` rows and their files are kept forever. Add a
-  retention job before this matters.
+- **Retention.** `BULK_BIND_RETENTION_DAYS` (0 = keep forever) prunes finished
+  bulk-bind jobs and their files daily from the scheduler; `prune_bulk_jobs
+  --older-than N` does it by hand.
 
 ---
 

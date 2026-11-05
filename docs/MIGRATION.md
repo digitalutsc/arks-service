@@ -5,7 +5,7 @@ metadata, their redirect counts and the dates they were minted. Nothing is ever
 written back to legacy, so the migration can be rehearsed as often as you like
 and rolled back by putting the old vhost back.
 
-- **Rehearsing it in Docker:** [`MIGRATION.md` in `docker-arks-service`](https://github.com/digitalutsc/docker-arks-service/blob/main/MIGRATION.md)
+- **Rehearsing it in Docker:** [`MIGRATION.md` in `docker-arks-service`](https://github.com/digitalutsc/docker-arks-service/blob/main/docs/MIGRATION.md)
 - **The rest of the cutover** (vhost, systemd, rollback): [DEPLOY.md](DEPLOY.md#cutover-from-the-legacy-service)
 - **Production in Docker:** the commands below are written for a bare install
   (`.venv/bin/python manage.py …`). When production runs the
