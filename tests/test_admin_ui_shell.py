@@ -212,3 +212,26 @@ def test_large_counts_are_written_with_thousands_separators(admin_client, collec
     body = admin_client.get(reverse("admin_ui:collection_list")).content.decode()
     assert "1,000" in body
     assert ">1000<" not in body
+
+
+def test_solid_danger_buttons_keep_readable_text():
+    # A later rule once set every .danger button's text to the danger red
+    # while the solid style kept its red fill: red text on a red button.
+    # Red text belongs only to the outlined variants (secondary/ghost).
+    from pathlib import Path
+
+    css = (Path(__file__).resolve().parent.parent / "static" / "css" / "app.css").read_text()
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+        solid = [
+            sel.strip()
+            for sel in selectors.split(",")
+            if re.search(r"\.danger\b", sel)
+            and not re.search(r"\.(secondary|ghost)\b", sel)
+            and "card" not in sel
+        ]
+        if solid:
+            color = re.search(r"(?<![-\w])color\s*:\s*([^;]+)", body)
+            assert not color or "--bad" not in color.group(1), (
+                f"{', '.join(solid)} sets a red text colour on a red button"
+            )

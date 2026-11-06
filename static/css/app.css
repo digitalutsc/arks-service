@@ -557,8 +557,16 @@ progress.job-progress:indeterminate::-moz-progress-bar { background: transparent
 .progress-card .muted { margin-bottom: 0; }
 form .busy { margin-top: .9rem; }
 form .busy .progress-label { font-size: .9rem; color: var(--muted); font-weight: 400; }
-button.danger, .btn.danger { color: var(--bad); border-color: #eec9c6; }
-button.danger:hover, .btn.danger:hover { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+/* Outlined danger ("secondary danger", e.g. Delete user): red text on a light
+   ground. Scoped to the outlined variants: applied to every .danger it turned
+   the solid red buttons' text red on red. */
+button.secondary.danger, .btn.secondary.danger, button.ghost.danger, .btn.ghost.danger {
+  background: var(--panel); color: var(--bad); border-color: #eec9c6;
+}
+button.secondary.danger:hover, .btn.secondary.danger:hover,
+button.ghost.danger:hover, .btn.ghost.danger:hover {
+  background: var(--bad-soft); border-color: var(--bad); color: var(--bad);
+}
 
 /* --- narrow screens ------------------------------------------------------ */
 @media (max-width: 880px) {
