@@ -79,6 +79,14 @@ manage.py createcollection "UTSC Digital Collections" \
     --term medium
 ```
 
+Two optional settings decide how the collection's ARKs resolve. The defaults are
+the legacy service's behaviour, so most collections never set them:
+
+| Flag (form field) | Default | Meaning |
+|---|---|---|
+| `--redirect-elements` (*Redirect elements*) | `URL,WHERE?` | Elements holding an ARK's redirect URL, in order. The first one bound with a value wins, at whatever qualifier is requested |
+| `--proxied-suffixes` (*Proxied suffixes*) | `manifest` | Final path segments answered with the target's JSON instead of a redirect. `''` for none. One plain segment each: no `/ . ? # % -`, not starting with a digit or `_` |
+
 It prints back what it made, including how many identifiers the template can
 produce:
 
@@ -88,6 +96,8 @@ Created collection 'UTSC Digital Collections'
   firstpart 61220/utsc
   template .zd (mask zd, sequential)
   capacity unlimited
+  redirects from URL, WHERE?
+  proxied suffixes manifest
 ```
 
 **Staff interface** — Collections → *New collection* (Admin only).
@@ -98,7 +108,8 @@ production uses.
 
 > **The prefix, NAAN and template cannot be changed once ARKs exist.** Changing
 > them would break identifiers already in circulation. Only the name and NAA are
-> editable afterwards.
+> editable afterwards, plus the two resolution settings, behind a preview (see
+> [Resolve an ARK](#7-resolve-an-ark)).
 
 ---
 
@@ -301,6 +312,16 @@ removing from a variant brings you back to its row.
 > resolves. This matches the legacy service exactly, and existing ARKs depend on
 > it.
 
+> **Spelling is forgiven, as the ARK spec asks.** `/ARK:/61220/utsc1`,
+> `/ark:/61220/utsc-1` and `/ark:/61220/utsc1.` (a citation pasted with its full
+> stop) all resolve to `utsc1`; `/ark:/61220/utsc1/page-2` reaches `/page2`.
+> A variant of the object, `/ark:/61220/utsc1.image.png`, resolves to what is
+> bound at `.image.png` on `utsc1`.
+> The request as written is always tried first. In return, a qualifier or a new
+> collection prefix may not contain a hyphen: N2T and arks.org remove hyphens
+> before forwarding a request to us, so it could never be resolved through them.
+> The ARK page, `bind` and bulk bind all refuse one with that explanation.
+
 ---
 
 ## 6. Search and export
@@ -365,12 +386,13 @@ This is what the public does. Nothing needs to be signed in.
 
 | Request | Result |
 |---|---|
-| `/ark:/61220/utsc1` | 302 to the `URL` binding (or `WHERE?` if there is no `URL`) |
+| `/ark:/61220/utsc1` | 302 to the `URL` binding (or `WHERE?` if there is no `URL`): the collection's redirect elements, these by default |
 | `/ark:/61220/utsc1/page1` | 302 to that part's own URL |
 | `/ark:/61220/utsc1?` | brief metadata, `erc:` block, `text/plain` |
 | `/ark:/61220/utsc1??` | brief plus `erc-support:` (elements whose name contains `??`) |
 | `/ark:/61220/utsc1?info` | same as `??` |
-| `/ark:/61220/utsc1/manifest` | fetches the target and returns its JSON (IIIF pass-through) |
+| `/ark:/61220/utsc1/manifest` | fetches the URL bound at `/manifest` (a pre-generated IIIF manifest), else the object's own URL, and returns its JSON. `manifest` is the default proxied suffix |
+| `/ark:/61220/utsc1/manifest?` | the metadata of the `/manifest` qualifier (no fetch) |
 | `/ark:/61220/` | the collection's Name Assigning Authority |
 | anything unbound or unknown | 404 |
 
@@ -384,7 +406,21 @@ Every redirect increments a per-(ARK, qualifier) counter, shown in the staff
 interface. Metadata and manifest requests are **not** counted as redirects.
 
 `/manifest` will only fetch `http`/`https` targets on public addresses; a
-`file://` or internal-network URL is refused with a 502.
+`file://` or internal-network URL is refused with a 502. It does not follow
+redirects, so bind the final manifest URL.
+
+### Changing a collection's resolution settings
+
+Collection page → *Resolution settings* (Admin only). *Review change…* shows,
+without saving anything, the settings now and after, how many bindings carry
+each redirect element and how many ARKs bind each suffix, and a warning for
+every change that alters what existing ARKs answer (an element bound nowhere,
+an element in use being dropped, a reordered list, a suffix in use being
+added or removed). Tick the box and *Confirm change* to save. It applies from the
+next request. The page shows when and by whom the settings were last changed,
+and the app log keeps every change (`WARNING core.services collection …: redirect
+elements A -> B; proxied suffixes C -> D by <user>`). There is no command-line
+equivalent on purpose: the preview is the safeguard.
 
 ---
 

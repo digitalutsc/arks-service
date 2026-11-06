@@ -47,6 +47,12 @@ def get_ark(reference: str):
     if parsed is None or not parsed.identifier:
         raise CommandError(f"{reference!r} is not a valid ARK.")
     ark = Ark.objects.filter(naan=parsed.naan, identifier=parsed.identifier).first()
+    if ark is None and (variant := parsed.object_variant()) is not None:
+        # 'utsc1.pdf' with no ARK of that name: the variant '.pdf' of utsc1,
+        # which is how export and the ARK page write it.
+        ark = Ark.objects.filter(naan=variant.naan, identifier=variant.identifier).first()
+        if ark is not None:
+            parsed = variant
     if ark is None:
         raise CommandError(f"No such ARK: {parsed.name}")
     return ark, parsed.qualifier

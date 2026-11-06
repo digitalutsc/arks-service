@@ -36,7 +36,7 @@ class Command(BaseCommand):
 
         if options["template"]:
             with open(options["template"], "w", newline="") as handle:
-                csv.writer(handle).writerows(template_csv(arks))
+                csv.writer(handle).writerows(template_csv(arks, collection))
             self.stdout.write(
                 self.style.SUCCESS(f"Wrote {len(arks)} rows to {options['template']}")
             )

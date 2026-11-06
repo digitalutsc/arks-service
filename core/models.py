@@ -9,6 +9,7 @@ here the same information is normalised into collections, ARKs and bindings.
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
 from django.db.models.functions import Lower, Substr
@@ -27,11 +28,23 @@ def value_prefix(value: str | None) -> str:
     return (value or "")[:VALUE_PREFIX_LENGTH].lower()
 
 
-#: The two elements the resolver looks for, in order. Any other name may still
-#: be bound — these are conventions, not a schema. The columns offered in the
-#: fill-in template live in jobs.bulkbind.TEMPLATE_COLUMNS.
+#: The two elements the legacy resolver looked for, in order. They are the
+#: default of Collection.redirect_elements, which each collection may change.
+#: Any other name may still be bound: these are conventions, not a schema. The
+#: columns offered in the fill-in template live in jobs.bulkbind.TEMPLATE_COLUMNS.
 ELEMENT_URL = "URL"
 ELEMENT_WHERE = "WHERE?"
+
+#: Collection.redirect_elements for a new collection: exactly the legacy order.
+DEFAULT_REDIRECT_ELEMENTS = f"{ELEMENT_URL},{ELEMENT_WHERE}"
+
+#: Collection.proxied_suffixes for a new collection: legacy's /manifest.
+DEFAULT_PROXIED_SUFFIXES = "manifest"
+
+
+def split_setting(text: str | None) -> list[str]:
+    """A stored comma-separated setting as a list (no JSON columns: see above)."""
+    return [part for part in (text or "").split(",") if part]
 
 
 class Collection(models.Model):
@@ -61,6 +74,29 @@ class Collection(models.Model):
     term = models.CharField(max_length=16, choices=Term.choices, default=Term.MEDIUM)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Resolution settings (INTENTS_collection_resolution_settings.md). Both are
+    # comma-separated and already validated (core.services.parse_redirect_elements,
+    # parse_proxied_suffixes); the defaults reproduce the legacy resolver.
+    redirect_elements = models.CharField(
+        max_length=255,
+        default=DEFAULT_REDIRECT_ELEMENTS,
+        help_text="Elements holding the redirect URL, in order; the first bound wins.",
+    )
+    proxied_suffixes = models.CharField(
+        max_length=255,
+        blank=True,
+        default=DEFAULT_PROXIED_SUFFIXES,
+        help_text="Final qualifier segments answered by proxying JSON instead of redirecting.",
+    )
+    resolution_changed_at = models.DateTimeField(null=True, blank=True)
+    resolution_changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
     # Statistics, refreshed by the scheduler (core.services.refresh_collection_stats).
     # Counting a large collection on every page view is a full index scan:
     # about 8 s at 4M ARKs. Small collections are still counted live.
@@ -81,6 +117,16 @@ class Collection(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def redirect_element_list(self) -> list[str]:
+        """The elements the resolver reads a redirect URL from, in order."""
+        return split_setting(self.redirect_elements)
+
+    @property
+    def proxied_suffix_list(self) -> list[str]:
+        """Final qualifier segments that ask for the target's JSON instead of a redirect."""
+        return split_setting(self.proxied_suffixes)
 
     @property
     def firstpart(self) -> str:

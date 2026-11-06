@@ -141,24 +141,30 @@ def test_an_inflected_ark_is_not_redirected():
     assert parse_ark_path("ark:/61220/utsc1").redirects is True
 
 
-# --- manifest -------------------------------------------------------------
+# --- service suffixes (/manifest) -----------------------------------------
+# Which final segments are services is a setting of the ARK's collection
+# (Collection.proxied_suffixes), so the parser keeps them in the qualifier and
+# only exposes the last segment and its parent. See
+# tests/test_collection_resolution_settings.py.
 
 
-def test_manifest_suffix_is_recognised():
+def test_a_manifest_suffix_stays_in_the_qualifier():
     parsed = parse_ark_path("ark:/61220/utsc1/manifest")
-    assert parsed.manifest is True
     assert parsed.name == "61220/utsc1"
-    assert parsed.qualifier == ""
+    assert parsed.qualifier == "/manifest"
+    assert parsed.last_segment == "manifest"
+    assert parsed.parent_qualifier == ""
 
 
-def test_manifest_after_a_qualifier_keeps_the_qualifier():
+def test_manifest_after_a_qualifier_has_that_qualifier_as_its_parent():
     parsed = parse_ark_path("ark:/61220/utsc1/page1/manifest")
-    assert parsed.manifest is True
-    assert parsed.qualifier == "/page1"
+    assert parsed.qualifier == "/page1/manifest"
+    assert parsed.parent_qualifier == "/page1"
 
 
-def test_a_plain_ark_is_not_a_manifest_request():
-    assert parse_ark_path("ark:/61220/utsc1").manifest is False
+def test_a_plain_ark_has_no_last_segment():
+    parsed = parse_ark_path("ark:/61220/utsc1")
+    assert (parsed.last_segment, parsed.parent_qualifier) == ("", "")
 
 
 # --- percent-encoding -----------------------------------------------------

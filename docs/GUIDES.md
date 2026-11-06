@@ -44,7 +44,7 @@ About 100,000 ARKs are in circulation in catalogue records, papers and crawler i
 | Identifier shape (`utsc` + noid digits, check characters) | `minting/noid.py`, pinned by 1,450 golden vectors generated from the PHP |
 | Redirect at the exact qualifier, `URL` then `WHERE?`, **no fallback up the hierarchy** | `resolver/views.py::_target_url` |
 | `?`, `??`, `?info` inflections return `erc:` metadata without counting a hit | `core/arkpath.py`, `resolver/services.py::render_erc` |
-| `/manifest` proxies the target JSON | `resolver/views.py::_manifest` |
+| `/manifest` proxies JSON: the URL bound at `/manifest`, else the object's (configurable per collection since 2026-11-06; R0) | `resolver/views.py::_resolution_target`, `_manifest` |
 | A bare NAAN returns the Name Assigning Authority | `resolver/views.py::_naa_response` |
 | Split the path on `/` and `?` *before* percent-decoding | `core/arkpath.py::parse_ark_path` |
 | Element names stored upper-case | `Binding.save`, `core/services.py::normalise_element_name` |
@@ -371,7 +371,7 @@ erDiagram
 ### Grammar
 
 ```
-/ark:/<naan>/<identifier>[<qualifier>][/manifest][?|??|?info]
+/ark:/<naan>/<identifier>[<qualifier>][?|??|?info]      (a service suffix such as /manifest is just the qualifier's last segment)
   qualifier  := ('/' segment)* ['.' variant]      e.g. /page1   .image.png   /page1.image.png
   hierarchy  := everything up to the first '.' after the last '/'
   variant    := from that '.' to the end
@@ -394,15 +394,13 @@ flowchart TD
     I1 --> D
     I2 --> D
     I3 --> D
-    D{"ends with /manifest ?"} -->|yes| D1["manifest=True, strip it"]
-    D -->|no| E
-    D1 --> E["trailing_slash = rest.endswith('/')"]
+    D["(a service suffix such as /manifest stays in the qualifier)"] --> E["trailing_slash = rest.endswith('/')"]
     E --> F["parts = [unquote(p) for p in rest.split('/') if p]<br/><i>split first, decode each part second</i>"]
     F --> G{"parts empty?"}
     G -->|yes| N0
     G -->|no| H["naan = parts[0]<br/>identifier = parts[1] or ''<br/>qualifier = '/' + '/'.join(parts[2:]) or ''"]
     H --> J["naan_only = identifier == '' and (trailing_slash or len(parts)==1)"]
-    J --> K["ArkPath(naan, identifier, qualifier, inflection, manifest, naan_only)"]
+    J --> K["ArkPath(naan, identifier, qualifier, inflection, naan_only)<br/>+ last_segment, parent_qualifier"]
 ```
 
 ### Why split before decoding
@@ -411,24 +409,24 @@ Legacy's Apache rewrite handed `resolver.php` a decoded `$_GET['q']`, and the im
 
 ### Examples
 
-| URI | naan | identifier | qualifier | inflection | manifest | naan_only |
+| URI | naan | identifier | qualifier | inflection | last_segment | naan_only |
 |---|---|---|---|---|---|---|
-| `/ark:/61220/utsc1` | 61220 | utsc1 | `""` | NONE | no | no |
-| `/ark:61220/utsc1` | 61220 | utsc1 | `""` | NONE | no | no |
-| `/ark:/61220/utsc1/page1` | 61220 | utsc1 | `/page1` | NONE | no | no |
-| `/ark:/61220/utsc1.image.png` | 61220 | `utsc1.image.png` | `""` | NONE | no | no |
-| `/ark:/61220/utsc1/page1.image.png` | 61220 | utsc1 | `/page1.image.png` | NONE | no | no |
-| `/ark:/61220/utsc1?` | 61220 | utsc1 | `""` | BRIEF | no | no |
-| `/ark:/61220/utsc1??` | 61220 | utsc1 | `""` | FULL | no | no |
-| `/ark:/61220/utsc1?info` | 61220 | utsc1 | `""` | FULL | no | no |
-| `/ark:/61220/utsc1?utm=x` | 61220 | utsc1 | `""` | NONE | no | no |
-| `/ark:/61220/utsc1/manifest` | 61220 | utsc1 | `""` | NONE | **yes** | no |
-| `/ark:/61220/utsc1/manifest?` | 61220 | utsc1 | `""` | BRIEF | yes | no (inflection wins in the view) |
-| `/ark:/61220/` and `/ark:/61220` | 61220 | `""` | `""` | NONE | no | **yes** |
-| `/ark:/61220/utsc1%2Fpage1` | 61220 | `utsc1/page1` | `""` | NONE | no | no |
-| `/ark:/61220/utsc1%3F` | 61220 | `utsc1?` | `""` | NONE | no | no |
+| `/ark:/61220/utsc1` | 61220 | utsc1 | `""` | NONE | `""` | no |
+| `/ark:61220/utsc1` | 61220 | utsc1 | `""` | NONE | `""` | no |
+| `/ark:/61220/utsc1/page1` | 61220 | utsc1 | `/page1` | NONE | `page1` | no |
+| `/ark:/61220/utsc1.image.png` | 61220 | `utsc1.image.png` | `""` | NONE | `""` | no |
+| `/ark:/61220/utsc1/page1.image.png` | 61220 | utsc1 | `/page1.image.png` | NONE | `page1.image.png` | no |
+| `/ark:/61220/utsc1?` | 61220 | utsc1 | `""` | BRIEF | `""` | no |
+| `/ark:/61220/utsc1??` | 61220 | utsc1 | `""` | FULL | `""` | no |
+| `/ark:/61220/utsc1?info` | 61220 | utsc1 | `""` | FULL | `""` | no |
+| `/ark:/61220/utsc1?utm=x` | 61220 | utsc1 | `""` | NONE | `""` | no |
+| `/ark:/61220/utsc1/manifest` | 61220 | utsc1 | `/manifest` | NONE | `manifest` | no |
+| `/ark:/61220/utsc1/manifest?` | 61220 | utsc1 | `/manifest` | BRIEF | `manifest` | no (inflection wins in the view: metadata of `/manifest`) |
+| `/ark:/61220/` and `/ark:/61220` | 61220 | `""` | `""` | NONE | `""` | **yes** |
+| `/ark:/61220/utsc1%2Fpage1` | 61220 | `utsc1/page1` | `""` | NONE | `""` | no |
+| `/ark:/61220/utsc1%3F` | 61220 | `utsc1?` | `""` | NONE | `""` | no |
 
-Note the fourth row. A **variant on the bare ARK** (`utsc1.image.png`) parses the dot into the *identifier*, because the identifier is simply `parts[1]`; the resolver then looks up `identifier="utsc1.image.png"` and finds nothing. The data model does anticipate such bindings: a legacy key `61220/utsc1<TAB>.png<TAB>URL` imports as `Binding(qualifier=".png")`, `_metadata_bindings` lists `.`-qualifiers with the bare ARK's own elements, and the variants table shows them. But no URL reaches them, and `manage.py bind 61220/utsc1.image.png …` fails with "No such ARK" for the same reason. Every test and `USAGES.md` example that works uses a variant of a *part* (`/page1.image.png`). `CLI_TEST_RUNBOOK.md` Suspect 18 records this ("variant-of-object form does not work"). Treat it as an open item, not a rule.
+Note the fourth row. A **variant on the bare ARK** (`utsc1.image.png`) parses the dot into the *identifier*, because the identifier is simply `parts[1]`, as in legacy. That parse is kept, so an identifier that really contains a dot still matches exactly. The variant is reached by a second reading, tried only after that lookup misses: `ArkPath.object_variant()` splits at the first dot into identifier `utsc1` and qualifier `.image.png`, which is how such a binding is stored (a legacy key `61220/utsc1<TAB>.png<TAB>URL` imports as `Binding(qualifier=".png")`). The resolver (`_locate`), `get_ark` (so `manage.py bind 61220/utsc1.image.png …` works) and bulk bind all use it, so an export of such a variant uploads back unchanged. It applies only with no qualifier and something on both sides of the dot. Until 2026-11-06 this was an open item (`INTENTS_object_variants.md`; `CLI_TEST_RUNBOOK.md` Suspect 18).
 
 ---
 
@@ -442,17 +440,21 @@ flowchart TD
     B -->|None| X404a["404 Not an ARK"]
     B --> C{"naan_only?"}
     C -->|yes| D["Collection.filter(naan).exclude(naa='') first → 200 text/plain NAA<br/>else 404"]
-    C -->|no| E["Ark.filter(naan, identifier).first()"]
+    C -->|no| E["_locate: Ark.select_related('collection').filter(naan, identifier).first()"]
     E -->|None| X404b["404 Unknown ARK"]
     E --> F{"inflection != NONE?"}
     F -->|yes| G["render_erc(_metadata_bindings(ark, qualifier), include_support=FULL)<br/>200 text/plain — NOT counted"]
-    F -->|no| H{"manifest?"}
-    H -->|yes| M["_manifest(ark, qualifier)"]
-    H -->|no| I["_target_url: bindings at EXACT qualifier<br/>name in (URL, WHERE?) → URL or WHERE?"]
+    F -->|no| I["_resolution_target: _target_url at EXACT qualifier<br/>first of collection.redirect_elements bound (default URL, WHERE?)<br/>for a proxied suffix, else at the parent qualifier"]
     I -->|None| X404c["404 Nothing bound<br/><i>no fallback to parent</i>"]
-    I -->|target| J["record_resolution(ark.pk, qualifier)<br/>HINCRBY, else write-through"]
+    I -->|target| H{"last segment in<br/>collection.proxied_suffixes?"}
+    H -->|yes| M["_manifest(ark, target)<br/>JSON, NOT counted"]
+    H -->|no| J["record_resolution(ark.pk, qualifier)<br/>HINCRBY, else write-through"]
     J --> K["302 Location: target"]
 ```
+
+Every lookup above goes through `_locate(parsed, probe)`: the request **as written** first, then, only if that misses, each of `parsed.alternatives()` in turn: the object-variant reading (`utsc1.pdf` as ARK `utsc1`, qualifier `.pdf`; `ArkPath.object_variant()`), the spec-normalised form (`parsed.normalised()`, draft-kunze-ark-44 §3.2: hyphens removed, trailing `.` and `/` removed, case kept), and the normalised form's object-variant reading. ARK lookups are shared between readings with the same identifier. A miss is no such ARK, or nothing for the probe (`_resolution_target` for redirects and proxied suffixes, `_has_metadata` for inflections). So `utsc-1`, `utsc1.` and `utsc1/page-2` reach `utsc1` and `utsc1/page2`, an exact match always wins, a redirect that hits keeps its two reads, and the hit is counted against the qualifier that resolved. The route matches `ark:` in any case (`ARK:` too). Normalising never walks up the hierarchy: `/page-3` becomes `/page3`, not the parent. See `INTENTS_identifier_normalisation.md` and `INTENTS_object_variants.md`.
+
+**Per-collection resolution settings** (`INTENTS_collection_resolution_settings.md`). `Collection.redirect_elements` is the ordered list of elements a redirect URL is read from (default `URL,WHERE?`, legacy's order); the first bound with a non-empty value wins. `Collection.proxied_suffixes` (default `manifest`) lists the final qualifier segments answered by proxying JSON instead of redirecting: `…/<q>/manifest` fetches the URL bound at `<q>/manifest` (legacy's pre-generated IIIF manifests), else the URL at `<q>`. The parser no longer strips `/manifest`; which segments are services is only known once the ARK, and so its collection, is found. Both are comma-separated `CharField`s (no JSON columns), validated by `core/services.py::parse_redirect_elements` / `parse_proxied_suffixes`, set at creation (form, `createcollection --redirect-elements/--proxied-suffixes`) and changed only by an Admin on the collection page after a preview (`resolution_impact`) and a confirm (`update_resolution_settings`, which stamps `resolution_changed_at/_by` and logs a WARNING with old → new).
 
 ### Metadata selection
 
@@ -1080,11 +1082,12 @@ php tests/fixtures/generate_vectors.php > tests/fixtures/noid_vectors.json   # N
 - **Element names are upper-cased** on every path; search by name is case-insensitive because of it.
 - **Identifiers are never reissued**: purge removes bindings, keeps the `Ark`; sequential minting never refills gaps.
 - **No fallback up the hierarchy**: `/page9` with nothing bound is 404 even if the parent resolves.
+- **Hyphens are tolerated on lookup, refused on write**: the resolver retries a miss without hyphens or a trailing `.`, and `core/services.py::qualifier_problem` / `prefix_problem` refuse `-` in a new qualifier (UI, `bind`, bulk bind) or a new collection's prefix, because N2T and arks.org strip hyphens before forwarding. Unbind and `import_legacy` are not checked.
 - **Counts lag** by up to 60 s; stored collection stats lag by up to 300 s above 50,000 ARKs.
 - **Bare `?` needs gunicorn** (`RAW_URI`) and Apache `nocanon`; `runserver` cannot be used for the cutover diff.
 - **Export → upload round trip caveat**: `csv_safe` prefixes `'` to formula-leading values on export; `apply_csv` does not strip it, so re-uploading such a value stores `'=foo`. Only `iter_results` applies `csv_unsafe`.
 - **`.rdedk` capacity** is 2,900 in code; `USAGES.md` was corrected on 2026-11-05.
-- **Variant on a bare ARK** (`/ark:/61220/utsc1.image.png`) parses the dot into the identifier and does not resolve; variants of parts do. Open item (section 6).
+- **Variant on a bare ARK** (`/ark:/61220/utsc1.image.png`) still *parses* the dot into the identifier; it resolves through the `object_variant()` reading after that lookup misses (section 6). So `resolve_diff` reports one as a difference from legacy, which 404s it.
 - **Re-import after cutover** overwrites values curators changed since the export.
 - **Bulk bind uploads live in `MEDIA_ROOT` until their job ends**, which in Docker is the `media` volume: `make rebuild` on an external-DB stack deletes queued jobs' files while their messages survive in Valkey, so they fail with a file-not-found.
 - **`.env.example` ships `TRUST_FORWARDED_FOR=true`**, which is only safe behind a proxy that is the sole route to gunicorn.

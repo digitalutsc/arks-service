@@ -13,14 +13,21 @@ stores the concatenation as a single ``qualifier``, which round-trips exactly.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from collections.abc import Iterator
+from dataclasses import dataclass, replace
 from enum import Enum
 from urllib.parse import unquote
 
-#: Trailing path segment that asks the resolver to proxy the target's JSON.
-MANIFEST_SUFFIX = "manifest"
-
 _ARK_RE = re.compile(r"^/?ark:/?(?P<rest>.*)$", re.IGNORECASE)
+
+#: Why a hyphen may not be stored in a qualifier or a prefix. The ARK spec
+#: makes hyphens insignificant (draft-kunze-ark-44 §3.2 step 6) and arks.org
+#: removes them before forwarding to us, so a stored one could never be reached
+#: through n2t.net or arks.org.
+HYPHEN_REFUSED = (
+    "may not contain a hyphen (-): N2T and arks.org remove hyphens before "
+    "forwarding a request, so it could never be resolved through them."
+)
 
 
 class Inflection(Enum):
@@ -39,7 +46,6 @@ class ArkPath:
     identifier: str
     qualifier: str
     inflection: Inflection
-    manifest: bool
     naan_only: bool
 
     @property
@@ -58,9 +64,91 @@ class ArkPath:
         return _split_qualifier(self.qualifier)[1]
 
     @property
+    def last_segment(self) -> str:
+        """The qualifier's last path segment, e.g. ``manifest`` for ``/page2/manifest``."""
+        return last_segment(self.qualifier)
+
+    @property
+    def parent_qualifier(self) -> str:
+        """The qualifier without its last segment, e.g. ``/page2`` for ``/page2/manifest``."""
+        return parent_qualifier(self.qualifier)
+
+    @property
     def redirects(self) -> bool:
         """True when this request should end in a 302 rather than a metadata page."""
         return self.inflection is Inflection.NONE
+
+    def normalised(self) -> ArkPath | None:
+        """
+        This ARK as the spec compares it, or None when that changes nothing.
+
+        draft-kunze-ark-44 §3.2: hyphens are insignificant (step 6) and trailing
+        '/' and '.' are removed (step 8), so 'utsc-1', 'utsc1.' and 'utsc1' are
+        one ARK. The resolver tries this only after the request as written has
+        missed, so every stored ARK keeps exact matching. Case is kept: names
+        and qualifiers are case-sensitive.
+        """
+        qualifier = self.qualifier.replace("-", "").rstrip("./")
+        identifier = self.identifier.replace("-", "")
+        if not qualifier:
+            # The trailing characters belong to the last component, which is
+            # the identifier itself when there is no qualifier left.
+            identifier = identifier.rstrip("./")
+        if not identifier or (identifier, qualifier) == (self.identifier, self.qualifier):
+            return None
+        return replace(self, identifier=identifier, qualifier=qualifier)
+
+    def object_variant(self) -> ArkPath | None:
+        """
+        ``utsc1.image.png`` read as the variant ``.image.png`` of ``utsc1``, or None.
+
+        The parse keeps a dot in the identifier component, as legacy's did, so
+        a variant of the object itself (draft-kunze-ark-44 §2.5) is looked up
+        as an ARK named ``utsc1.image.png``. This is the other reading, which
+        matches how such a variant is stored: ARK ``utsc1``, qualifier
+        ``.image.png``. Any qualifier after it is kept behind the variant, so
+        ``utsc1.image.png/manifest`` asks for the variant's manifest
+        (qualifier ``.image.png/manifest``). Only with something on both sides
+        of the dot: ``utsc1.`` is a trailing full stop, which ``normalised()``
+        handles.
+        """
+        base, dot, rest = self.identifier.partition(".")
+        if not dot or not base or not rest:
+            return None
+        return replace(self, identifier=base, qualifier=dot + rest + self.qualifier)
+
+    def alternatives(self) -> Iterator[ArkPath]:
+        """
+        Other readings of this request, in the order to try them after a miss.
+
+        As written but read as a variant of the object, then the spec-normalised
+        form, then that read as a variant. Each is yielded once, and never this
+        form itself.
+        """
+        normalised = self.normalised()
+        seen = {(self.identifier, self.qualifier)}
+        for form in (
+            self.object_variant(),
+            normalised,
+            normalised.object_variant() if normalised is not None else None,
+        ):
+            if form is not None and (form.identifier, form.qualifier) not in seen:
+                seen.add((form.identifier, form.qualifier))
+                yield form
+
+
+def last_segment(qualifier: str) -> str:
+    """The text after the qualifier's last '/', or '' when there is no qualifier."""
+    if not qualifier:
+        return ""
+    return qualifier.rpartition("/")[2]
+
+
+def parent_qualifier(qualifier: str) -> str:
+    """The qualifier without its last '/' segment ('' for a single segment)."""
+    if not qualifier:
+        return ""
+    return qualifier.rpartition("/")[0]
 
 
 def _split_qualifier(qualifier: str) -> tuple[str, str]:
@@ -110,11 +198,9 @@ def parse_ark_path(path: str) -> ArkPath | None:
 
     rest, inflection = _detect_inflection(match.group("rest").strip())
 
-    manifest = False
-    if rest.endswith("/" + MANIFEST_SUFFIX):
-        manifest = True
-        rest = rest[: -(len(MANIFEST_SUFFIX) + 1)]
-
+    # A service suffix such as '/manifest' stays part of the qualifier: which
+    # suffixes are services is a setting of the ARK's collection, known only
+    # once the ARK is found (resolver.views._resolution_target).
     trailing_slash = rest.endswith("/")
     # Split on the structural characters *before* decoding, so that an encoded
     # '/' (%2F) stays inside one component and an encoded '?' (%3F) is never
@@ -135,6 +221,5 @@ def parse_ark_path(path: str) -> ArkPath | None:
         identifier=identifier,
         qualifier=qualifier,
         inflection=inflection,
-        manifest=manifest,
         naan_only=identifier == "" and (trailing_slash or len(parts) == 1),
     )

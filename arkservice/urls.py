@@ -11,9 +11,10 @@ handler404 = "resolver.fallback.page_not_found"
 handler500 = "resolver.fallback.server_error"
 
 urlpatterns = [
-    # Any /ark:... request. The view re-reads the raw URI so a trailing bare
+    # Any /ark:... request, with the label in any case (the spec makes 'ARK:'
+    # the same as 'ark:'). The view re-reads the raw URI so a trailing bare
     # '?' (an inflection, not a query string) is not lost.
-    re_path(r"^ark:.*$", resolver_views.resolve, name="resolve"),
+    re_path(r"^[aA][rR][kK]:.*$", resolver_views.resolve, name="resolve"),
     path("healthz", healthz, name="healthz"),
     path("fallback/preview/<str:key>/", fallback.preview, name="fallback_preview"),
     path("fallback/<str:name>", fallback.asset, name="fallback_asset"),

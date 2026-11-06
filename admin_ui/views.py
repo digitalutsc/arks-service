@@ -44,7 +44,16 @@ from admin_ui.roles import (
     role_of,
     set_role,
 )
-from core.models import Ark, Binding, Collection, Organisation, Resolution
+from core.models import (
+    DEFAULT_PROXIED_SUFFIXES,
+    DEFAULT_REDIRECT_ELEMENTS,
+    Ark,
+    Binding,
+    Collection,
+    Organisation,
+    Resolution,
+    split_setting,
+)
 from core.search import (
     COUNT_CAP,
     DEFAULT_SORT,
@@ -60,14 +69,24 @@ from core.search import (
     search_arks,
     sort_arks,
 )
-from core.services import LIVE_STATS_MAX_ARKS, bind_element, current_stats, unbind_elements
+from core.services import (
+    LIVE_STATS_MAX_ARKS,
+    bind_element,
+    current_stats,
+    parse_proxied_suffixes,
+    parse_redirect_elements,
+    prefix_problem,
+    resolution_impact,
+    unbind_elements,
+    update_resolution_settings,
+)
 from jobs.bulkbind import (
     STATUS_BOUND,
     STATUS_ERROR,
     STATUS_MINTED,
     STATUS_OK,
     STATUS_UNCHANGED,
-    TEMPLATE_COLUMNS,
+    template_columns,
     template_csv,
 )
 from jobs.models import RESULT_COLUMNS, BulkBindJob
@@ -209,26 +228,81 @@ def collection_list(request):
     )
 
 
+def _settings_text(stored: str) -> str:
+    """A stored comma-separated setting as staff read and type it: 'URL, WHERE?'."""
+    return ", ".join(split_setting(stored))
+
+
+def _parse_resolution_settings(
+    post, errors: dict[str, str], *, elements_if_absent, suffixes_if_absent
+):
+    """
+    The two resolution settings from a form, or (None, None) with ``errors`` filled.
+
+    A field the form did not send at all takes the ``…_if_absent`` value (the
+    defaults on create, the current values on edit); one sent empty is refused.
+    """
+    elements = suffixes = None
+    try:
+        elements = parse_redirect_elements(post.get("redirect_elements", elements_if_absent))
+    except ValidationError as exc:
+        errors["redirect_elements"] = " ".join(exc.messages)
+    try:
+        suffixes = parse_proxied_suffixes(post.get("proxied_suffixes", suffixes_if_absent))
+    except ValidationError as exc:
+        errors["proxied_suffixes"] = " ".join(exc.messages)
+    if elements is None or suffixes is None:
+        return None, None
+    return elements, suffixes
+
+
 @require_role(ADMIN)
 def collection_create(request):
     errors: dict[str, str] = {}
-    values = {"term": "medium"}
+    values = {
+        "term": "medium",
+        "redirect_elements": _settings_text(DEFAULT_REDIRECT_ELEMENTS),
+        "proxied_suffixes": _settings_text(DEFAULT_PROXIED_SUFFIXES),
+    }
     if request.method == "POST":
         values = {
             key: request.POST.get(key, "").strip()
-            for key in ("name", "prefix", "naan", "naa", "template", "term")
+            for key in (
+                "name",
+                "prefix",
+                "naan",
+                "naa",
+                "template",
+                "term",
+                "redirect_elements",
+                "proxied_suffixes",
+            )
         }
+        elements, suffixes = _parse_resolution_settings(
+            request.POST,
+            errors,
+            elements_if_absent=DEFAULT_REDIRECT_ELEMENTS,
+            suffixes_if_absent=DEFAULT_PROXIED_SUFFIXES,
+        )
         # The model allows a blank prefix so legacy minters import unchanged;
         # the form insists on one, as the legacy form did.
         if not values["prefix"]:
             errors["prefix"] = "A prefix or shoulder is required."
+        elif problem := prefix_problem(values["prefix"]):
+            errors["prefix"] = problem
         elif Collection.objects.filter(naan=values["naan"], prefix=values["prefix"]).exists():
             errors["prefix"] = "The entered prefix has been used, please enter another prefix."
         if values["term"] == Collection.Term.LONG and not values["naa"]:
             errors["naa"] = "A long-term collection needs a Name Assigning Authority."
 
         if not errors:
-            collection = Collection(**values)
+            collection = Collection(
+                **{
+                    **values,
+                    "redirect_elements": ",".join(elements),
+                    "proxied_suffixes": ",".join(suffixes),
+                }
+            )
             try:
                 collection.full_clean()
                 collection.save()
@@ -254,21 +328,71 @@ def collection_create(request):
 def collection_detail(request, pk):
     collection = get_object_or_404(Collection, pk=pk)
 
+    preview = None
     if request.method == "POST":
         if not can_administer(request.user):
             raise PermissionDenied("Editing a collection needs the Admin role.")
-        collection.naa = request.POST.get("naa", "").strip()
-        collection.name = request.POST.get("name", collection.name).strip()
-        try:
-            collection.full_clean()
-            collection.save()
-            messages.success(request, "Saved.")
-        except ValidationError as exc:
-            messages.error(
-                request, "; ".join(f"{k}: {' '.join(v)}" for k, v in exc.message_dict.items())
-            )
-        return redirect("admin_ui:collection_detail", pk=pk)
+        if request.POST.get("action") == "resolution":
+            preview = _resolution_settings_post(request, collection)
+            if preview is None:
+                return redirect("admin_ui:collection_detail", pk=pk)
+        else:
+            return _collection_settings_post(request, collection)
 
+    return _collection_detail_page(request, collection, preview)
+
+
+def _collection_settings_post(request, collection):
+    """Save the name and NAA (the original Settings form)."""
+    collection.naa = request.POST.get("naa", "").strip()
+    collection.name = request.POST.get("name", collection.name).strip()
+    try:
+        collection.full_clean()
+        collection.save()
+        messages.success(request, "Saved.")
+    except ValidationError as exc:
+        messages.error(
+            request, "; ".join(f"{k}: {' '.join(v)}" for k, v in exc.message_dict.items())
+        )
+    return redirect("admin_ui:collection_detail", pk=collection.pk)
+
+
+def _resolution_settings_post(request, collection) -> dict | None:
+    """
+    Handle the Resolution settings form.
+
+    Without ``confirm`` nothing is written: the page is drawn again with a
+    preview of what the change would touch (returned here). With it, the change
+    is saved, stamped and logged, and None is returned so the caller redirects.
+    An invalid value is refused either way.
+    """
+    errors: dict[str, str] = {}
+    elements, suffixes = _parse_resolution_settings(
+        request.POST,
+        errors,
+        elements_if_absent=collection.redirect_elements,
+        suffixes_if_absent=collection.proxied_suffixes,
+    )
+    if errors:
+        messages.error(request, " ".join(errors.values()))
+        return None
+    if (elements, suffixes) == (collection.redirect_element_list, collection.proxied_suffix_list):
+        messages.info(request, "The resolution settings are unchanged.")
+        return None
+    if request.POST.get("confirm") != "yes":
+        return {
+            "elements": elements,
+            "suffixes": suffixes,
+            "elements_text": ", ".join(elements),
+            "suffixes_text": ", ".join(suffixes),
+            **resolution_impact(collection, elements, suffixes),
+        }
+    update_resolution_settings(collection, elements, suffixes, request.user)
+    messages.success(request, "Resolution settings saved. They apply to the next request.")
+    return None
+
+
+def _collection_detail_page(request, collection, preview: dict | None):
     stats, stats_as_of = current_stats(collection)
     try:
         spec = collection.spec
@@ -287,6 +411,9 @@ def collection_detail(request, pk):
             **stats,
             "stats_as_of": stats_as_of,
             "jobs": collection.bulk_bind_jobs.select_related("created_by")[:5],
+            "redirect_elements_text": _settings_text(collection.redirect_elements),
+            "proxied_suffixes_text": _settings_text(collection.proxied_suffixes),
+            "preview": preview,
         },
     )
 
@@ -685,8 +812,8 @@ def ark_detail(request, pk):
                     qualifier,
                 )
                 messages.success(request, f"Bound {binding.name}.")
-            except ValidationError:
-                messages.error(request, "An element name is required.")
+            except ValidationError as exc:
+                messages.error(request, " ".join(exc.messages))
         elif action == "unbind":
             removed = unbind_elements(ark, name=request.POST.get("name", ""), qualifier=qualifier)
             messages.success(request, f"Removed {removed} element(s).")
@@ -737,7 +864,8 @@ def ark_detail(request, pk):
             "variant_headers": _variant_headers(variant_query, sort_key, descending),
             "variant_clear_query": _variant_query("", variant_sort),
             "resolutions": resolutions,
-            "suggested": TEMPLATE_COLUMNS,
+            "suggested": template_columns(ark.collection),
+            "redirect_elements": ark.collection.redirect_element_list,
         },
     )
 
@@ -808,7 +936,7 @@ def mint_view(request, pk):
             "collection": collection,
             "header": _header(request, collection),
             "minted": minted,
-            "columns": TEMPLATE_COLUMNS,
+            "columns": template_columns(collection),
             "mint_limit": settings.MINT_MAX_PER_REQUEST,
         },
     )
@@ -825,7 +953,8 @@ def mint_template(request, pk):
 
     stamp = timezone.now().strftime("%Y%m%d-%H%M")
     return _csv_response(
-        template_csv(arks), f"{slugify(collection.prefix) or 'ark'}-bind-template-{stamp}.csv"
+        template_csv(arks, collection),
+        f"{slugify(collection.prefix) or 'ark'}-bind-template-{stamp}.csv",
     )
 
 

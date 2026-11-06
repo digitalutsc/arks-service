@@ -24,7 +24,7 @@ from django.db.models import Q
 from core.arkpath import parse_ark_path
 from core.models import Ark, Binding, Collection
 from core.search import ARK_ID_COLUMN
-from core.services import bulk_upsert_bindings
+from core.services import bulk_upsert_bindings, qualifier_problem
 
 #: Columns offered in the fill-in template after minting.
 TEMPLATE_COLUMNS = ["URL", "PID", "LOCAL_ID", "COLLECTION"]
@@ -85,11 +85,21 @@ class BulkBindResult:
         return self.failed == 0
 
 
-def template_csv(arks: Iterable[Ark]) -> Iterator[list[str]]:
+def template_columns(collection: Collection | None = None) -> list[str]:
+    """
+    The element columns offered for ``collection``: its first redirect element
+    leads, then the conventional ones. Unchanged for the default (``URL`` first).
+    """
+    lead = collection.redirect_element_list[:1] if collection is not None else []
+    return [*lead, *(name for name in TEMPLATE_COLUMNS if name not in lead)]
+
+
+def template_csv(arks: Iterable[Ark], collection: Collection | None = None) -> Iterator[list[str]]:
     """The fill-in template offered straight after minting."""
-    yield [ARK_ID_COLUMN, *TEMPLATE_COLUMNS]
+    columns = template_columns(collection)
+    yield [ARK_ID_COLUMN, *columns]
     for ark in arks:
-        yield [ark.name, *([""] * len(TEMPLATE_COLUMNS))]
+        yield [ark.name, *([""] * len(columns))]
 
 
 def _read(handle) -> tuple[list[str], list[dict[str, str]]]:
@@ -120,10 +130,18 @@ def _ark_column(fieldnames: list[str]) -> str:
     return next(name for name in fieldnames if name.lower() == ARK_ID_COLUMN.lower())
 
 
-def _ark_name(raw: str) -> str:
-    """The bare ARK a row refers to, without its qualifier."""
+def _ark_names(raw: str) -> set[str]:
+    """
+    The bare ARKs a row may refer to, without its qualifier.
+
+    Two for ``61220/utsc1.pdf``: an ARK of that name, or ``61220/utsc1`` when it
+    is the variant ``.pdf`` of the object, as export writes it.
+    """
     parsed = parse_ark_path(f"ark:/{(raw or '').strip().lstrip('/')}")
-    return parsed.name if parsed and parsed.identifier else ""
+    if parsed is None or not parsed.identifier:
+        return set()
+    variant = parsed.object_variant()
+    return {parsed.name} | ({variant.name} if variant is not None else set())
 
 
 def _lookup_arks(collection: Collection, names: set[str]) -> dict[str, int]:
@@ -173,7 +191,7 @@ def apply_csv(
     # Resolve only the ARKs the file actually names. Loading the whole
     # collection to look up a handful of rows cost gigabytes on a large
     # collection and grew with the collection rather than the upload.
-    wanted_names = {name for name in (_ark_name(row.get(ark_column, "")) for row in rows) if name}
+    wanted_names = set().union(*(_ark_names(row.get(ark_column, "")) for row in rows))
     known = _lookup_arks(collection, wanted_names)
 
     result = BulkBindResult()
@@ -219,6 +237,11 @@ def apply_csv(
             continue
 
         ark_pk = known.get(parsed.name)
+        if ark_pk is None and (variant := parsed.object_variant()) is not None:
+            # A variant of the object, as export writes it: '61220/utsc1.pdf'.
+            ark_pk = known.get(variant.name)
+            if ark_pk is not None:
+                parsed = variant
         if ark_pk is None:
             result.rows.append(
                 RowResult(
@@ -228,6 +251,13 @@ def apply_csv(
                     f"{parsed.name} is not an ARK in this collection. Mint it first.",
                 )
             )
+            continue
+
+        # Checked once the row's reading is settled, so a hyphen in the variant
+        # of an object ('utsc1.a-b') is caught too.
+        problem = qualifier_problem(parsed.qualifier)
+        if problem:
+            result.rows.append(RowResult(number, raw_ark, STATUS_ERROR, problem))
             continue
 
         named.add((ark_pk, parsed.qualifier))

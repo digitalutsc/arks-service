@@ -12,14 +12,28 @@ own copy, and the copies had already drifted over whether to touch
 
 from __future__ import annotations
 
+import logging
+
 from django.core.exceptions import ValidationError
 from django.db.models import Exists, OuterRef, Sum
 from django.utils import timezone
 
+from core.arkpath import HYPHEN_REFUSED
 from core.models import Ark, Binding, Collection, Resolution
+
+logger = logging.getLogger(__name__)
 
 #: Rows per round trip when writing in bulk.
 BATCH_SIZE = 2000
+
+#: Most redirect elements a collection may list. Each is tried in order on
+#: every redirect, so a long list is a sign of a muddle rather than a need.
+MAX_REDIRECT_ELEMENTS = 5
+
+#: Characters a proxied suffix may not contain. It is one path segment
+#: ('/'), never a variant ('.'), never mistaken for an inflection or a fragment
+#: ('?', '#'), compared decoded ('%'), and never hyphenated (see HYPHEN_REFUSED).
+_SUFFIX_FORBIDDEN = set("/.?#%-") | {" "}
 
 
 def normalise_element_name(name: str) -> str:
@@ -32,11 +46,189 @@ def normalise_element_name(name: str) -> str:
     return (name or "").strip().upper()
 
 
+def qualifier_problem(qualifier: str) -> str | None:
+    """
+    Why staff may not bind under ``qualifier``, or None when they may.
+
+    Checked on every staff write path (the ARK page, ``bind``, bulk bind) but
+    not by unbind, so anything already stored can still be removed, nor by the
+    legacy import, which takes the legacy data as it is.
+    """
+    if "-" in qualifier:
+        return f"The qualifier {qualifier} {HYPHEN_REFUSED}"
+    return None
+
+
+def prefix_problem(prefix: str) -> str | None:
+    """
+    Why a new collection may not use ``prefix``, or None when it may.
+
+    Every ARK a collection mints starts with its prefix, so a hyphen there
+    would make all of them unreachable through N2T. Checked when a collection
+    is created, not on the model, so an imported legacy collection stays
+    editable whatever its prefix.
+    """
+    if "-" in prefix:
+        return f"The prefix {prefix} {HYPHEN_REFUSED}"
+    return None
+
+
+def parse_redirect_elements(text: str) -> list[str]:
+    """
+    A collection's redirect elements, from the comma-separated form staff type.
+
+    Each name is normalised as every element name is (upper-cased), repeats are
+    dropped, and the order is kept: the resolver uses the first one bound.
+    """
+    names: list[str] = []
+    for part in (text or "").split(","):
+        name = normalise_element_name(part)
+        if name and name not in names:
+            names.append(name)
+    if not names:
+        raise ValidationError(
+            {"redirect_elements": "Name at least one redirect element, e.g. URL."}
+        )
+    if len(names) > MAX_REDIRECT_ELEMENTS:
+        raise ValidationError(
+            {"redirect_elements": f"Name at most {MAX_REDIRECT_ELEMENTS} redirect elements."}
+        )
+    return names
+
+
+def parse_proxied_suffixes(text: str) -> list[str]:
+    """
+    A collection's proxied suffixes, from the comma-separated form staff type.
+
+    An empty list is allowed: the collection then has no service routes, and
+    '…/manifest' is an ordinary qualifier. Each suffix is a single plain path
+    segment, case-sensitive like any qualifier. Segments starting with a digit
+    or '_' are reserved by the ARK spec for future service points
+    (draft-kunze-ark-44 §4.7).
+    """
+    parts = [part.strip() for part in (text or "").split(",")]
+    if not any(parts):
+        return []
+    suffixes: list[str] = []
+    for part in parts:
+        problem = None
+        if not part:
+            problem = "An empty suffix (two commas in a row?) is not allowed."
+        elif set(part) & _SUFFIX_FORBIDDEN:
+            problem = (
+                f"The suffix {part!r} must be one plain path segment: "
+                "no '/', '.', '?', '#', '%', '-' or spaces."
+            )
+        elif part[0].isdigit() or part[0] == "_":
+            problem = (
+                f"The suffix {part!r} may not start with a digit or '_': "
+                "the ARK spec reserves those for future service points."
+            )
+        if problem:
+            raise ValidationError({"proxied_suffixes": problem})
+        if part not in suffixes:
+            suffixes.append(part)
+    return suffixes
+
+
+def resolution_impact(collection: Collection, elements: list[str], suffixes: list[str]) -> dict:
+    """
+    What changing ``collection``'s resolution settings would touch, for the preview.
+
+    ``elements``: for each element in the old or the new list, how many
+    (ARK, qualifier) pairs bind it. ``suffixes``: for each suffix in the old or
+    the new list, how many ARKs bind something at a qualifier ending in it.
+    ``warnings``: the changes that alter what existing ARKs answer.
+    """
+    old_elements = collection.redirect_element_list
+    old_suffixes = collection.proxied_suffix_list
+    bindings = Binding.objects.filter(ark__collection=collection)
+
+    element_counts = {
+        name: bindings.filter(name=name).count()
+        for name in dict.fromkeys([*old_elements, *elements])
+    }
+    suffix_counts = {
+        suffix: bindings.filter(qualifier__endswith=f"/{suffix}")
+        .values("ark_id")
+        .distinct()
+        .count()
+        for suffix in dict.fromkeys([*old_suffixes, *suffixes])
+    }
+
+    warnings: list[str] = []
+    for name in elements:
+        if element_counts[name] == 0:
+            warnings.append(f"{name} is bound nowhere in this collection, so it redirects nothing.")
+    for name in old_elements:
+        if name not in elements and element_counts[name]:
+            warnings.append(
+                f"{name} is bound in {_counted(element_counts[name], 'place')} and will no longer "
+                "be used for redirects; those ARKs may stop resolving or resolve elsewhere."
+            )
+    if elements != old_elements and set(elements) == set(old_elements):
+        warnings.append("The order changes: where both are bound, a different URL wins.")
+    for suffix in old_suffixes:
+        if suffix not in suffixes and suffix_counts[suffix]:
+            warnings.append(
+                f"/{suffix} is bound on {_counted(suffix_counts[suffix], 'ARK')}; those requests "
+                "will redirect instead of returning JSON."
+            )
+    for suffix in suffixes:
+        if suffix not in old_suffixes and suffix_counts[suffix]:
+            warnings.append(
+                f"/{suffix} is bound on {_counted(suffix_counts[suffix], 'ARK')}; those requests "
+                "will return the target's JSON instead of redirecting."
+            )
+    return {"elements": element_counts, "suffixes": suffix_counts, "warnings": warnings}
+
+
+def _counted(count: int, noun: str) -> str:
+    """'1 ARK', '2 ARKs', '1,204 places'."""
+    return f"{count:,} {noun}{'' if count == 1 else 's'}"
+
+
+def update_resolution_settings(
+    collection: Collection, elements: list[str], suffixes: list[str], user=None
+) -> None:
+    """
+    Save new resolution settings, stamp who changed them, and log old -> new.
+
+    Changing them re-points every ARK in the collection at once, so the change
+    is logged at WARNING with both values: the app log is the history.
+    """
+    old_elements, old_suffixes = collection.redirect_elements, collection.proxied_suffixes
+    collection.redirect_elements = ",".join(elements)
+    collection.proxied_suffixes = ",".join(suffixes)
+    collection.resolution_changed_at = timezone.now()
+    collection.resolution_changed_by = user if getattr(user, "pk", None) else None
+    collection.save(
+        update_fields=[
+            "redirect_elements",
+            "proxied_suffixes",
+            "resolution_changed_at",
+            "resolution_changed_by",
+        ]
+    )
+    logger.warning(
+        "collection %s: redirect elements %s -> %s; proxied suffixes %s -> %s by %s",
+        collection.name,
+        old_elements,
+        collection.redirect_elements,
+        old_suffixes or "(none)",
+        collection.proxied_suffixes or "(none)",
+        user.get_username() if getattr(user, "pk", None) else "(system)",
+    )
+
+
 def bind_element(ark: Ark, name: str, value: str, qualifier: str = "") -> tuple[Binding, bool]:
     """Bind one element, replacing any existing value. Returns (binding, created)."""
     element = normalise_element_name(name)
     if not element:
         raise ValidationError({"name": "An element name is required."})
+    problem = qualifier_problem(qualifier)
+    if problem:
+        raise ValidationError({"qualifier": problem})
     result = Binding.objects.update_or_create(
         ark=ark, qualifier=qualifier, name=element, defaults={"value": value or ""}
     )

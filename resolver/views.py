@@ -21,9 +21,9 @@ from django.http import (
 )
 from django.shortcuts import render
 
-from core.arkpath import Inflection, parse_ark_path
+from core.arkpath import ArkPath, Inflection, last_segment, parent_qualifier, parse_ark_path
 from core.counters import record_resolution
-from core.models import ELEMENT_URL, ELEMENT_WHERE, Ark, Collection, Organisation
+from core.models import Ark, Collection, Organisation
 from resolver.services import (
     TargetTooLarge,
     TargetTooSlow,
@@ -40,16 +40,43 @@ def _target_url(ark: Ark, qualifier: str) -> str | None:
     """
     The redirect target for an exact (ark, qualifier), or None.
 
+    The collection says which elements hold it and in what order
+    (``Collection.redirect_elements``, by default ``URL`` then ``WHERE?`` as in
+    legacy); the first bound with a non-empty value wins. ``ark.collection`` is
+    loaded with the ARK (see ``_locate``), so this is still one indexed read.
+
     Read from the database every time, through the unique (ark, qualifier,
     name) index. It used to be cached, which saved one indexed read but made the
     resolver depend on the cache server, needed every write path to invalidate
     it, and could serve an old URL for a few minutes after a rebind.
     """
-    bindings = {
-        b.name: b.value
-        for b in ark.bindings.filter(qualifier=qualifier, name__in=[ELEMENT_URL, ELEMENT_WHERE])
-    }
-    return bindings.get(ELEMENT_URL) or bindings.get(ELEMENT_WHERE) or None
+    elements = ark.collection.redirect_element_list
+    bindings = dict(
+        ark.bindings.filter(qualifier=qualifier, name__in=elements).values_list("name", "value")
+    )
+    return next((bindings[name] for name in elements if bindings.get(name)), None)
+
+
+def _is_proxied(ark: Ark, qualifier: str) -> bool:
+    """True when ``qualifier`` ends in one of the collection's proxied suffixes."""
+    suffix = last_segment(qualifier)
+    return bool(suffix) and suffix in ark.collection.proxied_suffix_list
+
+
+def _resolution_target(ark: Ark, qualifier: str) -> str | None:
+    """
+    The URL a non-metadata request for ``qualifier`` is answered from, or None.
+
+    For a proxied suffix (``…/manifest`` by default) that is the URL bound at
+    the suffix qualifier itself, as legacy did (a pre-generated IIIF manifest
+    bound at ``/manifest``), or else the URL of what the suffix is attached to.
+    For anything else it is the URL at exactly ``qualifier``: no walk up the
+    hierarchy.
+    """
+    target = _target_url(ark, qualifier)
+    if target is None and _is_proxied(ark, qualifier):
+        target = _target_url(ark, parent_qualifier(qualifier))
+    return target
 
 
 def _metadata_bindings(ark: Ark, qualifier: str):
@@ -74,6 +101,50 @@ def _naa_response(naan: str) -> HttpResponse:
     return HttpResponse(naa + "\n", content_type="text/plain; charset=utf-8")
 
 
+def _has_metadata(ark: Ark, qualifier: str) -> list | None:
+    """The bindings an inflection would show at ``qualifier``, or None when there are none."""
+    return list(_metadata_bindings(ark, qualifier)) or None
+
+
+def _locate(parsed: ArkPath, probe) -> tuple[ArkPath, Ark | None, object]:
+    """
+    Find what ``parsed`` names: ``(form that matched, ark, probe's answer)``.
+
+    The request is looked up exactly as written first, which is the legacy
+    contract and costs the usual reads. Only when that misses (no such ARK, or
+    ``probe(ark, qualifier)`` returns None) are its other readings tried, in
+    ``ArkPath.alternatives()`` order: a variant of the object (``utsc1.pdf`` as
+    ``utsc1`` + ``.pdf``), then the spec-normalised form, with hyphens and a
+    trailing '.' removed (draft-kunze-ark-44 §3.2; arks.org strips hyphens
+    before forwarding). On a total miss the request as written is returned, so
+    its 404 or empty answer is the one it always had.
+    """
+    arks: dict[str, Ark | None] = {}
+
+    def ark_for(form: ArkPath) -> Ark | None:
+        # The collection comes in the same query: its settings decide what
+        # the probes look for, and a redirect must stay at two reads.
+        if form.identifier not in arks:
+            arks[form.identifier] = (
+                Ark.objects.select_related("collection")
+                .filter(naan=form.naan, identifier=form.identifier)
+                .first()
+            )
+        return arks[form.identifier]
+
+    ark = ark_for(parsed)
+    found = probe(ark, parsed.qualifier) if ark is not None else None
+    if found is not None:
+        return parsed, ark, found
+
+    for form in parsed.alternatives():
+        alt_ark = ark_for(form)
+        alt_found = probe(alt_ark, form.qualifier) if alt_ark is not None else None
+        if alt_found is not None:
+            return form, alt_ark, alt_found
+    return parsed, ark, found
+
+
 def resolve(request, *args, **kwargs):
     """Resolve any /ark:... request."""
     parsed = parse_ark_path(raw_request_uri(request))
@@ -83,28 +154,32 @@ def resolve(request, *args, **kwargs):
     if parsed.naan_only:
         return _naa_response(parsed.naan)
 
-    ark = Ark.objects.filter(naan=parsed.naan, identifier=parsed.identifier).first()
-    if ark is None:
-        raise Http404(f"Unknown ARK {parsed.name}")
-
-    # An explicit inflection wins over /manifest: legacy only treated a request
-    # as a manifest when the URI *ended* in "/manifest", so a trailing '?' sent
-    # it down the metadata path instead.
+    # An explicit inflection wins over a proxied suffix: legacy only treated a
+    # request as a manifest when the URI *ended* in "/manifest", so a trailing
+    # '?' sent it down the metadata path instead, describing the qualifier
+    # '/manifest' itself (legacy built the qualifier from every path part).
     if parsed.inflection is not Inflection.NONE:
+        parsed, ark, bindings = _locate(parsed, _has_metadata)
+        if ark is None:
+            raise Http404(f"Unknown ARK {parsed.name}")
         body = render_erc(
-            _metadata_bindings(ark, parsed.qualifier),
+            bindings or (),
             include_support=parsed.inflection is Inflection.FULL,
         )
         return HttpResponse(body, content_type="text/plain; charset=utf-8")
 
-    if parsed.manifest:
-        return _manifest(ark, parsed.qualifier)
-
-    target = _target_url(ark, parsed.qualifier)
+    parsed, ark, target = _locate(parsed, _resolution_target)
+    if ark is None:
+        raise Http404(f"Unknown ARK {parsed.name}")
     if not target:
         raise Http404(f"Nothing bound to {parsed.name}{parsed.qualifier}")
 
-    # Buffered, so a redirect stays a pure read: see core.counters.
+    if _is_proxied(ark, parsed.qualifier):
+        return _manifest(ark, target)
+
+    # Buffered, so a redirect stays a pure read: see core.counters. Counted
+    # against the qualifier that actually resolved, so a hyphenated spelling
+    # adds to the stored ARK's count rather than starting a row of its own.
     record_resolution(ark.pk, parsed.qualifier)
     return HttpResponseRedirect(target)
 
@@ -122,7 +197,7 @@ def _manifest_slots_for(size: int) -> threading.BoundedSemaphore:
         return _manifest_slots[1]
 
 
-def _manifest(ark: Ark, qualifier: str) -> HttpResponse:
+def _manifest(ark: Ark, target: str) -> HttpResponse:
     """
     Proxy the target's JSON rather than redirecting to it (IIIF pass-through).
 
@@ -131,10 +206,6 @@ def _manifest(ark: Ark, qualifier: str) -> HttpResponse:
     process; past that the caller is told to retry rather than queueing behind
     them and starving ordinary redirects.
     """
-    target = _target_url(ark, qualifier)
-    if not target:
-        raise Http404(f"Nothing bound to {ark.name}{qualifier}")
-
     slots = _manifest_slots_for(max(1, settings.MANIFEST_MAX_CONCURRENT))
     if not slots.acquire(blocking=False):
         response = JsonResponse({"error": "Too many manifest requests; retry shortly."}, status=503)

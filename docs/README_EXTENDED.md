@@ -292,10 +292,10 @@ flowchart TD
     F -->|no| G["404"]
     F -->|yes| H{"inflection<br/>? ?? ?info"}
     H -->|yes| I["200 · erc: block<br/><i>no counter increment</i>"]
-    H -->|no| J{"/manifest?"}
-    J -->|yes| K["check target is public http(s)<br/>fetch (10 s total, 10 MB, 4 at once)<br/>return JSON as received<br/>502/503/504 if refused, busy or slow"]
-    J -->|no| L{"URL bound at<br/>this exact qualifier?"}
-    L -->|no| M{"WHERE? bound?"}
+    H -->|no| J{"last segment a<br/>proxied suffix?<br/><i>(default manifest)</i>"}
+    J -->|yes| K["URL bound at …/manifest, else at its parent<br/>check target is public http(s)<br/>fetch (10 s total, 10 MB, 4 at once)<br/>return JSON as received<br/>502/503/504 if refused, busy or slow"]
+    J -->|no| L{"first redirect element<br/>bound at this exact qualifier?<br/><i>(collection setting; default URL)</i>"}
+    L -->|no| M{"next one bound?<br/><i>(default WHERE?)</i>"}
     M -->|no| N["404<br/><i>no fallback up the hierarchy</i>"]
     M -->|yes| O["count (Valkey, else MySQL) · 302"]
     L -->|yes| O
@@ -307,11 +307,27 @@ flowchart TD
     style N fill:#fdeeee
 ```
 
+The label is matched in any case (`ARK:`). When a lookup misses (no such ARK, or
+nothing bound for what was asked), the resolver tries once more with the
+spec-normalised form: hyphens and a trailing `.` or `/` removed, so `utsc-1` and
+a pasted `utsc1.` both reach `utsc1`. A variant of the object itself,
+`utsc1.image.png`, is read on a miss as ARK `utsc1` with the variant `.image.png`,
+which is how it is stored. An exact match always wins, and none of this ever
+walks up the hierarchy. Because arks.org strips hyphens before forwarding to us,
+staff cannot bind a qualifier or create a prefix containing `-`.
+
+Which elements hold the redirect URL, and which final segments are proxied as
+JSON, are **settings of each collection** (defaults `URL, WHERE?` and
+`manifest`, exactly the legacy behaviour). `…/manifest` fetches the URL bound at
+the `/manifest` qualifier, as legacy did, and falls back to the object's own
+URL. An Admin changes the settings on the collection page, after a preview of
+how many bindings and ARKs each one touches.
+
 Order matters in two places, both to match legacy:
 
 - **Inflection is checked before `/manifest`.** Legacy only treated a URI as a
   manifest request when it *ended* in `/manifest`, so a trailing `?` took it down
-  the metadata path.
+  the metadata path, describing the `/manifest` qualifier itself.
 - **Decoding happens after splitting** on `/` and `?`, so `%2F` stays inside one
   path component and `%3F` is data rather than an inflection marker.
 

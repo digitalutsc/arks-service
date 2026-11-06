@@ -35,8 +35,8 @@
   </div>
   <div class="form-actions">
     <button type="submit">Bind</button>
-    <span class="hint">The resolver redirects to <code>URL</code>, falling back to <code>WHERE?</code>.
-      Any element name is allowed.</span>
+    <span class="hint">The resolver redirects to {% for name in redirect_elements %}{% if not forloop.first %}, then {% endif %}<code>{{ name }}</code>{% endfor %}
+      (this collection's redirect elements). Any element name is allowed.</span>
   </div>
 </form>
 {% endif %}

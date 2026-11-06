@@ -30,6 +30,74 @@
     <div class="form-actions"><button type="submit">Save changes</button></div>
   </form>
 </div>
+
+<div class="card" id="resolution-settings">
+  <p class="card-title">Resolution settings</p>
+  <p class="hint">How the public resolver answers this collection's ARKs. They apply to every ARK in
+    the collection from the next request, so a change is shown as a preview first and only saved once
+    you confirm it. The defaults, <code>URL, WHERE?</code> and <code>manifest</code>, are how the
+    legacy service behaved.</p>
+  {% if preview %}
+  <div class="msg warning">
+    <p><strong>Check before saving.</strong> These settings apply to every ARK in this collection
+      from the next request.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Setting</th><th>Now</th><th>After</th></tr></thead>
+      <tbody>
+        <tr><td>Redirect elements</td><td class="mono">{{ redirect_elements_text }}</td>
+          <td class="mono">{{ preview.elements_text }}</td></tr>
+        <tr><td>Proxied suffixes</td><td class="mono">{{ proxied_suffixes_text|default:"(none)" }}</td>
+          <td class="mono">{{ preview.suffixes_text|default:"(none)" }}</td></tr>
+      </tbody>
+    </table></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Element or suffix</th><th class="num">Bound in this collection</th></tr></thead>
+      <tbody>
+        {% for name, count in preview.elements.items %}
+          <tr><td class="mono">{{ name }}</td><td class="num">{{ count|intcomma:False }} binding{{ count|pluralize }}</td></tr>
+        {% endfor %}
+        {% for suffix, count in preview.suffixes.items %}
+          <tr><td class="mono">/{{ suffix }}</td><td class="num">{{ count|intcomma:False }} ARK{{ count|pluralize }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% if preview.warnings %}<ul>{% for warning in preview.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>{% endif %}
+    <form method="post" action="#resolution-settings">{% csrf_token %}
+      <input type="hidden" name="action" value="resolution">
+      <input type="hidden" name="redirect_elements" value="{{ preview.elements_text }}">
+      <input type="hidden" name="proxied_suffixes" value="{{ preview.suffixes_text }}">
+      <label class="check"><input type="checkbox" name="confirm" value="yes" required>
+        I understand this changes how this collection's ARKs resolve.</label>
+      <div class="form-actions">
+        <button type="submit">Confirm change</button>
+        <a class="btn subtle" href="{% url 'admin_ui:collection_detail' collection.pk %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <form method="post" action="#resolution-settings">{% csrf_token %}
+    <input type="hidden" name="action" value="resolution">
+    <div class="field"><label for="redirect_elements">Redirect elements</label>
+      <input id="redirect_elements" name="redirect_elements" class="wide mono" value="{{ redirect_elements_text }}">
+      <span class="hint">The element names that hold an ARK's redirect URL, <strong>separated by commas</strong>,
+        e.g. <code>URL, WHERE?</code>. They are tried in order at the requested ARK, part or variant, and the
+        first one with a value is where the resolver redirects. Names are upper-cased; at least one and at most
+        five.</span></div>
+    <div class="field"><label for="proxied_suffixes">Proxied suffixes</label>
+      <input id="proxied_suffixes" name="proxied_suffixes" class="wide mono" value="{{ proxied_suffixes_text }}">
+      <span class="hint">Final path segments answered with the target's JSON instead of a redirect,
+        <strong>separated by commas</strong>, e.g. <code>manifest</code> or <code>manifest, iiif</code>.
+        <code>…/manifest</code> fetches the URL bound at <code>/manifest</code>, else the URL of what it is
+        attached to. Each is one plain segment (no <code>/ . ? # % -</code> or spaces, not starting with a
+        digit or <code>_</code>). Leave empty for none.</span></div>
+    <div class="form-actions"><button type="submit">Review change…</button></div>
+  </form>
+  {% endif %}
+  {% if collection.resolution_changed_at %}
+  <p class="meta">Last changed {{ collection.resolution_changed_at|date:"Y-m-d H:i" }}{% if collection.resolution_changed_by %}
+    by {{ collection.resolution_changed_by.get_username }}{% endif %}.</p>
+  {% endif %}
+</div>
 {% endif %}
 
 {% if jobs %}
