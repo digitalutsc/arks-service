@@ -1,10 +1,11 @@
 """
 Retention for bulk-bind jobs.
 
-Each job keeps its upload (up to BULK_BIND_MAX_BYTES) and a results file on
-disk, and nothing removed them, so the media volume only ever grew. Pruning is
-off by default (BULK_BIND_RETENTION_DAYS=0 keeps everything, as before); the
-`prune_bulk_jobs` command runs it by hand.
+The uploaded CSV is deleted as soon as its job has run
+(BulkBindJob.discard_upload); what remains on disk is each job's results file,
+which the job page reads. Pruning removes that file and the job row. It is off
+by default (BULK_BIND_RETENTION_DAYS=0 keeps everything); the `prune_bulk_jobs`
+command runs it by hand.
 """
 
 from __future__ import annotations

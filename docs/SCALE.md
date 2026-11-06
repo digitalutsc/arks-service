@@ -181,11 +181,12 @@ Not reachable on one VM without operational changes:
   Use `gh-ost` or `pt-online-schema-change`.
 - **Partitioning.** `core_binding` is the big table; partition by `ark_id` range
   past ~500M rows.
-- **Media.** Uploaded CSVs and results are on local disk, which blocks running
+- **Media.** Pending uploads and results files are on local disk, which blocks running
   a second application host. Move to shared or object storage first.
-- **Retention.** `BULK_BIND_RETENTION_DAYS` (0 = keep forever) prunes finished
-  bulk-bind jobs and their files daily from the scheduler; `prune_bulk_jobs
-  --older-than N` does it by hand.
+- **Retention.** An uploaded CSV is deleted as soon as its job has run, so the
+  media volume holds only results files. `BULK_BIND_RETENTION_DAYS` (0 = keep
+  forever) prunes finished bulk-bind jobs and their results files daily from the
+  scheduler; `prune_bulk_jobs --older-than N` does it by hand.
 
 ---
 

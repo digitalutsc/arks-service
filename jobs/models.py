@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 from collections.abc import Iterator
 
 from django.core.files.base import ContentFile
@@ -11,6 +12,8 @@ from django.db import models
 from django.utils import timezone
 
 from core.search import csv_safe, csv_unsafe
+
+logger = logging.getLogger(__name__)
 
 #: Header of the per-row results file, and of the table the job page draws from it.
 RESULT_COLUMNS = ("row", "ark_id", "status", "message")
@@ -111,6 +114,27 @@ class BulkBindJob(models.Model):
         if failed:
             self.status, self.error, self.finished_at = self.Status.FAILED, INTERRUPTED_MESSAGE, now
         return bool(failed)
+
+    def discard_upload(self) -> None:
+        """
+        Delete the uploaded CSV once this job can never run again.
+
+        Only a PENDING job is run, and a claimed job never returns to PENDING,
+        so after the claim nothing reads the upload. The results file and this
+        row stay; retention removes those. A file that cannot be deleted is
+        logged and left named, so the job's outcome never depends on it and a
+        later prune can still remove it.
+        """
+        if not self.upload:
+            return
+        name = self.upload.name
+        try:
+            self.upload.storage.delete(name)
+        except OSError as exc:
+            logger.warning("bulk bind job %s: could not delete upload %s: %s", self.pk, name, exc)
+            return
+        type(self).objects.filter(pk=self.pk).update(upload="")
+        self.upload.name = ""
 
     def mark_failed(self, message: str) -> None:
         self.status = self.Status.FAILED

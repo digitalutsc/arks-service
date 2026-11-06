@@ -167,7 +167,7 @@ flowchart TB
     DB[("MySQL (prod) / PostgreSQL (dev)<br/>the only durable state")]
     V0[("Valkey DB 0<br/>Celery queues:<br/>celery, periodic")]
     V1[("Valkey DB 1<br/>Django cache: login throttle,<br/>element names, mint template ids<br/>+ hash arks:hits (counters)")]
-    MEDIA[("MEDIA_ROOT<br/>bulk-bind uploads + results")]
+    MEDIA[("MEDIA_ROOT<br/>bulk-bind results<br/>+ uploads until the job ends")]
 
     PUB -->|"GET /ark:/…"| AP
     STAFF -->|"/admin/…"| AP
@@ -869,7 +869,9 @@ stateDiagram-v2
 
 **Results file**: `job-<pk>-results.csv`, columns `row, ark_id, status, message` (statuses as above), values through `csv_safe`; `iter_results()` streams it back through `csv_unsafe`, and a missing file yields no rows (the page must still open). A FINISHED job with `failed > 0` wrote nothing.
 
-**Retention** (`jobs/retention.py::prune_jobs`): finished/failed jobs older than N days (by `finished_at`, else `created_at`), their upload and results files deleted through the storage; pending/running never touched; `dry_run` reports. Off unless `BULK_BIND_RETENTION_DAYS > 0`; also `manage.py prune_bulk_jobs --older-than N`.
+**Upload discard** (`BulkBindJob.discard_upload()`): a claimed job never runs again, so its uploaded CSV is deleted as soon as the job ends: in `run_bulk_bind`'s `finally` (after the transaction, on every outcome), on the redelivered-while-RUNNING branch, and when `reap_stale_jobs` interrupts it. A PENDING job keeps its file (the reaper may re-queue it). A storage error is logged and leaves the name set, never changing the outcome. The worker reads the whole file into memory before applying, so nothing reads it afterwards.
+
+**Retention** (`jobs/retention.py::prune_jobs`): finished/failed jobs older than N days (by `finished_at`, else `created_at`), their results file (and any upload still present) deleted through the storage; pending/running never touched; `dry_run` reports. Off unless `BULK_BIND_RETENTION_DAYS > 0`; also `manage.py prune_bulk_jobs --older-than N`.
 
 ---
 
@@ -1028,7 +1030,7 @@ With `DJANGO_DEBUG=false`, refuse to start (one message listing every problem) w
 | | `DATA_UPLOAD_MAX_MEMORY_SIZE` / `FILE_UPLOAD_MAX_MEMORY_SIZE` | 20 MiB / 5 MiB | Django's own; the former does **not** cover file parts |
 | | `SORT_SUBQUERY_MAX_ROWS` | 50,000 | |
 | | `EXPORT_SYNC_MAX_ROWS` | 100,000 | |
-| Files | `MEDIA_ROOT` | `./media` | uploads and results; `STATIC_ROOT=staticfiles/` via WhiteNoise `CompressedManifestStaticFilesStorage` when DEBUG is false |
+| Files | `MEDIA_ROOT` | `./media` | results files, plus uploads until their job ends; `STATIC_ROOT=staticfiles/` via WhiteNoise `CompressedManifestStaticFilesStorage` when DEBUG is false |
 
 ---
 
@@ -1084,7 +1086,7 @@ php tests/fixtures/generate_vectors.php > tests/fixtures/noid_vectors.json   # N
 - **`.rdedk` capacity** is 2,900 in code; `USAGES.md` was corrected on 2026-11-05.
 - **Variant on a bare ARK** (`/ark:/61220/utsc1.image.png`) parses the dot into the identifier and does not resolve; variants of parts do. Open item (section 6).
 - **Re-import after cutover** overwrites values curators changed since the export.
-- **Bulk bind uploads live in `MEDIA_ROOT`**, which in Docker is the `media` volume: `make rebuild` on an external-DB stack deletes queued jobs' files while their messages survive in Valkey, so they fail with a file-not-found.
+- **Bulk bind uploads live in `MEDIA_ROOT` until their job ends**, which in Docker is the `media` volume: `make rebuild` on an external-DB stack deletes queued jobs' files while their messages survive in Valkey, so they fail with a file-not-found.
 - **`.env.example` ships `TRUST_FORWARDED_FOR=true`**, which is only safe behind a proxy that is the sole route to gunicorn.
 - **Secrets**: `ARK_CORE.sql` (the legacy export) holds reversibly-encrypted staff passwords; never commit, paste or mount it.
 

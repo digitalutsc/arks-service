@@ -64,6 +64,7 @@ def run_bulk_bind(self, job_id: int) -> dict:
     if job.status == BulkBindJob.Status.RUNNING:
         if job.mark_interrupted():
             logger.warning("bulk bind job %s was interrupted; marked failed", job_id)
+            job.discard_upload()
         return {"ok": False, "interrupted": True}
 
     if not job.claim(self.request.id):
@@ -99,6 +100,8 @@ def run_bulk_bind(self, job_id: int) -> dict:
         return {"ok": False, "error": str(exc)}
     finally:
         report.finish()
+        # Claimed, so never run again: the upload has served its purpose.
+        job.discard_upload()
 
     return {
         "ok": result.ok,
@@ -144,6 +147,7 @@ def reap_stale_jobs() -> dict:
         status=BulkBindJob.Status.RUNNING, started_at__lt=now - running_limit
     ):
         if job.mark_interrupted():
+            job.discard_upload()
             interrupted += 1
             logger.warning("bulk bind job %s ran past its time limit; marked failed", job.pk)
 

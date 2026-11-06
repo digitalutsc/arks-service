@@ -92,7 +92,7 @@ flowchart TB
 
         RD[("Valkey or Redis<br/>broker + cache")]
         DB[("MySQL / MariaDB<br/><i>the only durable state</i>")]
-        MED[("MEDIA_ROOT<br/>uploaded CSVs<br/>+ results")]
+        MED[("MEDIA_ROOT<br/>results files<br/>+ uploads until the job ends")]
     end
 
     U -->|"GET /ark:/61220/utsc1"| AP

@@ -559,7 +559,8 @@ anything it did not touch. Use ordinary scheduled `mysqldump` instead.
 What holds state:
 
 - the application database (collections, ARKs, bindings, counters, users);
-- `MEDIA_ROOT` — uploaded bulk-bind CSVs and their per-row results files.
+- `MEDIA_ROOT` — bulk-bind per-row results files, plus the uploaded CSV of any job still
+  pending or running (an upload is deleted as soon as its job has run).
 
 ```bash
 mysqldump --single-transaction ark > /backup/ark-$(date +%F).sql
@@ -626,7 +627,7 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 | `CELERY_TASK_ALWAYS_EAGER` | `false` | `true` runs jobs inline — development only |
 | `CELERY_TASK_TIME_LIMIT` | `3600` | Seconds |
 | `MINT_MAX_PER_REQUEST` | `10000` | Largest single mint from the form or the `mint` command; `0` removes the cap. Bulk bind is not subject to it (it is bounded by `BULK_BIND_MAX_ROWS`). A very large form mint can outlast Apache's `ProxyTimeout`: the browser gets an error page, but the mint still completes |
-| `BULK_BIND_RETENTION_DAYS` | `0` | Delete finished bulk-bind jobs and their files after this many days, daily. `0` keeps them forever; `manage.py prune_bulk_jobs --older-than N [--dry-run]` does it by hand |
+| `BULK_BIND_RETENTION_DAYS` | `0` | Delete finished bulk-bind jobs and their results files after this many days, daily (uploads are already deleted when a job ends). `0` keeps them forever; `manage.py prune_bulk_jobs --older-than N [--dry-run]` does it by hand |
 | `CELERY_BEAT_SCHEDULE_FILENAME` | `/tmp/celerybeat-schedule` | Beat's state file; must be writable by the scheduler |
 | `BULK_BIND_MAX_ROWS` | `100000` | Largest upload |
 | `FALLBACK_PAGES_DIR` | empty | A directory holding operator-written `index.html`, `403.html`, `404.html`, `500.html` and their assets, served in place of the built-in landing page and Django's plain error pages (`resolver/fallback.py`). Empty means off. Starting kit: `docs/fallback-example/` |
@@ -637,7 +638,7 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 | `MANIFEST_MAX_CONCURRENT` | `4` | `/manifest` fetches at once per gunicorn process; beyond it, 503 with `Retry-After` |
 | `DB_CONNECT_TIMEOUT` / `DB_READ_TIMEOUT` / `DB_WRITE_TIMEOUT` | `5` / `60` / `60` | MySQL only. Seconds before a stalled server is given up on |
 | `FILE_UPLOAD_MAX_MEMORY_SIZE` | `5242880` | Uploads larger than this are spooled to a temporary file |
-| `MEDIA_ROOT` | `./media` | Uploaded CSVs and results |
+| `MEDIA_ROOT` | `./media` | Bulk-bind results files, and uploads until their job ends |
 | `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `true` when `DEBUG` false | Set false only for plain-HTTP testing |
 | `SECURE_HSTS_SECONDS` | `0` | Enable once TLS is proven; hard to walk back |
 | `SECURE_HSTS_INCLUDE_SUBDOMAINS` | `false` | |
