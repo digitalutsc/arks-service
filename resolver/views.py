@@ -38,14 +38,27 @@ from resolver.services import (
 logger = logging.getLogger(__name__)
 
 
-def _target_url(ark: Ark, qualifier: str) -> str | None:
+class Target(NamedTuple):
+    """Where a redirect goes, and which qualifier its hit is counted against."""
+
+    url: str
+    counted: str
+
+
+def _target_url(ark: Ark, qualifier: str) -> Target | None:
     """
-    The redirect target for an exact (ark, qualifier), or None.
+    The redirect target bound at (ark, qualifier), or None.
 
     The collection says which elements hold it and in what order
     (``Collection.redirect_elements``, by default ``URL`` then ``WHERE?`` as in
     legacy); the first bound with a non-empty value wins. ``ark.collection`` is
     loaded with the ARK (see ``_locate``), so this is still one indexed read.
+
+    The hit is counted against the qualifier *as stored on the binding*, not as
+    requested. They differ on MySQL, whose collation matches ``/Page1`` to a
+    binding at ``/page1``: counting the request's spelling would buffer a pair
+    the unique (ark, qualifier) index rejects at flush time
+    (INTENTS_counter_collation.md).
 
     Read from the database every time, through the unique (ark, qualifier,
     name) index. It used to be cached, which saved one indexed read but made the
@@ -53,17 +66,16 @@ def _target_url(ark: Ark, qualifier: str) -> str | None:
     it, and could serve an old URL for a few minutes after a rebind.
     """
     elements = ark.collection.redirect_element_list
-    bindings = dict(
-        ark.bindings.filter(qualifier=qualifier, name__in=elements).values_list("name", "value")
-    )
-    return next((bindings[name] for name in elements if bindings.get(name)), None)
-
-
-class Target(NamedTuple):
-    """Where a redirect goes, and which qualifier its hit is counted against."""
-
-    url: str
-    counted: str
+    bindings: dict[str, tuple[str, str]] = {}
+    for bound_at, name, value in ark.bindings.filter(
+        qualifier=qualifier, name__in=elements
+    ).values_list("qualifier", "name", "value"):
+        bindings[name] = (value, bound_at)
+    for name in elements:
+        value, bound_at = bindings.get(name, ("", qualifier))
+        if value:
+            return Target(value, bound_at)
+    return None
 
 
 def _is_proxied(ark: Ark, qualifier: str) -> bool:
@@ -86,7 +98,7 @@ def _resolution_target(ark: Ark, qualifier: str) -> Target | None:
     target = _target_url(ark, qualifier)
     if target is None and _is_proxied(ark, qualifier):
         target = _target_url(ark, parent_qualifier(qualifier))
-    return Target(target, qualifier) if target else None
+    return target
 
 
 #: Path segments a passthrough never appends: they would step out of the

@@ -5,7 +5,7 @@ each path through it.
 
 - Deployment: [DEPLOY.md](DEPLOY.md)
 - Day-to-day use: [USAGES.md](USAGES.md)
-- Quick start: [README.md](README.md)
+- Quick start: [README.md](../README.md)
 
 ---
 
@@ -50,7 +50,7 @@ flowchart TB
         direction TB
         N1["resolver/<br/><i>the only public surface</i>"]
         N2["admin_ui/<br/><i>templates + HTMX, 3 roles</i>"]
-        N3["management commands<br/><i>no HTTP API</i>"]
+        N3["management commands<br/><i>no HTTP API</i><br/><i>staff commands: optional arks-cli plugin</i>"]
         N4["core/services.py<br/><i>shared by UI and CLI</i>"]
         N5[("collections / arks<br/>bindings / resolutions")]
         N1 --> N5
@@ -144,7 +144,8 @@ flowchart LR
 ```
 arkservice/     settings, URLs, WSGI, Celery app, boot guards
 core/           models, ARK path parsing, search/export, shared services,
-                legacy reader, cutover verification, management commands
+                legacy reader, cutover verification, operator commands
+                (the staff commands are the optional arks-cli plugin)
 minting/        the noid port (pure) and the minter (stateful)
 resolver/       the public /ark:… endpoint and the landing page
 admin_ui/       staff interface: views, roles, templates
@@ -163,7 +164,7 @@ flowchart TD
     AU --> MI["minting/minter.py"]
     AU --> JB["jobs/models.py + tasks.py"]
 
-    CMD["management commands"] --> SV
+    CMD["management commands<br/><i>core operators + arks-cli plugin</i>"] --> SV
     CMD --> SE
     CMD --> MI
     CMD --> LG["core/legacy.py"]
@@ -184,11 +185,12 @@ flowchart TD
 Two things to notice:
 
 - **`core/services.py` sits between both front ends and the models.** The admin
-  UI and the management commands call the same functions, so they cannot drift.
+  UI and the management commands (core's operator commands and the optional
+  `arks-cli` staff plugin alike) call the same functions, so they cannot drift.
   An earlier version had them written twice and they had already diverged over
   whether a rebind touched `updated_at`.
 - **`minting/noid.py` is pure.** No database, no Django. That is what lets it be
-  pinned to the legacy PHP by ~1,450 golden vectors.
+  pinned to the legacy PHP by 1,469 golden vectors.
 
 ---
 
@@ -483,7 +485,7 @@ flowchart TD
     A["Freeze writes on legacy"] --> B["export the database<br/><i>mysqldump or phpMyAdmin</i>"]
     B --> C["import_legacy --dry-run"]
     C --> D["import_legacy"]
-    D --> E["ark_stats<br/><i>do the counts look right?</i>"]
+    D --> E["refresh_collection_stats<br/><i>do the counts look right?</i>"]
     E --> F["resolve_diff --sample 500"]
     F --> G{"clean?"}
     G -->|no| H["investigate, fix, re-import"]
@@ -595,10 +597,10 @@ concurrent minting and the resolution-counter race need real row locking.
 
 ## Testing strategy
 
-About 3,450 tests (run `pytest --co -q | tail -1` for today's number). Three ideas do most of the work.
+About 3,800 tests collected (run `pytest --co -q | tail -1` for today's number). Three ideas do most of the work.
 
 **1. Conformance vectors.** `tests/fixtures/generate_vectors.php` runs the
-*legacy PHP* and dumps ~1,450 expected values for template parsing, base
+*legacy PHP* and dumps 1,469 expected values for template parsing, base
 conversion, check characters and end-to-end identifier construction. The Python
 port is tested against those, so "identical to legacy" is measured, not claimed.
 CI regenerates them and fails if the fixture has drifted.
@@ -606,7 +608,7 @@ CI regenerates them and fails if the fixture has drifted.
 **2. Mutation testing on the parts that matter.** After a suite went green it was
 deliberately broken to confirm the tests notice: an off-by-one in the check
 character, reversed digit order, the wrong repertoire search order, a dropped
-`WHERE?` fallback, an added ancestor fallback, counting metadata as a redirect.
+`WHERE?` fallback, an ancestor fallback with suffix passthrough off, counting metadata as a redirect.
 Each failed exactly the tests it should. One such check found that a
 `set_rollback` call was *not* what provided bulk bind's atomicity — validation
 order was — and the code now says so.

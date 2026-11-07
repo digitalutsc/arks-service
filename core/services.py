@@ -390,7 +390,7 @@ LIVE_STATS_MAX_ARKS = 50_000
 
 
 def collection_stats(collection: Collection) -> dict[str, int]:
-    """The counts both the collection page and `ark_stats` report, counted now."""
+    """The counts the collection page and `refresh_collection_stats` report, counted now."""
     arks = Ark.objects.filter(collection=collection)
     total = arks.count()
     bound = arks.filter(Exists(Binding.objects.filter(ark=OuterRef("pk")))).count()

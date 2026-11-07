@@ -41,7 +41,7 @@ About 100,000 ARKs are in circulation in catalogue records, papers and crawler i
 
 | Fixed by the legacy service | Where it is honoured here |
 |---|---|
-| Identifier shape (`utsc` + noid digits, check characters) | `minting/noid.py`, pinned by 1,450 golden vectors generated from the PHP |
+| Identifier shape (`utsc` + noid digits, check characters) | `minting/noid.py`, pinned by 1,469 golden vectors generated from the PHP |
 | Redirect at the exact qualifier, `URL` then `WHERE?`, **no fallback up the hierarchy** (unless a collection turns on suffix passthrough, off by default) | `resolver/views.py::_target_url` |
 | `?`, `??`, `?info` inflections return `erc:` metadata without counting a hit | `core/arkpath.py`, `resolver/services.py::render_erc` |
 | `/manifest` proxies JSON: the URL bound at `/manifest`, else the object's (configurable per collection since 2026-11-06; R0) | `resolver/views.py::_resolution_target`, `_manifest` |
@@ -126,7 +126,7 @@ arks-service/
 ├── docs/                     every document but README.md: README_EXTENDED, GUIDES (this), DEPLOY, MIGRATION, USAGES, SCALE
 │   └── fallback-example/     starting kit for FALLBACK_PAGES_DIR: index.html (3 placeholders), 403/404/500.html, style.css, README
 ├── scripts/bench/            seed.py / measure.py, the source of every number in SCALE.md
-└── tests/                    29 files, 609 test functions, 3,448 collected (parametrised vectors)
+└── tests/                    43 files, ~908 test functions, 3,817 collected (parametrised vectors)
 ```
 
 ### Which document is authoritative for what
@@ -922,7 +922,7 @@ There is no HTTP API; commands are the scripting surface, run on the server. Exi
 
 | Command | Arguments | Calls | Notes |
 |---|---|---|---|
-| `createcollection NAME --naan N --template T [--prefix P] [--naa A] [--term short\|medium\|long]` *(arks-cli)* | | `Collection.full_clean().save()` | prints prefix, firstpart, template (mask, gen type), capacity; `ValidationError`/`IntegrityError` → CommandError |
+| `createcollection NAME --naan N --template T [--prefix P] [--naa A] [--term short\|medium\|long] [--redirect-elements URL,WHERE?] [--proxied-suffixes manifest] [--suffix-passthrough]` *(arks-cli)* | the three resolution settings, section 5 | `Collection.full_clean().save()` | prints prefix, firstpart, template (mask, gen type), capacity; `ValidationError`/`IntegrityError` → CommandError |
 | `mint COLLECTION [COUNT=1] [--template FILE]` *(arks-cli)* | | `minting.minter.mint` | prints one ARK per line; writes the fill-in CSV; `MintError` → CommandError; cap enforced |
 | `bind ARK ELEMENT VALUE` *(arks-cli)* | ARK may carry a qualifier | `bind_element` | |
 | `unbind ARK [ELEMENT] [--all]` *(arks-cli)* | | `unbind_elements` | `--all` on a bare ARK clears every qualifier (same as UI purge); on a qualifier only that one |
@@ -934,6 +934,7 @@ There is no HTTP API; commands are the scripting surface, run on the server. Exi
 | `prune_bulk_jobs --older-than DAYS [--dry-run]` | | `jobs.retention.prune_jobs` | `< 1` → CommandError |
 | `import_legacy (--legacy-dump FILE \| --legacy-url URL) [--encoding] [--table T]* [--collection-name N] [--report CSV] [--dry-run]` | exactly one source | section 16 | |
 | `resolve_diff --legacy-base URL --new-base URL [--collection] [--sample N] [--no-inflections] [--workers 8] [--timeout 20] [--out CSV] [--known CSV] [--stop-after N]` | | `core.verify` | section 16 |
+| `check_manifests [--collection C] [--out CSV] [--sample N] [--workers 4]` | read-only; `--collection` restricts to one collection, `--sample` to the first N targets, `--out` writes every result, `--workers` is the number of concurrent fetches (keep it low against on-demand manifests) | `resolver.services.fetch_json` | fetches every explicitly bound proxied-suffix target (`/manifest` by default) exactly as the resolver would, same guards and limits, and reports what came back |
 
 `_common.get_collection(reference)`: exact `name` first (case-sensitive on every engine, MySQL included); then `<naan>/<prefix>`; then `prefix` if exactly one collection has it, else "More than one collection uses the prefix… Name it as <naan>/<prefix>"; else "No collection with prefix or name … Known: …". `_common.get_ark(reference)` parses `ark:/<reference>` with `parse_ark_path` and returns `(ark, qualifier)` or "is not a valid ARK" / "No such ARK".
 
@@ -1013,7 +1014,7 @@ With `DJANGO_DEBUG=false`, refuse to start (one message listing every problem) w
 
 | Concern | Variable | Default | Effect |
 |---|---|---|---|
-| Core | `DJANGO_DEBUG` | `false` | `true` relaxes the guard, enables SQLite fallback and non-hashed static storage |
+| Core | `DJANGO_DEBUG` | `false` | `true` relaxes the guard (when false, `DJANGO_SECRET_KEY`, a non-SQLite `DATABASE_URL` and `REDIS_URL` are all required), enables SQLite fallback and non-hashed static storage |
 | | `DJANGO_SECRET_KEY` | dev placeholder | required in production |
 | | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | |
 | | `DJANGO_CSRF_TRUSTED_ORIGINS` | empty | only when forms post from another hostname |
@@ -1062,21 +1063,35 @@ tests/
 ├── test_arkpath.py       the URL grammar
 ├── test_resolver.py      every resolver path, headers, health, manifest with a monkeypatched fetch
 ├── test_manifest_fetch.py  SSRF guard, pinned address, size/time caps
+├── test_manifest_hardening.py  /manifest made dependable: legacy-length timeouts, CORS header, on-demand targets
+├── test_suffix_passthrough.py  the opt-in per-collection passthrough to the nearest bound ancestor (R6)
+├── test_object_variants.py     utsc1.image.png read as ARK utsc1 + qualifier .image.png, everywhere
+├── test_identifier_normalisation.py  hyphens and trailing ./ ignored as a fallback only (draft-kunze-ark-44 §3.2)
+├── test_collection_resolution_settings.py  redirect_elements / proxied_suffixes: preview, confirm, audit
+├── test_fallback.py      operator-supplied landing and error pages (FALLBACK_PAGES_DIR)
 ├── test_models.py        constraints; Resolution.record race (skips on SQLite)
 ├── test_services.py, test_search.py, test_scale_limits.py, test_counters.py
 ├── test_bulkbind.py, test_jobs.py, test_job_results_table.py, test_retention.py, test_schedule.py
+├── test_row_outcomes.py  per-element created/replaced/unchanged folded back onto each row
+├── test_progress.py      a running bulk bind's phase and counts, read from the cache
+├── test_upload_discard.py  the upload is deleted as soon as its job can never run again
 ├── test_admin_ui_shell.py, test_ark_list_sorting.py, test_ark_detail_variants.py, test_ark_back_link.py,
 │   test_collection_form.py, test_roles.py, test_security.py, test_workflow.py
+├── test_collection_pages.py  one collection header with the ARK list, Mint and Bulk bind as tabs
+├── test_busy_state.py    forms that take a moment say so while the browser waits
+├── test_users.py         who may manage accounts; superusers and one's own row are untouchable
 ├── test_commands.py, test_legacy_dump.py, test_legacy_import.py, test_verify.py
+├── test_command_helpers.py  core.management.commands._common, shared with the arks-cli plugin
+├── test_plugins.py       ARKS_PLUGINS: the staff commands are gone from core, a missing plugin refuses to start
 └── test_settings_db.py, test_settings_guards.py
 ```
 
-- **Counts**: about 3,465 collected from roughly 660 functions as of 2026-11-05 (the vectors are parametrised). `CLAUDE.md`'s "~3,400 / ~550 functions" and `README_EXTENDED.md`'s "roughly 2,900" are older figures.
+- **Counts**: 3,817 collected from about 908 functions in 43 files as of 2026-11-07 (3,683 pass and 134 skip on SQLite; the vectors are parametrised). `CLAUDE.md`'s "~3,400 / ~550 functions" is an older figure.
 - **`conftest.py`**: autouse `_clear_caches` (element names and stats are cached, so one test's data would answer another's lookup) and autouse `counter_redis`, which monkeypatches `core.counters._client` to return a fresh `fakeredis.FakeRedis` per test; a test simulates an outage by patching `_client` to raise.
 - **Per-file fixtures**: `collection`, `ark`, `make_user(username, role, superuser)`, `viewer`/`editor`/`admin` (signed-in clients) are defined in each test module, not in `conftest.py`.
 - **Skips on SQLite**: `test_concurrent_minters_never_produce_the_same_ark` and the counter-race test in `test_models.py` (SQLite serialises writes globally). A green SQLite run does not prove them; run MySQL at least once.
 - **CSP enforcement**: `test_admin_ui_shell.py::test_no_admin_page_relies_on_inline_styles_or_handlers` renders every staff page and fails on any `style=` or `on*=` attribute.
-- **Mutation-tested** (per `README_EXTENDED.md`): the check character, digit order, repertoire order, `WHERE?` fallback, ancestor fallback, metadata counting.
+- **Mutation-tested** (per `README_EXTENDED.md`): the check character, digit order, repertoire order, `WHERE?` fallback, suffix passthrough, metadata counting.
 
 ```bash
 ./.venv/bin/python -m pytest -q

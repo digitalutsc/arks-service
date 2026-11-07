@@ -35,8 +35,10 @@ Then edit `.env` and set at minimum:
 DJANGO_DEBUG=true
 ```
 
-With `DJANGO_DEBUG=true` the secret key and database URL are optional and the
-service falls back to a local SQLite file. Then:
+With `DJANGO_DEBUG=true` the secret key, database URL and `REDIS_URL` are
+optional. `.env.example` points `DATABASE_URL` at a local PostgreSQL server;
+comment out or remove that line and the service falls back to a local SQLite
+file instead. Then:
 
 ```bash
 ./.venv/bin/python manage.py migrate
@@ -58,8 +60,8 @@ production, where a 100k-row upload would hold an HTTP connection open.
 
 ### Why `manage.py` may refuse to run
 
-If `DJANGO_DEBUG` is false and either `DJANGO_SECRET_KEY` or `DATABASE_URL` is
-missing, the service refuses to start and names what is missing. That is
+If `DJANGO_DEBUG` is false and any of `DJANGO_SECRET_KEY`, `DATABASE_URL` or
+`REDIS_URL` is missing, the service refuses to start and names what is missing. That is
 deliberate — see [Boot guards](#boot-guards). For local work, set
 `DJANGO_DEBUG=true`.
 
@@ -115,6 +117,10 @@ make manage ARGS="createcollection 'UTSC Digital Collections' \
     --prefix utsc --naan 61220 --naa 'UTSC Library' --template .zd"
 make manage ARGS="mint utsc 10"
 ```
+
+Those two are staff commands from the optional `arks-cli` plugin, so the image
+must have been built with it: set `ARKS_PLUGIN_SRC` (the plugin checkout) and
+`ARKS_PLUGINS=arks_cli` in the stack's `.env`, then `make install`.
 
 Configuration is the `.env` file in that repository. `ARKS_SRC` in it says where
 this checkout is; `ARKS_REPO` and `ARKS_REF` say where to clone it from, and at
@@ -245,7 +251,7 @@ cp .env.example .env      # then edit — see 4.3
 Optional: the staff command line (`createcollection`, `mint`, `bind`, `unbind`, `bulk_bind`, `ark_stats`) is the separate `arks-cli` plugin. The operator commands used below (`import_legacy`, `resolve_diff`, `export_arks`, …) need nothing extra.
 
 ```bash
-.venv/bin/pip install -e /path/to/arks-cli     # or: pip install arks-cli
+.venv/bin/pip install -e /path/to/arks-cli     # a checkout of github.com/digitalutsc/arks-cli; not on PyPI
 echo "ARKS_PLUGINS=arks_cli" >> .env           # then restart the services
 ```
 
@@ -333,9 +339,9 @@ sudo systemctl status arkservice arkservice-worker arkservice-beat
   A worker process is replaced after 20 jobs or ~1 GB.
 - `arkservice-beat` — Celery beat plus a one-process worker for queue
   `periodic`: the redirect-count flush every `RESOLUTION_FLUSH_SECONDS`, the
-  stale-job reaper every 10 minutes, daily session cleanup and optional
-  bulk-bind retention. Kept apart so a long bulk bind can never delay the
-  flush. Run exactly one, even with several worker hosts. Beat's state file is
+  collection-stats refresh every `COLLECTION_STATS_SECONDS`, the stale-job
+  reaper every 10 minutes, daily session cleanup and optional bulk-bind
+  retention. Kept apart so a long bulk bind can never delay the flush. Run exactly one, even with several worker hosts. Beat's state file is
   `/tmp/celerybeat-schedule` (`CELERY_BEAT_SCHEDULE_FILENAME`), private to the
   unit through `PrivateTmp`; the working directory is read-only.
 
@@ -449,8 +455,8 @@ single-VM shape is comfortable to roughly 10M ARKs.
 
 ## Boot guards
 
-The service refuses to start when `DJANGO_DEBUG` is false and either
-`DJANGO_SECRET_KEY` or `DATABASE_URL` is missing, and says which. Without that
+The service refuses to start when `DJANGO_DEBUG` is false and any of
+`DJANGO_SECRET_KEY`, `DATABASE_URL` or `REDIS_URL` is missing, and says which. Without that
 check an incomplete `.env` would start gunicorn against an empty SQLite file —
 **404ing every one of the ~100k ARKs, with nothing in the log to say why** — using
 a well-known key that makes session cookies forgeable.
@@ -497,7 +503,7 @@ mysqldump --single-transaction --default-character-set=utf8mb4 ARK_CORE > /srv/A
     --legacy-dump /srv/ARK_CORE.sql --report review.csv --dry-run
 .venv/bin/python manage.py import_legacy \
     --legacy-dump /srv/ARK_CORE.sql --report review.csv
-.venv/bin/python manage.py ark_stats
+.venv/bin/python manage.py refresh_collection_stats   # prints the counts; also on each collection's page
 
 # then prove every ARK resolves identically, under gunicorn on an alternate port
 .venv/bin/python manage.py resolve_diff \
@@ -582,8 +588,8 @@ tar czf /backup/ark-media-$(date +%F).tar.gz /var/www/arkservice/media
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Service will not start, "Refusing to start" | `DJANGO_SECRET_KEY` or `DATABASE_URL` missing with `DEBUG=false` | Set them in `.env`; the message names which |
-| Every ARK 404s after deploy | Pointing at the wrong/empty database | Check `DATABASE_URL`; run `manage.py ark_stats` |
+| Service will not start, "Refusing to start" | `DJANGO_SECRET_KEY`, `DATABASE_URL` or `REDIS_URL` missing with `DEBUG=false` | Set them in `.env`; the message names which |
+| Every ARK 404s after deploy | Pointing at the wrong/empty database | Check `DATABASE_URL`; run `manage.py refresh_collection_stats`, which prints each collection's counts |
 | `…/ark:/x/y?` returns 302 instead of metadata | Apache is missing `nocanon` | See [4.5](#45-apache) |
 | Static files 404 | `collectstatic` not run | `manage.py collectstatic --no-input` |
 | Bulk-bind jobs stay "Pending" | Worker not running or wrong broker | `systemctl status arkservice-worker`; check `CELERY_BROKER_URL`. A job pending for 15 minutes is re-queued by the reaper |

@@ -199,9 +199,14 @@ def _drain(client) -> int:
         try:
             moved += _apply(batch)
         except IntegrityError:
-            # A write-through during an outage created one of these rows after
-            # we looked. Looking again sees it.
-            moved += _apply(batch)
+            # The unique index saw a duplicate that _apply's exact matching did
+            # not: on MySQL "/page1" and "/Page1" are one row (its collation
+            # ignores case and accents), or a write-through during an outage
+            # created a row after we looked. Let the database decide which row
+            # each pair belongs to, one pair at a time. Raising here instead
+            # would leave the batch in the flushing hash and fail every later
+            # flush on it, so counts would never reach the database again.
+            moved += _apply_one_by_one(batch)
         client.hdel(FLUSHING_KEY, *[field for field, *_ in batch])
 
     client.delete(FLUSHING_KEY)
@@ -254,3 +259,44 @@ def _apply(batch) -> int:
         if to_create:
             Resolution.objects.bulk_create(to_create, batch_size=FLUSH_BATCH)
     return moved
+
+
+def _apply_one_by_one(batch) -> int:
+    """
+    The slow path for a batch whose ``bulk_create`` hit the unique index.
+
+    Each pair is matched by the database, not by Python: an UPDATE at the pair's
+    (ark, qualifier), which on MySQL reaches a row spelled in another case; else
+    an INSERT; else, when another writer got there first, the UPDATE again. Still
+    one transaction for the batch, so the fields are removed only after it
+    commits, as in the fast path.
+    """
+    from core.models import Ark, Resolution
+
+    now = timezone.now()
+    moved = 0
+    with transaction.atomic():
+        for _, ark_id, qualifier, hits in batch:
+            if _increment(ark_id, qualifier, hits, now):
+                moved += hits
+                continue
+            if not Ark.objects.filter(pk=ark_id).exists():
+                continue  # The ARK went away between the hit and the flush.
+            try:
+                with transaction.atomic():
+                    Resolution.objects.create(
+                        ark_id=ark_id, qualifier=qualifier, count=hits, last_at=now
+                    )
+            except IntegrityError:
+                if not _increment(ark_id, qualifier, hits, now):
+                    continue
+            moved += hits
+    return moved
+
+
+def _increment(ark_id: int, qualifier: str, hits: int, now) -> int:
+    from core.models import Resolution
+
+    return Resolution.objects.filter(ark_id=ark_id, qualifier=qualifier).update(
+        count=F("count") + hits, last_at=now
+    )

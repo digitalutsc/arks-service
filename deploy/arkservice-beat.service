@@ -2,8 +2,9 @@
 [Unit]
 Description=ARK identifier service (celery beat and scheduled housekeeping)
 # Runs the schedule (Celery beat) and the small worker that executes it: the
-# redirect-count flush every RESOLUTION_FLUSH_SECONDS, the stale-job reaper,
-# daily session cleanup and optional bulk-bind retention. Its queue is
+# redirect-count flush every RESOLUTION_FLUSH_SECONDS, the collection-stats
+# refresh every COLLECTION_STATS_SECONDS, the stale-job reaper, daily session
+# cleanup and optional bulk-bind retention. Its queue is
 # "periodic", separate from the bulk binds in arkservice-worker.service.
 # Run exactly one of these, even with several worker hosts.
 After=network-online.target redis-server.service valkey-server.service mysql.service

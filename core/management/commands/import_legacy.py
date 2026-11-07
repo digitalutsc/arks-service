@@ -471,11 +471,15 @@ class Command(BaseCommand):
 
         # How many identifiers came across with no metadata is worth knowing, but
         # it is a question about the result rather than about the import, and
-        # `ark_stats` already answers it from committed, analysed data. Asking it
+        # `refresh_collection_stats` (and the collection page) already answers it
+        # from committed, analysed data. Asking it
         # here means an anti-join over every binding inside the write
         # transaction, which on a rehearsed import is minutes of nothing.
         if not dry_run:
-            self.stdout.write("Run `ark_stats` for what the collections now hold.")
+            self.stdout.write(
+                "Run `refresh_collection_stats` (or open the collection page) for what "
+                "the collections now hold."
+            )
 
         if report.path:
             self.stdout.write(f"Rows needing review: {report.path}")

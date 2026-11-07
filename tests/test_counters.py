@@ -220,3 +220,82 @@ def test_qualifiers_containing_colons_survive_the_round_trip(ark):
     record_resolution(ark.pk, "/page:1.image.png")
     flush_counters()
     assert Resolution.objects.get(ark=ark, qualifier="/page:1.image.png").count == 1
+
+
+# --- duplicate keys the database sees but Python does not ------------------
+#
+# Production MySQL compares qualifiers case- and accent-insensitively
+# (utf8mb4_0900_ai_ci), so "/page1" and "/Page1" are one row to the unique
+# (ark, qualifier) index but two pairs to _apply's exact matching. A batch that
+# trips the index must never wedge the flush (INTENTS_counter_collation.md).
+
+
+def test_a_duplicate_key_in_a_batch_is_applied_pair_by_pair(ark, monkeypatch, counter_redis):
+    from django.db import IntegrityError
+
+    import core.counters as counters
+
+    Resolution.objects.create(ark=ark, qualifier="/page1", count=5)
+    record_resolution(ark.pk, "/page1")
+    record_resolution(ark.pk, "/page2")
+    record_resolution(ark.pk, "/page2")
+
+    def rejects(*args, **kwargs):
+        raise IntegrityError("Duplicate entry for key 'unique_resolution_per_qualifier'")
+
+    monkeypatch.setattr(Resolution.objects, "bulk_create", rejects)
+    assert flush_counters() == 3
+    assert Resolution.objects.get(ark=ark, qualifier="/page1").count == 6
+    assert Resolution.objects.get(ark=ark, qualifier="/page2").count == 2
+    assert not counter_redis.exists(counters.FLUSHING_KEY)
+
+    # Nothing is left behind to fail the next flush.
+    record_resolution(ark.pk, "/page1")
+    assert flush_counters() == 1
+    assert Resolution.objects.get(ark=ark, qualifier="/page1").count == 7
+
+
+def _needs_mysql():
+    from django.db import connection
+
+    if connection.vendor != "mysql":
+        pytest.skip("needs MySQL's case-insensitive collation")
+
+
+def test_on_mysql_a_case_variant_request_is_counted_against_the_stored_qualifier(
+    client, ark, counter_redis
+):
+    import core.counters as counters
+    from core.models import Binding
+
+    _needs_mysql()
+    Binding.objects.create(ark=ark, qualifier="/page1", name="URL", value="https://example.org/p")
+    for spelling in ("/Page1", "/page1", "/PAGE1"):
+        path = f"/ark:/61220/utsc1{spelling}"
+        response = client.get(path, RAW_URI=path)
+        assert response.status_code == 302, spelling
+
+    assert counter_redis.hgetall(counters.HITS_KEY) == {f"{ark.pk}:/page1".encode(): b"3"}
+    assert flush_counters() == 3
+    assert list(Resolution.objects.filter(ark=ark).values_list("qualifier", "count")) == [
+        ("/page1", 3)
+    ]
+
+
+def test_on_mysql_case_variant_pairs_already_buffered_still_flush(ark, counter_redis):
+    import core.counters as counters
+
+    _needs_mysql()
+    Resolution.objects.create(ark=ark, qualifier="/page1", count=1)
+    # What a pre-fix resolver, or a write-through race, could have left behind.
+    counter_redis.hincrby(counters.HITS_KEY, f"{ark.pk}:/Page1", 2)
+    counter_redis.hincrby(counters.HITS_KEY, f"{ark.pk}:/page1", 1)
+    counter_redis.hincrby(counters.HITS_KEY, f"{ark.pk}:/PAGE2", 1)
+    counter_redis.hincrby(counters.HITS_KEY, f"{ark.pk}:/page2", 1)
+
+    assert flush_counters() == 5
+    assert not counter_redis.exists(counters.FLUSHING_KEY)
+    assert Resolution.objects.filter(ark=ark).count() == 2
+    assert Resolution.objects.get(ark=ark, qualifier="/page1").count == 4
+    assert Resolution.objects.filter(ark=ark, qualifier="/page2").get().count == 2
+    assert flush_counters() == 0

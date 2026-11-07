@@ -107,7 +107,7 @@ manage.py resolve_diff --legacy-base https://old --new-base http://127.0.0.1:800
 manage.py check_manifests --collection utsc --out manifests.csv
 ```
 
-The staff commands are the optional **[arks-cli](../arks-cli)** plugin: `createcollection`, `mint`, `bind`, `unbind`, `bulk_bind` and `ark_stats`. Everything they do can be done in the staff interface. To enable them, install the plugin and add `ARKS_PLUGINS=arks_cli` to `.env`:
+The staff commands are the optional **[arks-cli](https://github.com/digitalutsc/arks-cli)** plugin (a sibling checkout, not on PyPI): `createcollection`, `mint`, `bind`, `unbind`, `bulk_bind` and `ark_stats`. Everything they do can be done in the staff interface. To enable them, install the plugin and add `ARKS_PLUGINS=arks_cli` to `.env`:
 
 ```bash
 uv pip install -e ../arks-cli --python .venv/bin/python
@@ -122,7 +122,7 @@ manage.py mint utsc 500 --template /tmp/batch.csv
 ./.venv/bin/ruff check . && ./.venv/bin/ruff format --check .
 ```
 
-The noid port is pinned to the legacy PHP by ~1,450 golden vectors. Regenerate
+The noid port is pinned to the legacy PHP by 1,469 golden vectors. Regenerate
 them (needs `php` and the legacy checkout alongside):
 
 ```bash

@@ -158,10 +158,13 @@ Read `review.csv` and the totals. Then do it for real:
 ```bash
 .venv/bin/python manage.py import_legacy \
     --legacy-dump /srv/ARK_CORE.sql --report review.csv
-.venv/bin/python manage.py ark_stats
+.venv/bin/python manage.py refresh_collection_stats
 ```
 
-Idempotent, so rehearse it as often as you like.
+`refresh_collection_stats` prints each collection's counts; the collection page
+in the staff interface shows the same figures. (`ark_stats`, from the optional
+`arks-cli` plugin, adds the top element names.) Idempotent, so rehearse it as
+often as you like.
 
 ### 4. Prove every ARK resolves identically
 
@@ -224,7 +227,8 @@ It is always written, including on a dry run.
 
 **`duplicate-element`** — the element existed twice under different spellings.
 The canonical spelling's value is what got stored; this row is the other one. To
-put it back: `manage.py bind '61220/utsc1' SOME_ELEMENT 'the other value'`.
+put it back, bind it again on the ARK's page in the staff interface, or with the
+optional `arks-cli` plugin: `manage.py bind '61220/utsc1' SOME_ELEMENT 'the other value'`.
 
 **`redirect-for-unknown-ark`** — a hit count for something that was never an
 ARK. Nothing to do; it is here so that "we dropped 1,606 rows" is a statement
@@ -256,8 +260,9 @@ Importing it produces:
 | resolutions | 70,898 |
 | redirects skipped | 1,606 (across 301 identifiers that were never ARKs) |
 
-`ark_stats` then reports 77,649 of those as bound, leaving 19,947 that
-legacy minted and never gave any metadata to.
+The collection page (or `ark_stats`, from the optional `arks-cli` plugin) then
+reports 77,649 of those as bound, leaving 19,947 that legacy minted and never
+gave any metadata to.
 
 Minting resumes at `61220/utsc97640`. Mint dates run from 2020-10-22 to
 2026-08-20. About a minute end to end; a second run creates nothing.

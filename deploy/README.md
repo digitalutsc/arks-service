@@ -3,8 +3,8 @@
 - `arkservice.service` — systemd unit for gunicorn
 - `arkservice-worker.service` — systemd unit for the Celery worker (bulk binds, queue `celery`)
 - `arkservice-beat.service` — systemd unit for Celery beat and the scheduled
-  housekeeping (counter flush, stale-job reaper, session cleanup), queue
-  `periodic`. Run exactly one.
+  housekeeping (counter flush, collection-stats refresh, stale-job reaper,
+  session cleanup, bulk-bind retention), queue `periodic`. Run exactly one.
 - `apache-arkservice.conf` — Apache vhost (note the `nocanon` on `ProxyPass`)
 - `logrotate-arkservice` — goes to `/etc/logrotate.d/arkservice`
 
