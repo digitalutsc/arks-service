@@ -106,7 +106,7 @@ def test_a_row_with_new_changed_and_identical_cells_is_bound(collection, arks):
     )
     row = by_row(result)[2]
     assert row.status == STATUS_BOUND
-    assert row.message == "1 created, 1 replaced, 1 unchanged"
+    assert row.message == "Added LOCAL_ID; replaced URL; PID already had this value"
 
 
 def test_a_row_of_identical_cells_is_unchanged(collection, arks):
@@ -114,14 +114,14 @@ def test_a_row_of_identical_cells_is_unchanged(collection, arks):
     result = apply_csv(collection, csv_file("Ark_ID,URL\n61220/utsc0,https://same.example\n"))
     row = by_row(result)[2]
     assert row.status == STATUS_UNCHANGED
-    assert row.message == "1 unchanged"
+    assert row.message == "No change: URL already had this value"
 
 
 def test_a_row_with_only_empty_cells_binds_nothing(collection, arks):
     result = apply_csv(collection, csv_file("Ark_ID,URL\n61220/utsc0,\n"))
     row = by_row(result)[2]
     assert row.status == STATUS_UNCHANGED
-    assert row.message == "nothing to bind"
+    assert row.message == "Nothing to bind: every element cell was empty"
 
 
 def test_a_purged_row_says_so(collection, arks):
@@ -131,7 +131,7 @@ def test_a_purged_row_says_so(collection, arks):
     )
     row = by_row(result)[2]
     assert row.status == STATUS_BOUND
-    assert row.message == "1 created (previous elements removed)"
+    assert row.message == "Removed the old elements; bound URL"
 
 
 def test_a_minted_row_counts_what_it_bound(collection):
@@ -142,7 +142,7 @@ def test_a_minted_row_counts_what_it_bound(collection):
     )
     row = by_row(result)[2]
     assert row.status == STATUS_MINTED
-    assert row.message == "minted; 2 created"
+    assert row.message == "New ARK minted; bound URL, PID"
     assert row.ark_id == "61220/utsc0"
 
 
@@ -154,7 +154,7 @@ def test_a_qualified_row_is_described_on_its_own(collection, arks):
         ),
     )
     rows = by_row(result)
-    assert rows[2].message == "1 created" and rows[3].message == "1 created"
+    assert rows[2].message == "Added URL" and rows[3].message == "Added URL"
     assert rows[3].ark_id == "61220/utsc0/page1"
 
 
@@ -171,7 +171,26 @@ def test_counts_match_the_totals(collection, arks):
     )
     assert (result.created, result.updated) == (3, 1)
     messages = [row.message for row in result.rows]
-    assert messages == ["2 created", "1 replaced", "1 created"]
+    assert messages == ["Added URL, PID", "Replaced URL", "Added PID"]
+
+
+def test_a_long_row_names_four_elements_then_counts_the_rest(collection):
+    header = "Ark_ID,URL,PID,LOCAL_ID,TITLE,COLLECTION,WHO?"
+    result = apply_csv(
+        collection,
+        csv_file(f"{header}\n,https://example.org/a,islandora:a,obj-a,A title,Maps,Someone\n"),
+        mint_missing=True,
+    )
+    assert by_row(result)[2].message == "New ARK minted; bound URL, PID, LOCAL_ID, TITLE +2 more"
+
+
+def test_several_unchanged_elements_read_in_the_plural(collection, arks):
+    Binding.objects.create(ark=arks[0], name="URL", value="https://same.example")
+    Binding.objects.create(ark=arks[0], name="PID", value="islandora:0")
+    result = apply_csv(
+        collection, csv_file("Ark_ID,URL,PID\n61220/utsc0,https://same.example,islandora:0\n")
+    )
+    assert by_row(result)[2].message == "No change: URL, PID already had these values"
 
 
 # --- rows on a failed file -----------------------------------------------------------
@@ -209,8 +228,8 @@ def test_the_results_file_carries_the_outcomes(collection, arks):
     )
     rows = list(job.iter_results())
     assert rows == [
-        (2, "61220/utsc0", STATUS_BOUND, "1 created"),
-        (3, "61220/utsc1", STATUS_UNCHANGED, "1 unchanged"),
+        (2, "61220/utsc0", STATUS_BOUND, "Added URL"),
+        (3, "61220/utsc1", STATUS_UNCHANGED, "No change: URL already had this value"),
     ]
 
 

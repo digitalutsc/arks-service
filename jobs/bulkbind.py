@@ -13,7 +13,6 @@ the collection half-updated with no record of where it stopped.
 from __future__ import annotations
 
 import csv
-from collections import Counter
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 
@@ -331,33 +330,81 @@ def apply_csv(
     return result
 
 
+#: Element names a row message lists before summarising the rest as "+N more".
+MESSAGE_NAMES = 4
+
+
+def _names(names: list[str]) -> str:
+    """'URL, PID, LOCAL_ID, TITLE +2 more': brief, but says which elements."""
+    shown = ", ".join(names[:MESSAGE_NAMES])
+    extra = len(names) - MESSAGE_NAMES
+    return f"{shown} +{extra} more" if extra > 0 else shown
+
+
+def _row_message(by_outcome: dict[str, list[str]], *, minted: bool, purged: bool) -> str:
+    """
+    One line saying what happened to which elements of a row.
+
+    'New ARK minted; bound URL, PID', 'Added PID; replaced URL; LOCAL_ID already
+    had this value', 'No change: URL, PID already had these values'.
+    """
+    every = [name for kind in OUTCOME_ORDER for name in by_outcome.get(kind, [])]
+    if minted:
+        return (
+            f"New ARK minted; bound {_names(every)}" if every else "New ARK minted; nothing bound"
+        )
+    if purged:
+        return (
+            f"Removed the old elements; bound {_names(every)}"
+            if every
+            else "Removed the old elements; nothing bound"
+        )
+    if not every:
+        return "Nothing to bind: every element cell was empty"
+
+    created, replaced = by_outcome.get("created", []), by_outcome.get("replaced", [])
+    unchanged = by_outcome.get("unchanged", [])
+    kept = ""
+    if unchanged:
+        value = "this value" if len(unchanged) == 1 else "these values"
+        kept = f"{_names(unchanged)} already had {value}"
+    if not created and not replaced:
+        return f"No change: {kept}"
+    parts = []
+    if created:
+        parts.append(f"added {_names(created)}")
+    if replaced:
+        parts.append(f"replaced {_names(replaced)}")
+    if kept:
+        parts.append(kept)
+    message = "; ".join(parts)
+    return message[0].upper() + message[1:]
+
+
 def _stamp(result: BulkBindResult, row_keys, outcomes, *, purge_first: bool) -> None:
     """
-    Say on each row what happened to its elements, once they are written.
+    Say on each row what happened to which of its elements, once they are written.
 
     Done after ``_write`` so a row never claims a binding that was rolled back.
-    A minted row keeps its status and gains the count; a checked row becomes
-    ``bound`` when anything was created or replaced (or when the row was purged,
-    which is itself a change), otherwise ``unchanged``.
+    A minted row keeps its status; a checked row becomes ``bound`` when anything
+    was created or replaced (or when the row was purged, which is itself a
+    change), otherwise ``unchanged``. Element names are listed in the file's
+    column order (``_row_message``).
     """
     for row in result.rows:
         if row.status == STATUS_ERROR:
             continue
-        counts = Counter(outcomes.get(key, "unchanged") for key in row_keys.get(row.number, ()))
-        parts = [f"{counts[kind]} {kind}" for kind in OUTCOME_ORDER if counts[kind]]
-        if row.status == STATUS_MINTED:
-            row.message = f"minted; {counts['created']} created"
+        by_outcome: dict[str, list[str]] = {}
+        for key in row_keys.get(row.number, ()):
+            by_outcome.setdefault(outcomes.get(key, "unchanged"), []).append(key[2])
+        minted = row.status == STATUS_MINTED
+        row.message = _row_message(by_outcome, minted=minted, purged=purge_first and not minted)
+        if minted:
             continue
-        message = ", ".join(parts) or "nothing to bind"
-        if purge_first:
+        if purge_first or by_outcome.get("created") or by_outcome.get("replaced"):
             row.status = STATUS_BOUND
-            row.message = f"{message} (previous elements removed)"
-        elif counts["created"] or counts["replaced"]:
-            row.status = STATUS_BOUND
-            row.message = message
         else:
             row.status = STATUS_UNCHANGED
-            row.message = message
 
 
 def _no_progress(phase: str, done: int, total: int | None) -> None:
