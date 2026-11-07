@@ -183,9 +183,11 @@ server does not pass on.
 
 It walks every NAAN root, every ARK, every qualifier anything is bound under,
 and the `?`, `??` and `?info` inflections. Legacy answers a miss by redirecting
-to its own `404.php`, wraps metadata in `<pre>`, and leaves HTML entities in
-both; all three idioms are normalised before comparison, so what remains is a
-real difference in what an ARK resolves to.
+to its own `404.php`, wraps metadata in `<pre>`, leaves HTML entities in
+both, and displays every `_` in a metadata value as a space (this system shows
+values verbatim, on purpose); all four idioms are normalised before comparison,
+so what remains is a real difference in what an ARK resolves to. Redirect
+targets are still compared exactly, underscores included.
 
 It exits non-zero while anything differs, and **separately** if a path could not
 be fetched — a socket failure proves nothing either way. If you see those, lower

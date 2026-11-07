@@ -151,6 +151,50 @@ def test_metadata_order_does_not_matter():
     assert compare("/ark:/61220/utsc1?", legacy, new) is None
 
 
+# Legacy displayed every metadata value with '_' replaced by a space
+# (resolver.php:248); this system emits values verbatim on purpose (INTENT.md),
+# because the replacement corrupted URLs. The diff treats the two as equal, but
+# only for metadata: a redirect target is still compared exactly.
+
+
+def test_legacy_underscores_shown_as_spaces_match_our_verbatim_values():
+    legacy = (
+        200,
+        "<pre>erc:\nWho: University of Toronto Scarborough Library\nLocal_id: obj 0</pre>",
+    )
+    new = (200, "erc:\nWho: University_of_Toronto_Scarborough_Library\nLocal_id: obj_0\n")
+    assert compare("/ark:/61220/utsc1?", legacy, new) is None
+
+
+def test_the_support_block_is_compared_the_same_way():
+    legacy = (
+        200,
+        "<pre>erc:\nWho: Anonymous\n</pre><pre>erc-support:\n"
+        "Support-who: University of Toronto Scarborough Library\n"
+        "Support-what: Permanent:Dynamic Content\nSupport-when: March 2024\n</pre>",
+    )
+    new = (
+        200,
+        "erc:\nWho: Anonymous\n\nerc-support:\n"
+        "Support-who: University_of_Toronto_Scarborough_Library\n"
+        "Support-what: Permanent:Dynamic_Content\nSupport-when: March_2024\n",
+    )
+    assert compare("/ark:/61220/utsc1??", legacy, new) is None
+
+
+def test_a_real_value_change_is_still_reported_despite_underscores():
+    legacy = (200, "<pre>erc:\nWho: A C</pre>")
+    new = (200, "erc:\nWho: A_B\n")
+    assert compare("/ark:/61220/utsc1?", legacy, new) is not None
+
+
+def test_a_redirect_target_is_still_compared_exactly():
+    # In a URL an underscore matters: legacy and new must redirect to the same one.
+    legacy = (302, "https://example.org/a b")
+    new = (302, "https://example.org/a_b")
+    assert compare("/ark:/61220/utsc1", legacy, new) is not None
+
+
 def test_a_missing_metadata_line_is_still_reported():
     legacy = (200, "<pre>erc:\nWho: Anonymous\nUrl: https://e.example</pre>")
     new = (200, "erc:\nWho: Anonymous\n")

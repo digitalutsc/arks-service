@@ -156,8 +156,15 @@ def _metadata_lines(body: str) -> set[str]:
     Legacy wrapped its ERC block in (nested, unbalanced) <pre> tags and returned
     rows in whatever order MySQL produced; this system emits plain text sorted
     by element name. Compare the set of non-empty lines instead of the bytes.
+
+    Legacy also displayed every value with '_' replaced by a space
+    (resolver.php:248), so it showed 'University of Toronto' where the stored
+    value, and this system's answer, is 'University_of_Toronto'. Emitting values
+    verbatim is deliberate (INTENT.md: the replacement corrupted URLs), so both
+    sides are compared with underscores as spaces. Only metadata bodies come
+    through here: a redirect target is still compared exactly.
     """
-    text = _TAG.sub("\n", body or "")
+    text = _TAG.sub("\n", body or "").replace("_", " ")
     return {line.strip() for line in text.splitlines() if line.strip()}
 
 
