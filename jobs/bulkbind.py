@@ -114,6 +114,17 @@ def _read(handle) -> tuple[list[str], list[dict[str, str]]]:
 
     rows = []
     for raw in reader:
+        # Fields beyond the header land under the key None, as a list. Excel
+        # and Numbers write an empty one on every row when a column was once
+        # used and cleared, so blanks are dropped; a value there has no element
+        # name to be bound under and would otherwise be lost without a word.
+        surplus = raw.pop(None, None) or []
+        if any((value or "").strip() for value in surplus):
+            raise BulkBindError(
+                f"Line {reader.line_num} has more fields than the header "
+                f"({len(fieldnames)} columns, {len(surplus)} extra). Remove the extra "
+                "values or name their columns in the header."
+            )
         rows.append({(key or "").strip(): (value or "").strip() for key, value in raw.items()})
         if len(rows) > settings.BULK_BIND_MAX_ROWS:
             raise BulkBindError(

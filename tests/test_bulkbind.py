@@ -373,3 +373,35 @@ def test_many_blank_rows_mint_quickly_and_past_the_interactive_cap(collection, s
     assert result.minted == 20_000
     assert result.failed == 0
     assert elapsed < 10, f"20k blank rows took {elapsed:.1f}s"
+
+
+# --- rows wider than the header --------------------------------------------
+
+
+def test_a_trailing_empty_field_is_ignored(collection, arks):
+    # Excel and Numbers routinely write one more comma than the header has
+    # columns. csv.DictReader keeps such surplus fields under the key None, as a
+    # list; that must not crash the file, nor bind anything.
+    result = apply_csv(
+        collection,
+        csv_file(
+            "Ark_ID,URL\n61220/utsc0,https://example.org/0,\n61220/utsc1,https://example.org/1,,\n"
+        ),
+    )
+    assert result.failed == 0
+    assert result.created == 2
+    assert Ark.objects.get(identifier="utsc0").bindings.get(name="URL").value == (
+        "https://example.org/0"
+    )
+
+
+def test_a_row_with_data_beyond_the_header_is_rejected(collection, arks):
+    # A value in an unnamed column would be lost silently if we only dropped it.
+    with pytest.raises(BulkBindError, match="(?i)line 3.*more fields"):
+        apply_csv(
+            collection,
+            csv_file(
+                "Ark_ID,URL\n61220/utsc0,https://example.org/0\n61220/utsc1,https://example.org/1,stray\n"
+            ),
+        )
+    assert not Binding.objects.exists()
