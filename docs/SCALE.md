@@ -162,7 +162,11 @@ per hit grew with the number of distinct ARKs hit.
 `deploy/arkservice.service` runs gunicorn with 3 processes × 8 threads. The
 threads matter: `/manifest` parks a worker on someone else's server, and with
 three plain processes three slow targets stalled everything. `/manifest` now
-times out after 5 seconds.
+times out after 30 seconds per read and 30 seconds in all
+(`MANIFEST_FETCH_TIMEOUT`, `MANIFEST_TOTAL_TIMEOUT`; that long because
+on-demand manifests take 23–35 s cold), and `MANIFEST_MAX_CONCURRENT`
+(default 4 per process) is what stops slow targets taking every thread: past
+it, callers get 503 with `Retry-After` instead.
 
 Rough ceiling on the current single VM: **several hundred resolutions a second**,
 mostly bounded by the database round trip. To go further, in order of effort:

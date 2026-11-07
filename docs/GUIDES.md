@@ -858,7 +858,7 @@ flowchart TD
     L --> L2["valid rows keep status ok with message<br/>'Not applied: another row in the file failed.'"]
 ```
 
-Row statuses, once the file is applied: `bound` (at least one element created or replaced, message such as `3 created, 1 replaced, 2 unchanged`, or `6 created (previous elements removed)` with `purge_first`), `unchanged` (`6 unchanged`, or `nothing to bind`), `minted` (`minted; 6 created`), `error` (the reason). On a file that failed as a whole the valid rows stay `ok` with the not-applied message. `result.ok` is "no error rows". The stamping happens after `_write`, so a row never claims a binding that was rolled back. The guarantee is the validation order, not the rollback; the `set_rollback` is there in case a future change writes earlier.
+Row statuses, once the file is applied: `bound` (at least one element created or replaced; `_row_message` names them, `Added PID; replaced URL; LOCAL_ID already had this value`, or `Removed the old elements; bound URL, PID` with `purge_first`), `unchanged` (`No change: URL, PID already had these values`, or `Nothing to bind: every element cell was empty`), `minted` (`New ARK minted; bound URL, PID`), `error` (the reason). `_names()` lists at most `MESSAGE_NAMES = 4` element names, then `+N more`. On a file that failed as a whole the valid rows stay `ok` with the not-applied message. `result.ok` is "no error rows". The stamping happens after `_write`, so a row never claims a binding that was rolled back. The guarantee is the validation order, not the rollback; the `set_rollback` is there in case a future change writes earlier.
 
 ### Job lifecycle (`jobs/models.py`, `jobs/tasks.py`)
 
@@ -1121,7 +1121,7 @@ php tests/fixtures/generate_vectors.php > tests/fixtures/noid_vectors.json   # N
 - **Variant on a bare ARK** (`/ark:/61220/utsc1.image.png`) still *parses* the dot into the identifier; it resolves through the `object_variant()` reading after that lookup misses (section 6). So `resolve_diff` reports one as a difference from legacy, which 404s it.
 - **Re-import after cutover** overwrites values curators changed since the export.
 - **Bulk bind uploads live in `MEDIA_ROOT` until their job ends**, which in Docker is the `media` volume: `make rebuild` on an external-DB stack deletes queued jobs' files while their messages survive in Valkey, so they fail with a file-not-found.
-- **`.env.example` ships `TRUST_FORWARDED_FOR=true`**, which is only safe behind a proxy that is the sole route to gunicorn.
+- **`.env.example` ships `TRUST_FORWARDED_FOR=false`**, the safe default when gunicorn is reachable directly. Behind Apache (the bare VM) or the Docker proxy override it must be `true`, or the login throttle keys every attempt on the proxy's address and anyone's five failures lock the real user out; `docker-compose.proxy.yml` sets it, `DEPLOY.md` §4.3 tells the bare-VM operator to.
 - **Secrets**: `ARK_CORE.sql` (the legacy export) holds reversibly-encrypted staff passwords; never commit, paste or mount it.
 
 ---

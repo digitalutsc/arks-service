@@ -295,7 +295,7 @@ flowchart TD
     F -->|yes| H{"inflection<br/>? ?? ?info"}
     H -->|yes| I["200 · erc: block<br/><i>no counter increment</i>"]
     H -->|no| J{"last segment a<br/>proxied suffix?<br/><i>(default manifest)</i>"}
-    J -->|yes| K["URL bound at …/manifest, else at its parent<br/>check target is public http(s)<br/>fetch (10 s total, 10 MB, 4 at once)<br/>return JSON as received<br/>502/503/504 if refused, busy or slow"]
+    J -->|yes| K["URL bound at …/manifest, else at its parent<br/>check target is public http(s)<br/>fetch (30 s per read and in all, 10 MB, 4 at once)<br/>return JSON as received<br/>502/503/504 if refused, busy or slow"]
     J -->|no| L{"first redirect element<br/>bound at this exact qualifier?<br/><i>(collection setting; default URL)</i>"}
     L -->|no| M{"next one bound?<br/><i>(default WHERE?)</i>"}
     M -->|no| N["404<br/><i>no fallback up the hierarchy,<br/>unless the collection turns on<br/>suffix passthrough</i>"]
@@ -371,9 +371,10 @@ file, checking rows, minting, writing bindings. The key lives in the cache, not
 the job row, because the row's transaction is still open while the work runs.
 Minting stays inside the web request (a capped mint is a second or two); its
 form shows a busy state while the browser waits. Each result row of a finished
-job says what happened to its elements: `bound` ("3 created, 1 replaced,
-2 unchanged"), `unchanged`, `minted`, or `ok` with "Not applied: another row in
-the file failed."
+job says what happened to its elements, naming them: `bound` ("Added PID;
+replaced URL; LOCAL_ID already had this value"), `unchanged` ("No change: URL
+already had this value"), `minted` ("New ARK minted; bound URL, PID"), or `ok`
+with "Not applied: another row in the file failed."
 
 **Accounts.** A superuser adds and deletes accounts on the Users page and sees a
 read-only card of the configured fallback pages; the Admin role changes other

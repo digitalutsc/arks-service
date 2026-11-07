@@ -213,7 +213,8 @@ DATABASE_URL=mysql://root:root@127.0.0.1:33306/ark  ./.venv/bin/python -m pytest
 
 ```bash
 sudo apt install python3.13 python3.13-venv valkey-server \
-                 libmysqlclient-dev pkg-config
+                 libmysqlclient-dev pkg-config pipx
+sudo pipx install --global uv   # /usr/local/bin/uv, for every user; the project is installed with uv, as CI and the image do
 ```
 
 Valkey is the default broker and cache. Debian 13 packages it, and so do
@@ -239,8 +240,7 @@ As `www-data`, in `/var/www/arkservice`:
 
 ```bash
 git clone <repo> .
-python3.13 -m venv .venv
-.venv/bin/pip install -e '.[mysql]'
+uv sync --frozen --no-dev --extra mysql --python python3.13 --no-cache   # creates .venv from uv.lock
 
 cp .env.example .env      # then edit — see 4.3
 .venv/bin/python manage.py migrate
@@ -251,9 +251,17 @@ cp .env.example .env      # then edit — see 4.3
 Optional: the staff command line (`createcollection`, `mint`, `bind`, `unbind`, `bulk_bind`, `ark_stats`) is the separate `arks-cli` plugin. The operator commands used below (`import_legacy`, `resolve_diff`, `export_arks`, …) need nothing extra.
 
 ```bash
-.venv/bin/pip install -e /path/to/arks-cli     # a checkout of github.com/digitalutsc/arks-cli; not on PyPI
-echo "ARKS_PLUGINS=arks_cli" >> .env           # then restart the services
+uv pip install -e /path/to/arks-cli --python .venv/bin/python --no-cache   # a checkout of github.com/digitalutsc/arks-cli; not on PyPI
+echo "ARKS_PLUGINS=arks_cli" >> .env                                       # then restart the services
 ```
+
+The application is not a Python package (`pyproject.toml` has no build
+backend, on purpose: it is a Django project, not a library), so
+`pip install -e .` fails with a setuptools "multiple top-level packages"
+error. `uv sync` installs the locked dependencies into `.venv` and leaves the
+code where `git` put it. `--no-cache` because `www-data` has no writable home
+for uv's cache. A plain `uv sync` later removes the plugin again; use
+`--inexact` when upgrading, as below.
 
 ### 4.3 Configuration
 
@@ -275,6 +283,10 @@ DJANGO_ALLOWED_HOSTS=ark.digital.utsc.utoronto.ca
 DJANGO_CSRF_TRUSTED_ORIGINS=https://ark.digital.utsc.utoronto.ca
 CELERY_BROKER_URL=redis://:<broker password>@localhost:6379/0
 REDIS_URL=redis://:<broker password>@localhost:6379/1
+# Apache is the only route to gunicorn (it binds 127.0.0.1), so trust its
+# X-Forwarded-For. Left false, the login throttle sees every client as
+# 127.0.0.1 and five failed attempts from anyone lock the real user out.
+TRUST_FORWARDED_FOR=true
 ```
 
 **Give the broker a password.** Valkey and Redis accept anyone who can reach
@@ -554,7 +566,8 @@ process writes to the legacy database, so it stays a valid fallback.
 
 ```bash
 sudo -u www-data git -C /var/www/arkservice pull
-sudo -u www-data /var/www/arkservice/.venv/bin/pip install -e '.[mysql]'
+# --inexact keeps the arks-cli plugin installed, if you added it in 4.2
+sudo -u www-data uv sync --project /var/www/arkservice --frozen --no-dev --extra mysql --inexact --no-cache
 sudo -u www-data /var/www/arkservice/.venv/bin/python manage.py migrate
 sudo -u www-data /var/www/arkservice/.venv/bin/python manage.py collectstatic --no-input
 sudo systemctl restart arkservice arkservice-worker arkservice-beat
@@ -630,7 +643,7 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 | `CACHE_SOCKET_TIMEOUT` | `0.5` | Seconds to wait on Valkey/Redis before giving up, so a hung server cannot hold request threads |
 | `LOGIN_MAX_ATTEMPTS` | `5` | Failures before a username+address is locked out |
 | `LOGIN_LOCKOUT_SECONDS` | `900` | How long the lockout lasts |
-| `TRUST_FORWARDED_FOR` | `false` | Set true only behind a proxy that sets it and when gunicorn is unreachable directly |
+| `TRUST_FORWARDED_FOR` | `false` | Set true behind a proxy that sets it and is the only route to gunicorn: the vhost in this guide, so set it (4.3). Never true with gunicorn reachable directly |
 | `SESSION_COOKIE_AGE` | `28800` | Eight hours, refreshed on activity |
 | `RESOLUTION_FLUSH_SECONDS` | `60` | How often buffered redirect counts are written |
 | `COLLECTION_STATS_SECONDS` | `300` | How often the scheduler recounts collections and rebuilds element-name lists. Collections of 50,000+ ARKs show these stored counts |

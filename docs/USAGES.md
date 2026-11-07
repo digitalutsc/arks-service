@@ -75,7 +75,8 @@ nobody changes their own role from the page, so nobody locks themselves out.
 ## 1. Set up a new collection
 
 A collection is a minter: one prefix, one NAAN, one noid template. **The prefix
-must be unique** across the whole service.
+must be unique within its NAAN** (`unique (naan, prefix)`); two NAANs may share
+a prefix, which is why commands also accept a collection as `<naan>/<prefix>`.
 
 **Command line** (needs the `arks-cli` plugin)
 
@@ -108,6 +109,7 @@ Created collection 'UTSC Digital Collections'
   capacity unlimited
   redirects from URL, WHERE?
   proxied suffixes manifest
+  suffix passthrough off
 ```
 
 **Staff interface** — Collections → *New collection* (Admin only).
@@ -118,7 +120,8 @@ production uses.
 
 > **The prefix, NAAN and template cannot be changed once ARKs exist.** Changing
 > them would break identifiers already in circulation. Only the name and NAA are
-> editable afterwards, plus the two resolution settings, behind a preview (see
+> editable afterwards, plus the three resolution settings (redirect elements,
+> proxied suffixes, suffix passthrough), behind a preview (see
 > [Resolve an ARK](#7-resolve-an-ark)).
 
 ---
@@ -252,11 +255,15 @@ When the file succeeds, every row says what happened to its elements:
 
 | Status | Meaning | Message |
 |---|---|---|
-| `bound` | at least one element was created or replaced | `3 created, 1 replaced, 2 unchanged` (with `--purge-first`: `6 created (previous elements removed)`) |
-| `unchanged` | every non-empty cell already held that value | `6 unchanged`, or `nothing to bind` |
-| `minted` | blank `Ark_ID`; a new ARK was minted and its cells bound | `minted; 6 created` |
+| `bound` | at least one element was created or replaced | `Added PID; replaced URL; LOCAL_ID already had this value` (with `--purge-first`: `Removed the old elements; bound URL, PID`) |
+| `unchanged` | every non-empty cell already held that value | `No change: URL, PID already had these values`, or `Nothing to bind: every element cell was empty` |
+| `minted` | blank `Ark_ID`; a new ARK was minted and its cells bound | `New ARK minted; bound URL, PID` |
 | `ok` | the row was valid but **nothing was applied**, because another row failed | `Not applied: another row in the file failed.` |
 | `error` | the row itself was rejected | the reason |
+
+Messages name the elements so a row can be checked without opening the file;
+at most four names are listed, then `+N more` (`New ARK minted; bound URL, PID,
+LOCAL_ID, TITLE +2 more`).
 
 In the staff interface the job page (*Recent uploads* → **Details**) lists the
 same rows under the same four columns, fifty to a page, with a count for *All*,
@@ -458,7 +465,8 @@ on or off, a suffix in use being
 added or removed). Tick the box and *Confirm change* to save. It applies from the
 next request. The page shows when and by whom the settings were last changed,
 and the app log keeps every change (`WARNING core.services collection …: redirect
-elements A -> B; proxied suffixes C -> D by <user>`). There is no command-line
+elements A -> B; proxied suffixes C -> D; suffix passthrough off -> on by <user>`).
+There is no command-line
 equivalent on purpose: the preview is the safeguard.
 
 ---
@@ -540,8 +548,9 @@ manage.py refresh_collection_stats          # every collection
 manage.py refresh_collection_stats utsc     # one
 ```
 
-Finished bulk-bind jobs keep their uploaded file and results file. To clear out
-old ones (or set `BULK_BIND_RETENTION_DAYS` to do it daily):
+A bulk-bind job's uploaded CSV is deleted as soon as the job ends (it can
+never run again); only its results file stays. To clear out old jobs and their
+results (or set `BULK_BIND_RETENTION_DAYS` to do it daily):
 
 ```bash
 manage.py prune_bulk_jobs --older-than 180 --dry-run
@@ -657,7 +666,8 @@ listed under [If something is wrong with the file](#if-something-is-wrong-with-t
 | a blank `Ark_ID` | rejected, unless `--mint-missing` |
 
 **Limits** — `BULK_BIND_MAX_ROWS` rows (default 100,000) and
-`DATA_UPLOAD_MAX_MEMORY_SIZE` bytes (default 20 MB) per upload. Split larger
+`BULK_BIND_MAX_BYTES` bytes (default 52,428,800, 50 MiB) per upload; Django's
+`DATA_UPLOAD_MAX_MEMORY_SIZE` does not apply to file uploads. Split larger
 files.
 
 **Rejected outright** (nothing is written, the whole file is reported):
