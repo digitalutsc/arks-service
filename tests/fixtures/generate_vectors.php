@@ -11,6 +11,10 @@
  *     php tests/fixtures/generate_vectors.php > tests/fixtures/noid_vectors.json
  *
  * Override the legacy location with NOIDLIB=/path/to/admin/NoidLib.
+ *
+ * The legacy application is github.com/digitalutsc/arks-service-archived (the
+ * name digitalutsc/arks-service now belongs to the Django rewrite). CI checks it
+ * out pinned to b30909c, the commit these vectors were generated from.
  */
 
 $default = __DIR__ . '/../../../legacy/application/arks-service/admin/NoidLib';

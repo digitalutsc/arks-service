@@ -175,7 +175,9 @@ TLS" has the vhost shape.
   the schema inside the portable subset; do not remove one of them.
 - **conformance** — regenerates the noid golden vectors from the legacy PHP and
   fails if the committed fixture has drifted from what the original
-  implementation actually does.
+  implementation actually does. The legacy app is checked out from
+  `digitalutsc/arks-service-archived`, pinned to commit `b30909c`; the name
+  `digitalutsc/arks-service` now belongs to this repository.
 
 Run the same checks locally:
 

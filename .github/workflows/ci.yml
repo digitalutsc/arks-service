@@ -70,6 +70,14 @@ jobs:
     # The noid vectors are generated from the legacy PHP. Regenerating them here
     # catches any drift between the fixture in the repo and what the original
     # implementation actually does.
+    #
+    # The legacy PHP application lives in digitalutsc/arks-service-archived:
+    # the name digitalutsc/arks-service now belongs to this Django repository
+    # (renamed 2026-10-30), so the old checkout found no NoidLib. It is pinned
+    # to the commit the fixture was generated from, so a later push there
+    # cannot move the reference silently. The job fails loudly if the checkout
+    # or the library is missing: it used to skip its steps and pass while
+    # comparing nothing.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -77,17 +85,22 @@ jobs:
           path: new
       - name: Check out the legacy service for its noid library
         uses: actions/checkout@v4
-        continue-on-error: true
-        id: legacy
         with:
-          repository: digitalutsc/arks-service
+          repository: digitalutsc/arks-service-archived
+          ref: b30909cc20fbaac488435782ec7a6cfb93ef0f12
           path: legacy
+      - name: Confirm the legacy noid library is there
+        run: |
+          for file in lib/Globals.php lib/Helper.php custom/GeneratorArk.php; do
+            test -f "legacy/admin/NoidLib/$file" || {
+              echo "::error::legacy/admin/NoidLib/$file is missing from the legacy checkout"
+              exit 1
+            }
+          done
       - uses: shivammathur/setup-php@v2
-        if: steps.legacy.outcome == 'success'
         with:
           php-version: '8.3'
       - name: Regenerate the vectors and compare
-        if: steps.legacy.outcome == 'success'
         working-directory: new
         run: |
           NOIDLIB=../legacy/admin/NoidLib \
