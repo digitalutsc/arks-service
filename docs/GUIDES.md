@@ -92,7 +92,7 @@ arks-service/
 │   ├── legacy.py             read-only readers for a legacy DB or a mysqldump file
 │   ├── verify.py             what resolve_diff compares and how it normalises
 │   ├── migrations/0001…0006
-│   └── management/commands/  the only scripting surface (section 15)
+│   └── management/commands/  the operator commands (section 15); the staff ones are the arks-cli plugin
 │
 ├── minting/
 │   ├── noid.py               pure port of noid: alphabets, n2xdig, check_char, parse_template, make_id, xdig2n
@@ -912,24 +912,30 @@ Settings: `CELERY_TASK_IGNORE_RESULT=True` (nothing reads results), `CELERY_WORK
 
 ## 15. Management commands
 
-`core/management/commands/`. There is no HTTP API; this is the scripting surface. Exit 1 with a `CommandError` is the designed failure; a traceback is a defect.
+There is no HTTP API; commands are the scripting surface, run on the server. Exit 1 with a `CommandError` is the designed failure; a traceback is a defect.
+
+**Two sources since 2026-11-07** (`INTENTS_cli_plugin.md`):
+- **Core** (`core/management/commands/`) ships the **operator** commands every server needs for migration, cutover and maintenance: `export_arks`, `refresh_collection_stats`, `flush_counters`, `prune_bulk_jobs`, `import_legacy`, `resolve_diff`, `check_manifests`.
+- **The optional `arks-cli` plugin** (sibling repo, Django app `arks_cli`) carries the **staff** commands, moved unchanged: `createcollection`, `mint`, `bind`, `unbind`, `bulk_bind`, `ark_stats`. It is enabled by `ARKS_PLUGINS=arks_cli` (`arkservice/plugins.py::plugin_apps`, which refuses a missing plugin at start-up).
+- **What plugins may use** is versioned as `arkservice.plugins.PLUGIN_API` (1): the services, the models and `_common`. The plugin checks it in `AppConfig.ready()`.
+- **The rows below** marked *(arks-cli)* exist only when the plugin is installed.
 
 | Command | Arguments | Calls | Notes |
 |---|---|---|---|
-| `createcollection NAME --naan N --template T [--prefix P] [--naa A] [--term short\|medium\|long]` | | `Collection.full_clean().save()` | prints prefix, firstpart, template (mask, gen type), capacity; `ValidationError`/`IntegrityError` → CommandError |
-| `mint COLLECTION [COUNT=1] [--template FILE]` | | `minting.minter.mint` | prints one ARK per line; writes the fill-in CSV; `MintError` → CommandError; cap enforced |
-| `bind ARK ELEMENT VALUE` | ARK may carry a qualifier | `bind_element` | |
-| `unbind ARK [ELEMENT] [--all]` | | `unbind_elements` | `--all` on a bare ARK clears every qualifier (same as UI purge); on a qualifier only that one |
-| `bulk_bind COLLECTION CSV [--mint-missing] [--purge-first] [--results FILE]` | | `jobs.bulkbind.apply_csv` | results CSV written either way; rows failed → CommandError "N row(s) failed; nothing was written" |
+| `createcollection NAME --naan N --template T [--prefix P] [--naa A] [--term short\|medium\|long]` *(arks-cli)* | | `Collection.full_clean().save()` | prints prefix, firstpart, template (mask, gen type), capacity; `ValidationError`/`IntegrityError` → CommandError |
+| `mint COLLECTION [COUNT=1] [--template FILE]` *(arks-cli)* | | `minting.minter.mint` | prints one ARK per line; writes the fill-in CSV; `MintError` → CommandError; cap enforced |
+| `bind ARK ELEMENT VALUE` *(arks-cli)* | ARK may carry a qualifier | `bind_element` | |
+| `unbind ARK [ELEMENT] [--all]` *(arks-cli)* | | `unbind_elements` | `--all` on a bare ARK clears every qualifier (same as UI purge); on a qualifier only that one |
+| `bulk_bind COLLECTION CSV [--mint-missing] [--purge-first] [--results FILE]` *(arks-cli)* | | `jobs.bulkbind.apply_csv` | results CSV written either way; rows failed → CommandError "N row(s) failed; nothing was written" |
 | `export_arks [--collection] [--text] [--element] [--value] [--bound\|--unbound] [--min-redirects] [--minted-after] [--minted-before] [--out]` | | `search_arks` (text mode **contains**), `export_rows` | stdout when no `--out`; bad date → CommandError |
-| `ark_stats` | | `collection_stats` | table per collection + top 10 element names |
+| `ark_stats` *(arks-cli)* | | `collection_stats` | table per collection + top 10 element names |
 | `refresh_collection_stats [COLLECTION]` | | `refresh_collection_stats` | all when omitted |
 | `flush_counters` | | `core.counters.flush_counters` | |
 | `prune_bulk_jobs --older-than DAYS [--dry-run]` | | `jobs.retention.prune_jobs` | `< 1` → CommandError |
 | `import_legacy (--legacy-dump FILE \| --legacy-url URL) [--encoding] [--table T]* [--collection-name N] [--report CSV] [--dry-run]` | exactly one source | section 16 | |
 | `resolve_diff --legacy-base URL --new-base URL [--collection] [--sample N] [--no-inflections] [--workers 8] [--timeout 20] [--out CSV] [--known CSV] [--stop-after N]` | | `core.verify` | section 16 |
 
-`_common.get_collection(reference)`: exact `name` first; then `<naan>/<prefix>`; then `prefix` if exactly one collection has it, else "More than one collection uses the prefix… Name it as <naan>/<prefix>"; else "No collection with prefix or name … Known: …". `_common.get_ark(reference)` parses `ark:/<reference>` with `parse_ark_path` and returns `(ark, qualifier)` or "is not a valid ARK" / "No such ARK".
+`_common.get_collection(reference)`: exact `name` first (case-sensitive on every engine, MySQL included); then `<naan>/<prefix>`; then `prefix` if exactly one collection has it, else "More than one collection uses the prefix… Name it as <naan>/<prefix>"; else "No collection with prefix or name … Known: …". `_common.get_ark(reference)` parses `ark:/<reference>` with `parse_ark_path` and returns `(ark, qualifier)` or "is not a valid ARK" / "No such ARK".
 
 ---
 

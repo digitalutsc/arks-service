@@ -13,12 +13,10 @@ this system used to proxy the object's own URL instead. See
 INTENTS_collection_resolution_settings.md.
 """
 
-import io
 import logging
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.core.management import CommandError, call_command
 from django.urls import reverse
 
 from admin_ui.roles import ADMIN, EDITOR, ensure_groups, set_role
@@ -352,45 +350,6 @@ def test_an_update_is_stamped_and_logged(collection, django_user_model, caplog):
 
 
 # --- creating a collection ------------------------------------------------
-
-
-def test_createcollection_takes_both_settings():
-    call_command(
-        "createcollection",
-        "Maps",
-        "--prefix",
-        "map",
-        "--naan",
-        "61220",
-        "--template",
-        ".zd",
-        "--redirect-elements",
-        "target, url",
-        "--proxied-suffixes",
-        "manifest,iiif",
-        stdout=io.StringIO(),
-    )
-    maps = Collection.objects.get(prefix="map")
-    assert maps.redirect_element_list == ["TARGET", "URL"]
-    assert maps.proxied_suffix_list == ["manifest", "iiif"]
-
-
-def test_createcollection_refuses_a_bad_suffix():
-    with pytest.raises(CommandError, match="(?i)suffix"):
-        call_command(
-            "createcollection",
-            "Maps",
-            "--prefix",
-            "map",
-            "--naan",
-            "61220",
-            "--template",
-            ".zd",
-            "--proxied-suffixes",
-            "iiif-v3",
-            stdout=io.StringIO(),
-        )
-    assert not Collection.objects.exists()
 
 
 @pytest.fixture

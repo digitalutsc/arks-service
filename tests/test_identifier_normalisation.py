@@ -19,7 +19,6 @@ import io
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.core.management import CommandError, call_command
 from django.urls import reverse
 
 from admin_ui.roles import ADMIN, EDITOR, ensure_groups, set_role
@@ -245,13 +244,6 @@ def test_an_existing_hyphenated_qualifier_can_still_be_unbound(ark):
     assert unbind_elements(ark, qualifier="/page-9") == 1
 
 
-def test_the_bind_command_refuses_a_hyphen_in_a_qualifier(ark):
-    with pytest.raises(CommandError, match="(?i)hyphen"):
-        call_command(
-            "bind", "61220/utsc1/page-3", "URL", "https://example.org/x", stdout=io.StringIO()
-        )
-
-
 def test_the_ark_page_refuses_a_hyphen_in_a_qualifier(django_user_model, client, ark):
     ensure_groups()
     user = django_user_model.objects.create_user("editor", password="pw")
@@ -300,22 +292,6 @@ def test_the_collection_form_refuses_a_hyphen_in_the_prefix(django_user_model, c
     assert response.status_code == 200
     assert "hyphen" in response.content.decode().lower()
     assert not Collection.objects.filter(name="Maps").exists()
-
-
-def test_createcollection_refuses_a_hyphen_in_the_prefix():
-    with pytest.raises(CommandError, match="(?i)hyphen"):
-        call_command(
-            "createcollection",
-            "Maps",
-            "--prefix",
-            "utsc-maps",
-            "--naan",
-            "61220",
-            "--template",
-            ".zd",
-            stdout=io.StringIO(),
-        )
-    assert not Collection.objects.exists()
 
 
 def test_an_existing_hyphenated_prefix_does_not_block_editing_the_collection(

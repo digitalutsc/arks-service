@@ -9,6 +9,15 @@ script needs to do, it does with a management command on the host.
 | Who | signed-in user with a role | anyone with shell access (no role check) |
 | Good for | day-to-day work, browsing, one-off edits | automation, bulk work, migration |
 
+> **The staff commands are an optional plugin.** `createcollection`, `mint`,
+> `bind`, `unbind`, `bulk_bind` and `ark_stats` are the separate
+> [`arks-cli`](../../arks-cli) package. Everything they do can also be done in the
+> staff interface, so many servers will not have them. To use them, install the
+> plugin and set `ARKS_PLUGINS=arks_cli` in `.env` (`docs/DEPLOY.md` §4.2). The
+> operator commands (`export_arks`, `import_legacy`, `resolve_diff`,
+> `check_manifests`, `flush_counters`, `refresh_collection_stats`,
+> `prune_bulk_jobs`) are always there.
+
 Commands below are written as `manage.py …`; in production that is:
 
 ```bash
@@ -68,7 +77,7 @@ nobody changes their own role from the page, so nobody locks themselves out.
 A collection is a minter: one prefix, one NAAN, one noid template. **The prefix
 must be unique** across the whole service.
 
-**Command line**
+**Command line** (needs the `arks-cli` plugin)
 
 ```bash
 manage.py createcollection "UTSC Digital Collections" \
@@ -119,7 +128,7 @@ production uses.
 Minting creates identifiers. They do not resolve until something is bound to
 them.
 
-**Command line**
+**Command line** (needs the `arks-cli` plugin)
 
 ```bash
 manage.py mint utsc 500                              # print the new ARKs
@@ -371,7 +380,7 @@ lean on, so they are only offered when the list holds at most
 `SORT_SUBQUERY_MAX_ROWS` ARKs (50,000 by default); a larger list stays in ARK
 order and says to narrow it first.
 
-**Command line**
+**Command line** (core: always available)
 
 ```bash
 manage.py export_arks --collection utsc --out /tmp/utsc.csv

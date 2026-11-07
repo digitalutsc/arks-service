@@ -11,6 +11,7 @@ from pathlib import Path
 from environs import Env
 
 from arkservice.checks import check_production_settings
+from arkservice.plugins import plugin_apps
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -50,6 +51,11 @@ INSTALLED_APPS = [
     "admin_ui",
     "jobs",
 ]
+
+# Optional plugins, e.g. the staff command line: ARKS_PLUGINS=arks_cli once the
+# arks-cli package is installed (arkservice/plugins.py, INTENTS_cli_plugin.md).
+ARKS_PLUGINS = plugin_apps(env.list("ARKS_PLUGINS", default=[]))
+INSTALLED_APPS += [app for app in ARKS_PLUGINS if app not in INSTALLED_APPS]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

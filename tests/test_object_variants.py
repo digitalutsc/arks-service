@@ -17,7 +17,7 @@ import csv
 import io
 
 import pytest
-from django.core.management import CommandError, call_command
+from django.core.management import call_command
 
 from core.arkpath import parse_ark_path
 from core.counters import flush_counters
@@ -184,27 +184,6 @@ def run(*args):
     out = io.StringIO()
     call_command(*args, stdout=out, stderr=out)
     return out.getvalue()
-
-
-def test_bind_accepts_a_variant_of_the_object(ark):
-    run("bind", "61220/utsc1.pdf", "URL", "https://x.org/1.pdf")
-    assert Binding.objects.get(ark=ark, qualifier=".pdf", name="URL").value == "https://x.org/1.pdf"
-
-
-def test_unbind_accepts_a_variant_of_the_object(ark):
-    run("unbind", "61220/utsc1.image.png", "--all")
-    assert not Binding.objects.filter(ark=ark, qualifier=".image.png").exists()
-    assert Binding.objects.filter(ark=ark, qualifier="").exists()
-
-
-def test_bind_still_reports_an_unknown_ark(ark):
-    with pytest.raises(CommandError, match="(?i)no such ark"):
-        run("bind", "61220/utsc9.pdf", "URL", "https://x.org/9.pdf")
-
-
-def test_bind_refuses_a_hyphen_in_a_variant_of_the_object(ark):
-    with pytest.raises(CommandError, match="(?i)hyphen"):
-        run("bind", "61220/utsc1.image-x.png", "URL", "https://x.org/x.png")
 
 
 def test_bulk_bind_accepts_a_variant_of_the_object(collection, ark):

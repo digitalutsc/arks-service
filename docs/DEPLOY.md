@@ -242,6 +242,13 @@ cp .env.example .env      # then edit — see 4.3
 .venv/bin/python manage.py createsuperuser
 ```
 
+Optional: the staff command line (`createcollection`, `mint`, `bind`, `unbind`, `bulk_bind`, `ark_stats`) is the separate `arks-cli` plugin. The operator commands used below (`import_legacy`, `resolve_diff`, `export_arks`, …) need nothing extra.
+
+```bash
+.venv/bin/pip install -e /path/to/arks-cli     # or: pip install arks-cli
+echo "ARKS_PLUGINS=arks_cli" >> .env           # then restart the services
+```
+
 ### 4.3 Configuration
 
 `.env` holds the database password, so lock it down:
@@ -628,6 +635,7 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 | `CELERY_RESULT_BACKEND` | same as broker | Results are not stored (`task_ignore_result`); nothing reads them |
 | `CELERY_TASK_ALWAYS_EAGER` | `false` | `true` runs jobs inline — development only |
 | `CELERY_TASK_TIME_LIMIT` | `3600` | Seconds |
+| `ARKS_PLUGINS` | empty | Optional plugins to enable, comma-separated Django app names; `arks_cli` for the staff command line (`createcollection`, `mint`, `bind`, `unbind`, `bulk_bind`, `ark_stats`) once the `arks-cli` package is installed. A name that is not installed stops the service with a clear message |
 | `MINT_MAX_PER_REQUEST` | `10000` | Largest single mint from the form or the `mint` command; `0` removes the cap. Bulk bind is not subject to it (it is bounded by `BULK_BIND_MAX_ROWS`). A very large form mint can outlast Apache's `ProxyTimeout`: the browser gets an error page, but the mint still completes |
 | `BULK_BIND_RETENTION_DAYS` | `0` | Delete finished bulk-bind jobs and their results files after this many days, daily (uploads are already deleted when a job ends). `0` keeps them forever; `manage.py prune_bulk_jobs --older-than N [--dry-run]` does it by hand |
 | `CELERY_BEAT_SCHEDULE_FILENAME` | `/tmp/celerybeat-schedule` | Beat's state file; must be writable by the scheduler |

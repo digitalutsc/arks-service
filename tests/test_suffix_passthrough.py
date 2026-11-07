@@ -11,11 +11,9 @@ Measured on the imported data: 96.6% of the 248,819 hand-bound part URLs are
 exactly what passthrough would produce. See INTENTS_suffix_passthrough.md.
 """
 
-import io
 import logging
 
 import pytest
-from django.core.management import call_command
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -267,34 +265,6 @@ def test_an_update_without_it_leaves_it_alone(collection):
 
 
 # --- staff side -----------------------------------------------------------
-
-
-def test_createcollection_can_turn_it_on():
-    call_command(
-        "createcollection",
-        "Maps",
-        "--prefix",
-        "map",
-        "--naan",
-        "61220",
-        "--template",
-        ".zd",
-        "--suffix-passthrough",
-        stdout=io.StringIO(),
-    )
-    call_command(
-        "createcollection",
-        "Plain",
-        "--prefix",
-        "pl",
-        "--naan",
-        "61220",
-        "--template",
-        ".zd",
-        stdout=io.StringIO(),
-    )
-    assert Collection.objects.get(prefix="map").suffix_passthrough is True
-    assert Collection.objects.get(prefix="pl").suffix_passthrough is False
 
 
 @pytest.fixture

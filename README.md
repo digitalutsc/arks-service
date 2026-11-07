@@ -12,7 +12,7 @@ anything is switched over.
 |---|---|
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Local, Docker, CI and production deployment; environment variables; troubleshooting |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | Moving the legacy service's data here: what maps to what, the review report, the cutover runbook |
-| [docs/USAGES.md](docs/USAGES.md) | Every task, in the staff interface and on the command line |
+| [docs/USAGES.md](docs/USAGES.md) | Every task, in the staff interface and on the command line (staff commands need the optional `arks-cli` plugin) |
 | [docs/README_EXTENDED.md](docs/README_EXTENDED.md) | Architecture, components, data model and diagrams of every request path |
 | [docs/GUIDES.md](docs/GUIDES.md) | The code study guide: every package, model, flow and setting, with diagrams |
 | [docs/fallback-example/](docs/fallback-example/) | Starting kit for operator-supplied landing and error pages (`FALLBACK_PAGES_DIR`) |
@@ -94,20 +94,24 @@ for callers first ([docs/DEPLOY.md](docs/DEPLOY.md#step-0--find-out-who-calls-th
 
 ## Command line
 
+The operator commands ship with the service:
+
 ```bash
-manage.py createcollection "Name" --prefix utsc --naan 61220 --template .zd
-manage.py mint utsc 500 --template /tmp/batch.csv
-manage.py bind 61220/utsc1 URL https://example.org/1
-manage.py unbind 61220/utsc1 URL          # or --all
-manage.py bulk_bind utsc /tmp/batch.csv --results /tmp/out.csv
 manage.py export_arks --collection utsc --out /tmp/utsc.csv
-manage.py ark_stats
 manage.py refresh_collection_stats [utsc]
 manage.py prune_bulk_jobs --older-than 180 [--dry-run]
 manage.py flush_counters
 manage.py import_legacy --legacy-dump /srv/ARK_CORE.sql --report review.csv
 manage.py resolve_diff --legacy-base https://old --new-base http://127.0.0.1:8000 \
     --known review.csv
+manage.py check_manifests --collection utsc --out manifests.csv
+```
+
+The staff commands are the optional **[arks-cli](../arks-cli)** plugin: `createcollection`, `mint`, `bind`, `unbind`, `bulk_bind` and `ark_stats`. Everything they do can be done in the staff interface. To enable them, install the plugin and add `ARKS_PLUGINS=arks_cli` to `.env`:
+
+```bash
+uv pip install -e ../arks-cli --python .venv/bin/python
+manage.py mint utsc 500 --template /tmp/batch.csv
 ```
 
 ## Tests

@@ -13,7 +13,13 @@ def get_collection(reference: str) -> Collection:
     A prefix is only unique within a NAAN, so "61220/utsc" also works when two
     naming authorities share one.
     """
-    collection = Collection.objects.filter(name=reference).first()
+    # Exact, case and all, on every engine: MySQL's default collation ignores
+    # case, so a plain name= lookup there matched 'UTSC' for 'utsc' and never
+    # reached the prefix rules below (found by tests/test_command_helpers.py).
+    collection = next(
+        (c for c in Collection.objects.filter(name__iexact=reference) if c.name == reference),
+        None,
+    )
     if collection is not None:
         return collection
 
