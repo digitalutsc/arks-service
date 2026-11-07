@@ -42,7 +42,7 @@ About 100,000 ARKs are in circulation in catalogue records, papers and crawler i
 | Fixed by the legacy service | Where it is honoured here |
 |---|---|
 | Identifier shape (`utsc` + noid digits, check characters) | `minting/noid.py`, pinned by 1,450 golden vectors generated from the PHP |
-| Redirect at the exact qualifier, `URL` then `WHERE?`, **no fallback up the hierarchy** | `resolver/views.py::_target_url` |
+| Redirect at the exact qualifier, `URL` then `WHERE?`, **no fallback up the hierarchy** (unless a collection turns on suffix passthrough, off by default) | `resolver/views.py::_target_url` |
 | `?`, `??`, `?info` inflections return `erc:` metadata without counting a hit | `core/arkpath.py`, `resolver/services.py::render_erc` |
 | `/manifest` proxies JSON: the URL bound at `/manifest`, else the object's (configurable per collection since 2026-11-06; R0) | `resolver/views.py::_resolution_target`, `_manifest` |
 | A bare NAAN returns the Name Assigning Authority | `resolver/views.py::_naa_response` |
@@ -445,7 +445,10 @@ flowchart TD
     E --> F{"inflection != NONE?"}
     F -->|yes| G["render_erc(_metadata_bindings(ark, qualifier), include_support=FULL)<br/>200 text/plain — NOT counted"]
     F -->|no| I["_resolution_target: _target_url at EXACT qualifier<br/>first of collection.redirect_elements bound (default URL, WHERE?)<br/>for a proxied suffix, else at the parent qualifier"]
-    I -->|None| X404c["404 Nothing bound<br/><i>no fallback to parent</i>"]
+    I -->|None| SPT{"collection.suffix_passthrough?<br/>(only after every reading missed)"}
+    SPT -->|"on, hierarchy part,<br/>no . or .. segment"| P["_passthrough: nearest bound ancestor's URL<br/>+ '/' + rest of the path (re-encoded)<br/>counted against the ancestor"]
+    P --> J
+    SPT -->|off / nothing above| X404c["404 Nothing bound<br/><i>no fallback to parent unless passthrough is on</i>"]
     I -->|target| H{"last segment in<br/>collection.proxied_suffixes?"}
     H -->|yes| M["_manifest(ark, target)<br/>JSON, NOT counted"]
     H -->|no| J["record_resolution(ark.pk, qualifier)<br/>HINCRBY, else write-through"]
@@ -455,6 +458,13 @@ flowchart TD
 Every lookup above goes through `_locate(parsed, probe)`: the request **as written** first, then, only if that misses, each of `parsed.alternatives()` in turn: the object-variant reading (`utsc1.pdf` as ARK `utsc1`, qualifier `.pdf`; `ArkPath.object_variant()`), the spec-normalised form (`parsed.normalised()`, draft-kunze-ark-44 §3.2: hyphens removed, trailing `.` and `/` removed, case kept), and the normalised form's object-variant reading. ARK lookups are shared between readings with the same identifier. A miss is no such ARK, or nothing for the probe (`_resolution_target` for redirects and proxied suffixes, `_has_metadata` for inflections). So `utsc-1`, `utsc1.` and `utsc1/page-2` reach `utsc1` and `utsc1/page2`, an exact match always wins, a redirect that hits keeps its two reads, and the hit is counted against the qualifier that resolved. The route matches `ark:` in any case (`ARK:` too). Normalising never walks up the hierarchy: `/page-3` becomes `/page3`, not the parent. See `INTENTS_identifier_normalisation.md` and `INTENTS_object_variants.md`.
 
 **Per-collection resolution settings** (`INTENTS_collection_resolution_settings.md`). `Collection.redirect_elements` is the ordered list of elements a redirect URL is read from (default `URL,WHERE?`, legacy's order); the first bound with a non-empty value wins. `Collection.proxied_suffixes` (default `manifest`) lists the final qualifier segments answered by proxying JSON instead of redirecting: `…/<q>/manifest` fetches the URL bound at `<q>/manifest` (legacy's pre-generated IIIF manifests), else the URL at `<q>`. The parser no longer strips `/manifest`; which segments are services is only known once the ARK, and so its collection, is found. Both are comma-separated `CharField`s (no JSON columns), validated by `core/services.py::parse_redirect_elements` / `parse_proxied_suffixes`, set at creation (form, `createcollection --redirect-elements/--proxied-suffixes`) and changed only by an Admin on the collection page after a preview (`resolution_impact`) and a confirm (`update_resolution_settings`, which stamps `resolution_changed_at/_by` and logs a WARNING with old → new).
+
+**Suffix passthrough** (R6, `INTENTS_suffix_passthrough.md`), `Collection.suffix_passthrough`, off by default. When on, `_locate` runs `_passthrough` as a last resort: only after the request *and* every `alternatives()` reading missed exactly, over the same readings in the same order.
+- **The target:** a hierarchy part with nothing bound (`/page7`) redirects to the **nearest bound ancestor's** URL (one query over every level above it, using the collection's redirect elements), plus `/` and the rest of the path, each segment re-encoded (`quote`, RFC 3986 pchar safe set).
+- **Refused:** `.` and `..` segments (404); object-level variants (`.png`) and proxied suffixes are not passed through, and metadata is unchanged.
+- **Counting:** the hit counts against the ancestor that supplied the URL (`Target.counted`), so made-up paths never create `Resolution` rows.
+- **Cost:** an exact redirect stays at two reads, a passthrough one costs three.
+- **Cutover:** `resolve_diff` only checks bound paths, so the gate holds with it on or off.
 
 ### Metadata selection
 
@@ -1081,7 +1091,7 @@ php tests/fixtures/generate_vectors.php > tests/fixtures/noid_vectors.json   # N
 - **No inline CSS or JS** in templates; the CSP and a test forbid it. Use `data-*` attributes and `static/js/app.js`.
 - **Element names are upper-cased** on every path; search by name is case-insensitive because of it.
 - **Identifiers are never reissued**: purge removes bindings, keeps the `Ark`; sequential minting never refills gaps.
-- **No fallback up the hierarchy**: `/page9` with nothing bound is 404 even if the parent resolves.
+- **No fallback up the hierarchy**: `/page9` with nothing bound is 404 even if the parent resolves, unless the collection turns on suffix passthrough (`Collection.suffix_passthrough`, off by default), which then redirects it to the nearest bound ancestor's URL + `/page9`.
 - **Hyphens are tolerated on lookup, refused on write**: the resolver retries a miss without hyphens or a trailing `.`, and `core/services.py::qualifier_problem` / `prefix_problem` refuse `-` in a new qualifier (UI, `bind`, bulk bind) or a new collection's prefix, because N2T and arks.org strip hyphens before forwarding. Unbind and `import_legacy` are not checked.
 - **Counts lag** by up to 60 s; stored collection stats lag by up to 300 s above 50,000 ARKs.
 - **Bare `?` needs gunicorn** (`RAW_URI`) and Apache `nocanon`; `runserver` cannot be used for the cutover diff.

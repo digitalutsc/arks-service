@@ -26,6 +26,12 @@ class Command(BaseCommand):
             help="Elements holding the redirect URL, in order (default: %(default)s)",
         )
         parser.add_argument(
+            "--suffix-passthrough",
+            action="store_true",
+            help="Let a part with no URL of its own redirect to its nearest bound ancestor's "
+            "URL plus the rest of the path (off by default, as in legacy)",
+        )
+        parser.add_argument(
             "--proxied-suffixes",
             default=DEFAULT_PROXIED_SUFFIXES,
             help="Final qualifier segments answered with the target's JSON instead of a "
@@ -46,6 +52,7 @@ class Command(BaseCommand):
         collection = Collection(
             redirect_elements=",".join(elements),
             proxied_suffixes=",".join(suffixes),
+            suffix_passthrough=options["suffix_passthrough"],
             name=options["name"],
             prefix=options["prefix"],
             naan=options["naan"],
@@ -75,3 +82,6 @@ class Command(BaseCommand):
         self.stdout.write(f"  redirects from {', '.join(collection.redirect_element_list)}")
         suffixes = ", ".join(collection.proxied_suffix_list) or "(none)"
         self.stdout.write(f"  proxied suffixes {suffixes}")
+        self.stdout.write(
+            f"  suffix passthrough {'on' if collection.suffix_passthrough else 'off'}"
+        )

@@ -256,6 +256,19 @@ def _parse_resolution_settings(
     return elements, suffixes
 
 
+def _parse_passthrough(post, *, if_absent: bool) -> bool:
+    """
+    The suffix passthrough checkbox from a form.
+
+    An unticked checkbox sends nothing, so the forms also send a hidden
+    ``suffix_passthrough_present``: with it, a missing box means off; without it
+    (a form that has no such control) the value is ``if_absent``.
+    """
+    if not post.get("suffix_passthrough_present"):
+        return if_absent
+    return post.get("suffix_passthrough", "").lower() in {"on", "yes", "1", "true"}
+
+
 @require_role(ADMIN)
 def collection_create(request):
     errors: dict[str, str] = {}
@@ -263,6 +276,7 @@ def collection_create(request):
         "term": "medium",
         "redirect_elements": _settings_text(DEFAULT_REDIRECT_ELEMENTS),
         "proxied_suffixes": _settings_text(DEFAULT_PROXIED_SUFFIXES),
+        "suffix_passthrough": False,
     }
     if request.method == "POST":
         values = {
@@ -284,6 +298,7 @@ def collection_create(request):
             elements_if_absent=DEFAULT_REDIRECT_ELEMENTS,
             suffixes_if_absent=DEFAULT_PROXIED_SUFFIXES,
         )
+        values["suffix_passthrough"] = _parse_passthrough(request.POST, if_absent=False)
         # The model allows a blank prefix so legacy minters import unchanged;
         # the form insists on one, as the legacy form did.
         if not values["prefix"]:
@@ -373,10 +388,15 @@ def _resolution_settings_post(request, collection) -> dict | None:
         elements_if_absent=collection.redirect_elements,
         suffixes_if_absent=collection.proxied_suffixes,
     )
+    passthrough = _parse_passthrough(request.POST, if_absent=collection.suffix_passthrough)
     if errors:
         messages.error(request, " ".join(errors.values()))
         return None
-    if (elements, suffixes) == (collection.redirect_element_list, collection.proxied_suffix_list):
+    if (elements, suffixes, passthrough) == (
+        collection.redirect_element_list,
+        collection.proxied_suffix_list,
+        collection.suffix_passthrough,
+    ):
         messages.info(request, "The resolution settings are unchanged.")
         return None
     if request.POST.get("confirm") != "yes":
@@ -385,9 +405,12 @@ def _resolution_settings_post(request, collection) -> dict | None:
             "suffixes": suffixes,
             "elements_text": ", ".join(elements),
             "suffixes_text": ", ".join(suffixes),
-            **resolution_impact(collection, elements, suffixes),
+            "passthrough": passthrough,
+            **resolution_impact(collection, elements, suffixes, passthrough),
         }
-    update_resolution_settings(collection, elements, suffixes, request.user)
+    update_resolution_settings(
+        collection, elements, suffixes, request.user, passthrough=passthrough
+    )
     messages.success(request, "Resolution settings saved. They apply to the next request.")
     return None
 

@@ -543,3 +543,26 @@ def test_the_ark_page_names_the_collections_redirect_elements(admin_client, coll
     configure(collection, elements="TARGET,URL")
     page = admin_client.get(reverse("admin_ui:ark_detail", args=[ark.pk])).content.decode()
     assert "<code>TARGET</code>, then <code>URL</code>" in page
+
+
+# --- the help under each setting ------------------------------------------
+
+
+@pytest.mark.parametrize("page", ["detail", "create"])
+def test_each_setting_has_collapsed_help_with_examples(admin_client, collection, page):
+    import re
+
+    url = (
+        reverse("admin_ui:collection_detail", args=[collection.pk])
+        if page == "detail"
+        else reverse("admin_ui:collection_create")
+    )
+    html = admin_client.get(url).content.decode()
+    helps = re.findall(r"<details class=\"field-help\"(.*?)>(.*?)</details>", html, flags=re.S)
+
+    assert len(helps) == 3
+    assert all("open" not in attributes for attributes, _ in helps)  # collapsed by default
+    elements, suffixes, passthrough = (body for _, body in helps)
+    assert "separated by commas" in elements and "TARGET, URL" in elements
+    assert "separated by commas" in suffixes and "/ark:/61220/utsc1/manifest" in suffixes
+    assert "/ark:/61220/utsc1/page7" in passthrough and "nearest bound part" in passthrough

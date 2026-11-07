@@ -48,6 +48,8 @@
           <td class="mono">{{ preview.elements_text }}</td></tr>
         <tr><td>Proxied suffixes</td><td class="mono">{{ proxied_suffixes_text|default:"(none)" }}</td>
           <td class="mono">{{ preview.suffixes_text|default:"(none)" }}</td></tr>
+        <tr><td>Suffix passthrough</td><td>{{ collection.suffix_passthrough|yesno:"on,off" }}</td>
+          <td>{{ preview.passthrough|yesno:"on,off" }}</td></tr>
       </tbody>
     </table></div>
     <div class="table-wrap"><table>
@@ -66,6 +68,8 @@
       <input type="hidden" name="action" value="resolution">
       <input type="hidden" name="redirect_elements" value="{{ preview.elements_text }}">
       <input type="hidden" name="proxied_suffixes" value="{{ preview.suffixes_text }}">
+      <input type="hidden" name="suffix_passthrough_present" value="1">
+      {% if preview.passthrough %}<input type="hidden" name="suffix_passthrough" value="on">{% endif %}
       <label class="check"><input type="checkbox" name="confirm" value="yes" required>
         I understand this changes how this collection's ARKs resolve.</label>
       <div class="form-actions">
@@ -79,17 +83,15 @@
     <input type="hidden" name="action" value="resolution">
     <div class="field"><label for="redirect_elements">Redirect elements</label>
       <input id="redirect_elements" name="redirect_elements" class="wide mono" value="{{ redirect_elements_text }}">
-      <span class="hint">The element names that hold an ARK's redirect URL, <strong>separated by commas</strong>,
-        e.g. <code>URL, WHERE?</code>. They are tried in order at the requested ARK, part or variant, and the
-        first one with a value is where the resolver redirects. Names are upper-cased; at least one and at most
-        five.</span></div>
+      {% include "admin_ui/_resolution_help.html" with setting="redirect_elements" %}</div>
     <div class="field"><label for="proxied_suffixes">Proxied suffixes</label>
       <input id="proxied_suffixes" name="proxied_suffixes" class="wide mono" value="{{ proxied_suffixes_text }}">
-      <span class="hint">Final path segments answered with the target's JSON instead of a redirect,
-        <strong>separated by commas</strong>, e.g. <code>manifest</code> or <code>manifest, iiif</code>.
-        <code>…/manifest</code> fetches the URL bound at <code>/manifest</code>, else the URL of what it is
-        attached to. Each is one plain segment (no <code>/ . ? # % -</code> or spaces, not starting with a
-        digit or <code>_</code>). Leave empty for none.</span></div>
+      {% include "admin_ui/_resolution_help.html" with setting="proxied_suffixes" %}</div>
+    <div class="field">
+      <input type="hidden" name="suffix_passthrough_present" value="1">
+      <label class="check"><input type="checkbox" name="suffix_passthrough" value="on"
+        {% if collection.suffix_passthrough %}checked{% endif %}> Suffix passthrough</label>
+      {% include "admin_ui/_resolution_help.html" with setting="suffix_passthrough" %}</div>
     <div class="form-actions"><button type="submit">Review change…</button></div>
   </form>
   {% endif %}

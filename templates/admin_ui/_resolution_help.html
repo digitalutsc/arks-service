@@ -1,0 +1,69 @@
+{% comment %}
+Collapsible help for one resolution setting, shared by the collection page and the
+new-collection form. Closed by default (a plain <details>, no script, so it fits the
+CSP). Usage: {% include "admin_ui/_resolution_help.html" with setting="redirect_elements" %}
+with setting = redirect_elements | proxied_suffixes | suffix_passthrough.
+{% endcomment %}
+{% if setting == "redirect_elements" %}
+<details class="field-help">
+  <summary>Element names, <strong>separated by commas</strong>, tried in order. How it works</summary>
+  <div class="field-help-body">
+    <p>For every redirect, the resolver looks at the requested ARK, part or variant and uses the
+      <strong>first</strong> of these elements that has a value there. Names are upper-cased; give one to
+      five. The legacy service used <code>URL, WHERE?</code>.</p>
+    <table class="examples">
+      <thead><tr><th>Setting</th><th>Bound on <code>utsc1</code></th><th><code>/ark:/61220/utsc1</code> goes to</th></tr></thead>
+      <tbody>
+        <tr><td><code>URL, WHERE?</code></td><td><code>URL</code> = https://a.example/1<br><code>WHERE?</code> = https://b.example/1</td><td>https://a.example/1</td></tr>
+        <tr><td><code>URL, WHERE?</code></td><td>only <code>WHERE?</code> = https://b.example/1</td><td>https://b.example/1</td></tr>
+        <tr><td><code>TARGET, URL</code></td><td><code>TARGET</code> = https://t.example/1<br><code>URL</code> = https://a.example/1</td><td>https://t.example/1</td></tr>
+        <tr><td><code>TARGET</code></td><td>only <code>URL</code> = https://a.example/1</td><td>404: <code>URL</code> is no longer used</td></tr>
+      </tbody>
+    </table>
+    <p>A part such as <code>utsc1/page2</code> uses the elements bound at <code>/page2</code> itself, in the same order.</p>
+  </div>
+</details>
+{% elif setting == "proxied_suffixes" %}
+<details class="field-help">
+  <summary>Path endings, <strong>separated by commas</strong>, that return JSON instead of redirecting. How it works</summary>
+  <div class="field-help-body">
+    <p>When a request ends in one of these segments, the resolver fetches the URL and returns its JSON
+      (for IIIF viewers) instead of redirecting. It uses the URL bound <strong>at that ending</strong>, else the
+      URL of what it is attached to. Each ending is one plain word: no <code>/ . ? # % -</code> or spaces, and
+      not starting with a digit or <code>_</code>. Leave empty for none.</p>
+    <table class="examples">
+      <thead><tr><th>Setting</th><th>Request</th><th>Answer</th></tr></thead>
+      <tbody>
+        <tr><td><code>manifest</code></td><td><code>/ark:/61220/utsc1/manifest</code></td><td>JSON from the URL bound at <code>/manifest</code>; if none, from <code>utsc1</code>'s URL</td></tr>
+        <tr><td><code>manifest</code></td><td><code>/ark:/61220/utsc1/page2/manifest</code></td><td>JSON from <code>/page2/manifest</code>, else from <code>/page2</code></td></tr>
+        <tr><td><code>manifest, iiif</code></td><td><code>/ark:/61220/utsc1/iiif</code></td><td>JSON from the URL bound at <code>/iiif</code>, else <code>utsc1</code>'s</td></tr>
+        <tr><td>(empty)</td><td><code>/ark:/61220/utsc1/manifest</code></td><td>an ordinary redirect to the URL bound at <code>/manifest</code></td></tr>
+        <tr><td><code>manifest</code></td><td><code>/ark:/61220/utsc1/manifest?</code></td><td>the metadata of <code>/manifest</code>, nothing fetched</td></tr>
+      </tbody>
+    </table>
+  </div>
+</details>
+{% elif setting == "suffix_passthrough" %}
+<details class="field-help">
+  <summary>Let parts without their own URL borrow one. How it works</summary>
+  <div class="field-help-body">
+    <p>When ticked, a part with no URL of its own redirects to the <strong>nearest bound part above it</strong>,
+      plus the rest of the path. A part with its own URL always uses it. Metadata (<code>?</code>,
+      <code>??</code>, <code>?info</code>) and proxied endings are not affected. The cost: a mistyped part
+      reaches the target site's "not found" page instead of ours. Unticked, an unbound part is a 404, as in
+      the legacy service.</p>
+    <p>With <code>utsc1</code> → https://site.example/utsc1 and <code>utsc1/chapter2</code> → https://other.example/ch2:</p>
+    <table class="examples">
+      <thead><tr><th>Request</th><th>Ticked</th><th>Unticked</th></tr></thead>
+      <tbody>
+        <tr><td><code>/ark:/61220/utsc1/page7</code></td><td>https://site.example/utsc1/page7</td><td>404</td></tr>
+        <tr><td><code>/ark:/61220/utsc1/vol2/page7</code></td><td>https://site.example/utsc1/vol2/page7</td><td>404</td></tr>
+        <tr><td><code>/ark:/61220/utsc1/chapter2/p5</code></td><td>https://other.example/ch2/p5</td><td>404</td></tr>
+        <tr><td><code>/ark:/61220/utsc1/chapter2</code></td><td>https://other.example/ch2 (its own URL)</td><td>the same</td></tr>
+        <tr><td><code>/ark:/61220/utsc1/../x</code></td><td>404 (refused)</td><td>404</td></tr>
+      </tbody>
+    </table>
+    <p>The redirect is counted against the part that supplied the URL (<code>utsc1</code> or <code>chapter2</code>).</p>
+  </div>
+</details>
+{% endif %}

@@ -88,6 +88,14 @@ class Collection(models.Model):
         default=DEFAULT_PROXIED_SUFFIXES,
         help_text="Final qualifier segments answered by proxying JSON instead of redirecting.",
     )
+    # Suffix passthrough (R6, INTENTS_suffix_passthrough.md): a part with no URL
+    # of its own redirects to its nearest bound ancestor's URL plus the rest of
+    # the path. Off by default: the legacy contract is "no fallback up the
+    # hierarchy", and the imported collection keeps it until an admin opts in.
+    suffix_passthrough = models.BooleanField(
+        default=False,
+        help_text="Unbound parts redirect to the nearest bound ancestor's URL plus the rest of the path.",
+    )
     resolution_changed_at = models.DateTimeField(null=True, blank=True)
     resolution_changed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

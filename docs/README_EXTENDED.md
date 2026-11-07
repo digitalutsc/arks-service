@@ -296,7 +296,7 @@ flowchart TD
     J -->|yes| K["URL bound at …/manifest, else at its parent<br/>check target is public http(s)<br/>fetch (10 s total, 10 MB, 4 at once)<br/>return JSON as received<br/>502/503/504 if refused, busy or slow"]
     J -->|no| L{"first redirect element<br/>bound at this exact qualifier?<br/><i>(collection setting; default URL)</i>"}
     L -->|no| M{"next one bound?<br/><i>(default WHERE?)</i>"}
-    M -->|no| N["404<br/><i>no fallback up the hierarchy</i>"]
+    M -->|no| N["404<br/><i>no fallback up the hierarchy,<br/>unless the collection turns on<br/>suffix passthrough</i>"]
     M -->|yes| O["count (Valkey, else MySQL) · 302"]
     L -->|yes| O
 
@@ -321,7 +321,10 @@ JSON, are **settings of each collection** (defaults `URL, WHERE?` and
 `manifest`, exactly the legacy behaviour). `…/manifest` fetches the URL bound at
 the `/manifest` qualifier, as legacy did, and falls back to the object's own
 URL. An Admin changes the settings on the collection page, after a preview of
-how many bindings and ARKs each one touches.
+how many bindings and ARKs each one touches. A third setting, **suffix
+passthrough** (off by default), lets a part with no URL of its own redirect to
+the nearest bound part's URL plus the rest of the path; exact bindings always
+win, and the hit is counted against the part that supplied the URL.
 
 Order matters in two places, both to match legacy:
 

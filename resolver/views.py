@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import threading
+from typing import NamedTuple
+from urllib.parse import quote
 
 from django.conf import settings
 from django.db.models import Q
@@ -57,13 +59,20 @@ def _target_url(ark: Ark, qualifier: str) -> str | None:
     return next((bindings[name] for name in elements if bindings.get(name)), None)
 
 
+class Target(NamedTuple):
+    """Where a redirect goes, and which qualifier its hit is counted against."""
+
+    url: str
+    counted: str
+
+
 def _is_proxied(ark: Ark, qualifier: str) -> bool:
     """True when ``qualifier`` ends in one of the collection's proxied suffixes."""
     suffix = last_segment(qualifier)
     return bool(suffix) and suffix in ark.collection.proxied_suffix_list
 
 
-def _resolution_target(ark: Ark, qualifier: str) -> str | None:
+def _resolution_target(ark: Ark, qualifier: str) -> Target | None:
     """
     The URL a non-metadata request for ``qualifier`` is answered from, or None.
 
@@ -71,12 +80,61 @@ def _resolution_target(ark: Ark, qualifier: str) -> str | None:
     the suffix qualifier itself, as legacy did (a pre-generated IIIF manifest
     bound at ``/manifest``), or else the URL of what the suffix is attached to.
     For anything else it is the URL at exactly ``qualifier``: no walk up the
-    hierarchy.
+    hierarchy here (suffix passthrough, when a collection turns it on, is a
+    separate last resort: ``_passthrough``).
     """
     target = _target_url(ark, qualifier)
     if target is None and _is_proxied(ark, qualifier):
         target = _target_url(ark, parent_qualifier(qualifier))
-    return target
+    return Target(target, qualifier) if target else None
+
+
+#: Path segments a passthrough never appends: they would step out of the
+#: target's directory once a browser or server normalises the URL.
+_DOT_SEGMENTS = {".", ".."}
+
+#: Characters left as they are when a passthrough segment is re-encoded: RFC
+#: 3986 'pchar' minus '%' (so any literal '%' is encoded) and minus '/'.
+_SEGMENT_SAFE = "!$&'()*+,;=:@-._~"
+
+
+def _passthrough(ark: Ark, qualifier: str) -> Target | None:
+    """
+    Suffix passthrough (R6): ``<nearest bound ancestor's URL>/<rest of the path>``.
+
+    Only when the ARK's collection turns it on, only for a hierarchy part
+    ('/page7', not an object variant '.png'), never for a proxied suffix, and
+    never for a path with '.' or '..' segments. The nearest ancestor is found in
+    one query over every level above ``qualifier`` (the exact qualifier itself
+    has already missed); the hit is counted against that ancestor, so a made-up
+    path never creates a counter row of its own.
+    """
+    collection = ark.collection
+    if not collection.suffix_passthrough or not qualifier.startswith("/"):
+        return None
+    if _is_proxied(ark, qualifier):
+        return None
+    segments = qualifier.split("/")[1:]
+    if any(segment in _DOT_SEGMENTS for segment in segments):
+        return None
+
+    ancestors = ["/" + "/".join(segments[:depth]) for depth in range(len(segments) - 1, 0, -1)]
+    ancestors.append("")
+    elements = collection.redirect_element_list
+    found: dict[str, dict[str, str]] = {}
+    for bound_at, name, value in ark.bindings.filter(
+        qualifier__in=ancestors, name__in=elements
+    ).values_list("qualifier", "name", "value"):
+        found.setdefault(bound_at, {})[name] = value
+
+    for ancestor in ancestors:  # nearest first
+        values = found.get(ancestor, {})
+        url = next((values[name] for name in elements if values.get(name)), None)
+        if url:
+            rest = segments[len(ancestor.split("/")) - 1 if ancestor else 0 :]
+            path = "/".join(quote(segment, safe=_SEGMENT_SAFE) for segment in rest)
+            return Target(f"{url.rstrip('/')}/{path}", ancestor)
+    return None
 
 
 def _metadata_bindings(ark: Ark, qualifier: str):
@@ -106,7 +164,7 @@ def _has_metadata(ark: Ark, qualifier: str) -> list | None:
     return list(_metadata_bindings(ark, qualifier)) or None
 
 
-def _locate(parsed: ArkPath, probe) -> tuple[ArkPath, Ark | None, object]:
+def _locate(parsed: ArkPath, probe, fallback=None) -> tuple[ArkPath, Ark | None, object]:
     """
     Find what ``parsed`` names: ``(form that matched, ark, probe's answer)``.
 
@@ -118,6 +176,10 @@ def _locate(parsed: ArkPath, probe) -> tuple[ArkPath, Ark | None, object]:
     trailing '.' removed (draft-kunze-ark-44 §3.2; arks.org strips hyphens
     before forwarding). On a total miss the request as written is returned, so
     its 404 or empty answer is the one it always had.
+
+    ``fallback`` (suffix passthrough) is a last resort: it runs only once every
+    reading has missed ``probe`` exactly, over the same readings in the same
+    order, so an exact binding at any reading always beats it.
     """
     arks: dict[str, Ark | None] = {}
 
@@ -137,11 +199,19 @@ def _locate(parsed: ArkPath, probe) -> tuple[ArkPath, Ark | None, object]:
     if found is not None:
         return parsed, ark, found
 
-    for form in parsed.alternatives():
+    alternatives = list(parsed.alternatives())
+    for form in alternatives:
         alt_ark = ark_for(form)
         alt_found = probe(alt_ark, form.qualifier) if alt_ark is not None else None
         if alt_found is not None:
             return form, alt_ark, alt_found
+
+    if fallback is not None:
+        for form in [parsed, *alternatives]:
+            form_ark = ark_for(form)
+            last_resort = fallback(form_ark, form.qualifier) if form_ark is not None else None
+            if last_resort is not None:
+                return form, form_ark, last_resort
     return parsed, ark, found
 
 
@@ -168,20 +238,21 @@ def resolve(request, *args, **kwargs):
         )
         return HttpResponse(body, content_type="text/plain; charset=utf-8")
 
-    parsed, ark, target = _locate(parsed, _resolution_target)
+    parsed, ark, target = _locate(parsed, _resolution_target, fallback=_passthrough)
     if ark is None:
         raise Http404(f"Unknown ARK {parsed.name}")
     if not target:
         raise Http404(f"Nothing bound to {parsed.name}{parsed.qualifier}")
 
     if _is_proxied(ark, parsed.qualifier):
-        return _manifest(ark, target)
+        return _manifest(ark, target.url)
 
     # Buffered, so a redirect stays a pure read: see core.counters. Counted
-    # against the qualifier that actually resolved, so a hyphenated spelling
-    # adds to the stored ARK's count rather than starting a row of its own.
-    record_resolution(ark.pk, parsed.qualifier)
-    return HttpResponseRedirect(target)
+    # against the qualifier that actually resolved (a hyphenated spelling adds
+    # to the stored ARK's count), or for a passthrough against the ancestor
+    # that supplied the URL, so made-up paths never start rows of their own.
+    record_resolution(ark.pk, target.counted)
+    return HttpResponseRedirect(target.url)
 
 
 _manifest_slots_lock = threading.Lock()

@@ -454,6 +454,27 @@ label { display: block; font-size: .82rem; font-weight: 500; color: var(--muted)
 .field { margin-bottom: .9rem; }
 .hint { display: block; color: var(--muted); font-size: .8rem; margin-top: .3rem; }
 .hint.error { color: var(--bad); font-weight: 500; }
+
+/* Collapsible field help (templates/admin_ui/_resolution_help.html): a one-line
+   summary under the field, closed by default; the explanation and worked
+   examples open beneath it. */
+details.field-help { margin-top: .3rem; font-size: .8rem; color: var(--muted); }
+details.field-help > summary {
+  cursor: pointer; list-style: none; display: inline-flex; gap: .35rem; align-items: baseline;
+}
+details.field-help > summary::-webkit-details-marker { display: none; }
+details.field-help > summary::before { content: "\25B8"; font-size: .7rem; transition: transform .12s; }
+details.field-help[open] > summary::before { transform: rotate(90deg); }
+details.field-help > summary:hover { color: var(--action); }
+details.field-help > summary:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.field-help-body {
+  margin: .45rem 0 .2rem .9rem; padding: .1rem 0 .1rem .75rem;
+  border-left: 2px solid var(--line); color: var(--ink);
+}
+.field-help-body p { margin: .35rem 0; }
+.field-help-body table.examples { width: auto; margin: .4rem 0; font-size: .78rem; }
+.field-help-body table.examples th,
+.field-help-body table.examples td { padding: .25rem .5rem; vertical-align: top; text-align: left; }
 .field-error input, .field-error select, .field-error textarea { border-color: var(--bad); }
 
 /* A grid of filters or short fields; labels sit above, widths stay even.

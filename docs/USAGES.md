@@ -79,12 +79,13 @@ manage.py createcollection "UTSC Digital Collections" \
     --term medium
 ```
 
-Two optional settings decide how the collection's ARKs resolve. The defaults are
+Three optional settings decide how the collection's ARKs resolve. The defaults are
 the legacy service's behaviour, so most collections never set them:
 
 | Flag (form field) | Default | Meaning |
 |---|---|---|
 | `--redirect-elements` (*Redirect elements*) | `URL,WHERE?` | Elements holding an ARK's redirect URL, in order. The first one bound with a value wins, at whatever qualifier is requested |
+| `--suffix-passthrough` (*Suffix passthrough*) | off | A part with no URL of its own redirects to the nearest bound part's URL plus the rest of the path (section 5) |
 | `--proxied-suffixes` (*Proxied suffixes*) | `manifest` | Final path segments answered with the target's JSON instead of a redirect. `''` for none. One plain segment each: no `/ . ? # % -`, not starting with a digit or `_` |
 
 It prints back what it made, including how many identifiers the template can
@@ -307,10 +308,20 @@ and sort are both in the address, and an edit keeps them. Editors get a
 *Remove* beside each element, shown on hover or keyboard focus; binding to or
 removing from a variant brings you back to its row.
 
-> **There is no fallback up the hierarchy.** Requesting `/ark:/61220/utsc1/page9`
-> when nothing is bound to `/page9` returns 404, even if the object itself
-> resolves. This matches the legacy service exactly, and existing ARKs depend on
-> it.
+> **There is no fallback up the hierarchy**, unless the collection turns on suffix
+> passthrough. Requesting `/ark:/61220/utsc1/page9` when nothing is bound to
+> `/page9` returns 404, even if the object itself resolves. This matches the
+> legacy service exactly, and existing ARKs depend on it.
+>
+> **Suffix passthrough** (a collection setting, off by default) changes that for
+> one collection: a part with no URL of its own redirects to the nearest bound
+> part's URL plus the rest of the path. If `utsc1` goes to `https://site/utsc1`,
+> then `utsc1/page9` goes to `https://site/utsc1/page9`, and new parts need no
+> binding if their pages follow that pattern. A part with its own URL always
+> uses it; metadata (`?`, `??`, `?info`) and `/manifest` are not affected; paths
+> with `.` or `..` segments are refused; the redirect is counted against the
+> part that supplied the URL. The cost: a mistyped part reaches the target
+> site's "not found" page instead of ours.
 
 > **Spelling is forgiven, as the ARK spec asks.** `/ARK:/61220/utsc1`,
 > `/ark:/61220/utsc-1` and `/ark:/61220/utsc1.` (a citation pasted with its full
@@ -433,7 +444,8 @@ Collection page → *Resolution settings* (Admin only). *Review change…* shows
 without saving anything, the settings now and after, how many bindings carry
 each redirect element and how many ARKs bind each suffix, and a warning for
 every change that alters what existing ARKs answer (an element bound nowhere,
-an element in use being dropped, a reordered list, a suffix in use being
+an element in use being dropped, a reordered list, suffix passthrough turned
+on or off, a suffix in use being
 added or removed). Tick the box and *Confirm change* to save. It applies from the
 next request. The page shows when and by whom the settings were last changed,
 and the app log keeps every change (`WARNING core.services collection …: redirect

@@ -70,19 +70,22 @@
   <div class="field {% if errors.redirect_elements %}field-error{% endif %}">
     <label for="redirect_elements">Redirect elements</label>
     <input id="redirect_elements" name="redirect_elements" class="wide mono" value="{{ values.redirect_elements|default:'' }}" required>
-    <span class="hint">The element names that hold an ARK's redirect URL, <strong>separated by commas</strong>,
-      e.g. <code>URL, WHERE?</code>. They are tried in order and the first one with a value is where the
-      resolver redirects. The legacy service used <code>URL, WHERE?</code>.</span>
+    {% include "admin_ui/_resolution_help.html" with setting="redirect_elements" %}
     {% if errors.redirect_elements %}<span class="hint error">{{ errors.redirect_elements }}</span>{% endif %}
   </div>
 
   <div class="field {% if errors.proxied_suffixes %}field-error{% endif %}">
     <label for="proxied_suffixes">Proxied suffixes</label>
     <input id="proxied_suffixes" name="proxied_suffixes" class="wide mono" value="{{ values.proxied_suffixes|default:'' }}">
-    <span class="hint">Final path segments answered with the target's JSON instead of a redirect,
-      <strong>separated by commas</strong>, e.g. <code>manifest</code> for IIIF or <code>manifest, iiif</code>. <code>…/manifest</code> fetches the URL bound at
-      <code>/manifest</code>, else the URL of what it is attached to. Leave empty for none.</span>
+    {% include "admin_ui/_resolution_help.html" with setting="proxied_suffixes" %}
     {% if errors.proxied_suffixes %}<span class="hint error">{{ errors.proxied_suffixes }}</span>{% endif %}
+  </div>
+
+  <div class="field">
+    <input type="hidden" name="suffix_passthrough_present" value="1">
+    <label class="check"><input type="checkbox" name="suffix_passthrough" value="on"
+      {% if values.suffix_passthrough %}checked{% endif %}> Suffix passthrough</label>
+    {% include "admin_ui/_resolution_help.html" with setting="suffix_passthrough" %}
   </div>
 
   <div class="form-actions">

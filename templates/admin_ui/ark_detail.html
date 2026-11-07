@@ -36,7 +36,9 @@
   <div class="form-actions">
     <button type="submit">Bind</button>
     <span class="hint">The resolver redirects to {% for name in redirect_elements %}{% if not forloop.first %}, then {% endif %}<code>{{ name }}</code>{% endfor %}
-      (this collection's redirect elements). Any element name is allowed.</span>
+      (this collection's redirect elements). Any element name is allowed.{% if ark.collection.suffix_passthrough %}
+      Parts without their own URL redirect to the nearest bound part's URL plus the rest of the path
+      (suffix passthrough is on for this collection).{% endif %}</span>
   </div>
 </form>
 {% endif %}

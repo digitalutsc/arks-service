@@ -131,7 +131,12 @@ def parse_proxied_suffixes(text: str) -> list[str]:
     return suffixes
 
 
-def resolution_impact(collection: Collection, elements: list[str], suffixes: list[str]) -> dict:
+def resolution_impact(
+    collection: Collection,
+    elements: list[str],
+    suffixes: list[str],
+    passthrough: bool | None = None,
+) -> dict:
     """
     What changing ``collection``'s resolution settings would touch, for the preview.
 
@@ -180,7 +185,43 @@ def resolution_impact(collection: Collection, elements: list[str], suffixes: lis
                 f"/{suffix} is bound on {_counted(suffix_counts[suffix], 'ARK')}; those requests "
                 "will return the target's JSON instead of redirecting."
             )
-    return {"elements": element_counts, "suffixes": suffix_counts, "warnings": warnings}
+    impact = {"elements": element_counts, "suffixes": suffix_counts, "warnings": warnings}
+    if passthrough is not None and passthrough != collection.suffix_passthrough:
+        impact["passthrough"] = _passthrough_impact(collection, elements, passthrough, warnings)
+    return impact
+
+
+def _passthrough_impact(
+    collection: Collection, elements: list[str], turning_on: bool, warnings: list[str]
+) -> dict:
+    """
+    Counts and a warning for switching suffix passthrough on or off.
+
+    ``arks_with_target``: ARKs with a URL of their own, under which every
+    unbound part redirects once it is on. ``part_bindings``: part URLs bound
+    now, which keep their exact answer either way.
+    """
+    bindings = Binding.objects.filter(ark__collection=collection, name__in=elements).exclude(
+        value=""
+    )
+    counts = {
+        "arks_with_target": bindings.filter(qualifier="").values("ark_id").distinct().count(),
+        "part_bindings": bindings.filter(qualifier__startswith="/").count(),
+    }
+    if turning_on:
+        warnings.append(
+            "Suffix passthrough on: every part without its own URL, under the "
+            f"{_counted(counts['arks_with_target'], 'ARK')} with a URL, will redirect to the "
+            "nearest bound part's URL plus the rest of the path. A mistyped part then reaches "
+            'the target site\'s "not found" page instead of ours. The '
+            f"{_counted(counts['part_bindings'], 'part URL')} bound now keep their exact answers."
+        )
+    else:
+        warnings.append(
+            "Suffix passthrough off: parts without their own URL will answer 404 again, "
+            "as in the legacy service."
+        )
+    return counts
 
 
 def _counted(count: int, noun: str) -> str:
@@ -189,7 +230,12 @@ def _counted(count: int, noun: str) -> str:
 
 
 def update_resolution_settings(
-    collection: Collection, elements: list[str], suffixes: list[str], user=None
+    collection: Collection,
+    elements: list[str],
+    suffixes: list[str],
+    user=None,
+    *,
+    passthrough: bool | None = None,
 ) -> None:
     """
     Save new resolution settings, stamp who changed them, and log old -> new.
@@ -198,25 +244,32 @@ def update_resolution_settings(
     is logged at WARNING with both values: the app log is the history.
     """
     old_elements, old_suffixes = collection.redirect_elements, collection.proxied_suffixes
+    old_passthrough = collection.suffix_passthrough
     collection.redirect_elements = ",".join(elements)
     collection.proxied_suffixes = ",".join(suffixes)
+    if passthrough is not None:
+        collection.suffix_passthrough = passthrough
     collection.resolution_changed_at = timezone.now()
     collection.resolution_changed_by = user if getattr(user, "pk", None) else None
     collection.save(
         update_fields=[
             "redirect_elements",
             "proxied_suffixes",
+            "suffix_passthrough",
             "resolution_changed_at",
             "resolution_changed_by",
         ]
     )
     logger.warning(
-        "collection %s: redirect elements %s -> %s; proxied suffixes %s -> %s by %s",
+        "collection %s: redirect elements %s -> %s; proxied suffixes %s -> %s; "
+        "suffix passthrough %s -> %s by %s",
         collection.name,
         old_elements,
         collection.redirect_elements,
         old_suffixes or "(none)",
         collection.proxied_suffixes or "(none)",
+        "on" if old_passthrough else "off",
+        "on" if collection.suffix_passthrough else "off",
         user.get_username() if getattr(user, "pk", None) else "(system)",
     )
 
