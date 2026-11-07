@@ -134,6 +134,11 @@ def read_known_paths(path) -> set[str]:
 
 _TAG = re.compile(r"<[^>]+>")
 
+#: Elements whose text is page furniture, not content: legacy's resolver.php
+#: prints an HTML "loader" page (a <head> with a <style> block) before every
+#: ARK answer, including metadata and the NAA.
+_FURNITURE = re.compile(r"<(head|style|script)\b[^>]*>.*?</\1\s*>", re.IGNORECASE | re.DOTALL)
+
 
 def _is_legacy_miss(status: int, target: str, legacy_base: str | None) -> bool:
     """True when a legacy 302 is really 'not found' in disguise."""
@@ -144,8 +149,11 @@ def _is_legacy_miss(status: int, target: str, legacy_base: str | None) -> bool:
         return False
     if legacy_base:
         # Only the legacy service's own error page counts; a collection that
-        # genuinely redirects to a page named 404.php is a real target.
-        return parsed.netloc == urlparse(legacy_base).netloc and parsed.path.count("/") <= 1
+        # genuinely redirects to a page named 404.php is a real target. Legacy
+        # sends it as a relative 'Location: /404.php' (measured on a local copy,
+        # 2026-11-07), so no host means the legacy host.
+        own_host = parsed.netloc in ("", urlparse(legacy_base).netloc)
+        return own_host and parsed.path.count("/") <= 1
     return True
 
 
@@ -157,6 +165,9 @@ def _metadata_lines(body: str) -> set[str]:
     rows in whatever order MySQL produced; this system emits plain text sorted
     by element name. Compare the set of non-empty lines instead of the bytes.
 
+    Legacy also printed an HTML "loader" page (<head>, <style>) before every
+    ARK answer; its text is dropped with the tags.
+
     Legacy also displayed every value with '_' replaced by a space
     (resolver.php:248), so it showed 'University of Toronto' where the stored
     value, and this system's answer, is 'University_of_Toronto'. Emitting values
@@ -164,7 +175,7 @@ def _metadata_lines(body: str) -> set[str]:
     sides are compared with underscores as spaces. Only metadata bodies come
     through here: a redirect target is still compared exactly.
     """
-    text = _TAG.sub("\n", body or "").replace("_", " ")
+    text = _TAG.sub("\n", _FURNITURE.sub("", body or "")).replace("_", " ")
     return {line.strip() for line in text.splitlines() if line.strip()}
 
 

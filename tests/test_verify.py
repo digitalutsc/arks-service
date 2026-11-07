@@ -195,6 +195,48 @@ def test_a_redirect_target_is_still_compared_exactly():
     assert compare("/ark:/61220/utsc1", legacy, new) is not None
 
 
+# Measured on a local legacy copy (2026-11-07): resolver.php sends a relative
+# Location for a miss, and prints its HTML/CSS "loader" page before every ARK
+# answer, so its metadata and NAA bodies start with <html><head><style>…
+
+
+def test_a_relative_legacy_404_redirect_is_a_miss():
+    legacy = (302, "/404.php")
+    assert (
+        compare("/ark:/61220/utsc100", legacy, (404, ""), legacy_base="https://ark.example") is None
+    )
+
+
+def test_a_relative_redirect_to_a_deeper_404_page_is_still_a_target():
+    legacy = (302, "/some/collection/404.php")
+    assert compare("/ark:/61220/utsc100", legacy, (404, ""), legacy_base="https://ark.example")
+
+
+LOADER = (
+    "<html>\n<head>\n  <style>\n    .loader{\n      position: fixed;\n      left: 0px;\n"
+    "    }\n    @keyframes spin {\n      0% { transform: rotate(0deg); }\n    }\n"
+    "    pre {\n      white-space: pre-wrap;\n    }\n  </style>\n</head>\n<body>\n\n</body>\n</html>\n\n"
+)
+
+
+def test_legacys_loader_page_is_ignored_around_metadata():
+    legacy = (200, LOADER + "<pre><pre>erc:\nWho: Anonymous\nUrl: https://e.example\n</pre><pre/>")
+    new = (200, "erc:\nWho: Anonymous\nUrl: https://e.example\n")
+    assert compare("/ark:/61220/utsc1?", legacy, new) is None
+
+
+def test_legacys_loader_page_is_ignored_around_the_naa():
+    legacy = (200, LOADER + "The U Of T Scarborough Library assigns identifiers")
+    new = (200, "The U Of T Scarborough Library assigns identifiers\n")
+    assert compare("/ark:/61220/", legacy, new) is None
+
+
+def test_a_metadata_difference_behind_the_loader_is_still_reported():
+    legacy = (200, LOADER + "<pre>erc:\nWho: Anonymous\n</pre>")
+    new = (200, "erc:\nWho: Someone else\n")
+    assert compare("/ark:/61220/utsc1?", legacy, new) is not None
+
+
 def test_a_missing_metadata_line_is_still_reported():
     legacy = (200, "<pre>erc:\nWho: Anonymous\nUrl: https://e.example</pre>")
     new = (200, "erc:\nWho: Anonymous\n")

@@ -979,8 +979,8 @@ flowchart LR
     B --> C["compare(path, legacy, new, legacy_base)"]
     C --> D{"normalise"}
     D --> D1["legacy target: decode_legacy_text, rstrip CR"]
-    D --> D2["legacy 302 to its own /404.php == new 404"]
-    D --> D3["200 vs 200: compare SET of non-empty lines after stripping tags (legacy's <pre> wrapping, row order)<br/>with '_' read as a space (legacy displayed values that way; ours are verbatim)"]
+    D --> D2["legacy 302 to its own /404.php (relative or on its host) == new 404"]
+    D --> D3["200 vs 200: compare SET of non-empty lines after dropping legacy's loader page (head/style/script) and stripping tags (legacy's <pre> wrapping, row order)<br/>with '_' read as a space (legacy displayed values that way; ours are verbatim)"]
     D --> D4["otherwise: same status and same target"]
     D1 --> E{"Difference?"}
     E -->|"is_error (status 0)"| F["counted separately: proves nothing"]
