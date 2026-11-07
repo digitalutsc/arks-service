@@ -372,6 +372,32 @@ def test_labels_drop_every_question_mark(client, ark):
     assert "Where?:" not in body
 
 
+@pytest.mark.parametrize(
+    ("name", "label"),
+    [
+        ("NODE ID", "Node Id"),  # found by the rehearsal: legacy capitalises every word
+        ("DATE CREATED", "Date Created"),
+        ("node  id", "Node  Id"),
+        ("LOCAL_ID", "Local_id"),  # '_' is not a word break for ucwords
+        ("SUPPORT-WHO??", "Support-who"),  # nor is '-'
+        ("WHERE?", "Where"),
+        ("URL", "Url"),
+        ("ÉTAT CIVIL", "État Civil"),  # PHP 8 changes ASCII letters only
+    ],
+)
+def test_labels_are_capitalised_as_legacy_did(name, label):
+    # resolver.php: ucwords(strtolower(trim(str_replace("?", "", $field)))).
+    from resolver.services import format_label
+
+    assert format_label(name) == label
+
+
+def test_a_multi_word_element_shows_with_every_word_capitalised(client, ark):
+    Binding.objects.create(ark=ark, name="NODE ID", value="1159")
+    body = get(client, "/ark:/61220/utsc1?", raw="/ark:/61220/utsc1?").content.decode()
+    assert "Node Id: 1159" in body
+
+
 def test_an_inflection_beats_a_manifest_request(client, ark, monkeypatch):
     # "?" explicitly asks for metadata instead of the resource; legacy's
     # /manifest test required the URI to *end* in "/manifest", so a trailing '?'

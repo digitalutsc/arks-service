@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import http.client
 import ipaddress
+import re
 import socket
+import string
 import time
 import urllib.request
 from collections.abc import Iterable
@@ -49,14 +51,25 @@ def is_support_element(name: str) -> bool:
     return SUPPORT_MARKER in name
 
 
+#: PHP 8's strtolower/ucwords change ASCII letters only.
+_ASCII_LOWER = str.maketrans(string.ascii_uppercase, string.ascii_lowercase)
+#: ucwords' default word separators: space, tab, CR, LF, form feed, vertical tab.
+_WORD_START = re.compile(r"(^|[ \t\r\n\f\v])([a-z])")
+
+
 def format_label(name: str) -> str:
     """
-    'LOCAL_ID' -> 'Local_id', matching the legacy metadata display.
+    'LOCAL_ID' -> 'Local_id', 'NODE ID' -> 'Node Id': the legacy metadata display.
 
-    Every '?' is removed, not just the '??' support marker, so 'WHERE?' shows as
-    'Where' exactly as legacy rendered it.
+    Legacy rendered ``ucwords(strtolower(trim(str_replace("?", "", $field))))``
+    (resolver.php:248). So every '?' is removed, not just the '??' support
+    marker ('WHERE?' shows as 'Where'), and each space-separated word is
+    capitalised, while '_' and '-' are not word breaks. Only ASCII letters
+    change case, as in PHP 8. The cutover rehearsal (2026-11-07) found the
+    multi-word case: 'NODE ID' had shown as 'Node id'.
     """
-    return name.replace("?", "").strip().lower().capitalize()
+    text = name.replace("?", "").strip().translate(_ASCII_LOWER)
+    return _WORD_START.sub(lambda match: match.group(1) + match.group(2).upper(), text)
 
 
 def render_erc(bindings: Iterable, include_support: bool) -> str:

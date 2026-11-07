@@ -478,7 +478,7 @@ Every lookup above goes through `_locate(parsed, probe)`: the request **as writt
 1. Drop `INTERNAL_ELEMENTS = {"REDIRECT", ":/C", ":/H"}`.
 2. Brief block: `erc:` then one `Label: value` per element whose name does **not** contain `??`.
 3. If `include_support` and any element name contains `??`: blank line, `erc-support:`, those elements. If none, **no header at all** (legacy printed nothing, and `resolve_diff` would otherwise differ on every `??` path).
-4. `format_label("WHERE?") == "Where"`, `format_label("LOCAL_ID") == "Local_id"`: every `?` removed, lower-cased, first letter capitalised. Values are emitted verbatim (legacy replaced `_` with space, corrupting URLs).
+4. `format_label("WHERE?") == "Where"`, `format_label("LOCAL_ID") == "Local_id"`, `format_label("NODE ID") == "Node Id"`: legacy's `ucwords(strtolower(...))` after removing every `?`, so every space-separated word is capitalised but `_` and `-` are not word breaks; ASCII letters only, as in PHP 8. Values are emitted verbatim (legacy replaced `_` with space, corrupting URLs).
 
 ### The manifest proxy
 
