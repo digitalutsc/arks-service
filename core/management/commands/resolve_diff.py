@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from django.core.management.base import BaseCommand, CommandError
 
 from core.management.commands._common import get_collection
+from core.models import Collection
 from core.verify import base_path, compare, iter_check_paths, read_known_paths
 
 #: Statuses we compare bodies for rather than Location headers.
@@ -84,10 +85,15 @@ class Command(BaseCommand):
         differences = []
         checked = 0
 
+        # Every suffix any collection in scope proxies (manifest by default): a
+        # fetch that fails on both sides of such a path is not a difference.
+        scope = [collection] if collection else Collection.objects.all()
+        proxied = {suffix for each in scope for suffix in each.proxied_suffix_list}
+
         def check(path):
             legacy = _fetch(legacy_base + path, timeout)
             new = _fetch(new_base + path, timeout)
-            return compare(path, legacy, new, legacy_base=legacy_base)
+            return compare(path, legacy, new, legacy_base=legacy_base, proxied_suffixes=proxied)
 
         stop_after = options["stop_after"]
         workers = options["workers"]

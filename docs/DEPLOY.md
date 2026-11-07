@@ -632,8 +632,8 @@ tail -f /var/log/apache2/arkservice-{access,error}.log
 | `BULK_BIND_MAX_ROWS` | `100000` | Largest upload |
 | `FALLBACK_PAGES_DIR` | empty | A directory holding operator-written `index.html`, `403.html`, `404.html`, `500.html` and their assets, served in place of the built-in landing page and Django's plain error pages (`resolver/fallback.py`). Empty means off. Starting kit: `docs/fallback-example/` |
 | `DATA_UPLOAD_MAX_MEMORY_SIZE` | `20971520` | 20 MB |
-| `MANIFEST_FETCH_TIMEOUT` | `5` | Seconds. Short by design: the request holds a worker while fetching someone else's server |
-| `MANIFEST_TOTAL_TIMEOUT` | `10` | Seconds for the whole `/manifest` fetch; `MANIFEST_FETCH_TIMEOUT` bounds each read |
+| `MANIFEST_FETCH_TIMEOUT` | `30` | Seconds each read may wait. On-demand manifests send nothing until they are built (23–35 s cold, measured); the concurrency cap, not this, stops slow targets taking every thread |
+| `MANIFEST_TOTAL_TIMEOUT` | `30` | Seconds for the whole `/manifest` fetch, as in legacy; keep it under gunicorn's `--timeout` (60) |
 | `MANIFEST_MAX_BYTES` | `10485760` | 10 MB; a larger declared `Content-Length` is refused before reading |
 | `MANIFEST_MAX_CONCURRENT` | `4` | `/manifest` fetches at once per gunicorn process; beyond it, 503 with `Retry-After` |
 | `DB_CONNECT_TIMEOUT` / `DB_READ_TIMEOUT` / `DB_WRITE_TIMEOUT` | `5` / `60` / `60` | MySQL only. Seconds before a stalled server is given up on |

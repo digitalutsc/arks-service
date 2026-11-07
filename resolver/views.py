@@ -205,16 +205,24 @@ def _manifest(ark: Ark, target: str) -> HttpResponse:
     endpoint is public, so at most MANIFEST_MAX_CONCURRENT fetches run per
     process; past that the caller is told to retry rather than queueing behind
     them and starving ordinary redirects.
+
+    Every answer, error or not, may be read by a page on another site: a IIIF
+    viewer loads the manifest with fetch(), and without this header the browser
+    hides even the error from it. The response is public and anonymous (no
+    cookies, nothing credentialed), so any origin is fine, and the source sites
+    send the same header. Only manifest responses carry it.
     """
     slots = _manifest_slots_for(max(1, settings.MANIFEST_MAX_CONCURRENT))
     if not slots.acquire(blocking=False):
         response = JsonResponse({"error": "Too many manifest requests; retry shortly."}, status=503)
         response["Retry-After"] = "5"
-        return response
-    try:
-        return _proxy_manifest(ark, target)
-    finally:
-        slots.release()
+    else:
+        try:
+            response = _proxy_manifest(ark, target)
+        finally:
+            slots.release()
+    response["Access-Control-Allow-Origin"] = "*"
+    return response
 
 
 def _proxy_manifest(ark: Ark, target: str) -> HttpResponse:

@@ -299,14 +299,19 @@ CSRF_FAILURE_VIEW = "resolver.fallback.csrf_failure"
 # should still be advertised under the production domain).
 ARK_PUBLIC_BASE_URL = env.str("ARK_PUBLIC_BASE_URL", default="")
 
-# Timeout (seconds) for the server-side fetch behind /manifest.
-# Short by design: a /manifest request parks a worker on someone else's server,
-# and the endpoint is public and unauthenticated. 30s meant a handful of slow
-# targets could occupy every worker at once.
-MANIFEST_FETCH_TIMEOUT = env.int("MANIFEST_FETCH_TIMEOUT", default=5)
-# The fetch timeout above bounds each socket read; this bounds the whole fetch,
-# so a server trickling bytes cannot hold a thread for minutes.
-MANIFEST_TOTAL_TIMEOUT = env.float("MANIFEST_TOTAL_TIMEOUT", default=10)
+# Timeouts (seconds) for the server-side fetch behind /manifest. Each bounds a
+# different thing: MANIFEST_FETCH_TIMEOUT each socket read, MANIFEST_TOTAL_TIMEOUT
+# the whole fetch, so a server trickling bytes cannot hold a thread for minutes.
+# Legacy's 30 s on purpose, for each read as well as in all: 1,151 of the
+# imported manifests are built on demand and send nothing at all until they are
+# ready. Measured 2026-11-06: 23 s and 35 s cold, 0.04 s once built. A shorter
+# per-read limit failed builds that legacy served.
+# A slow target holds a gunicorn thread while it is fetched; what stops a few
+# of them taking every thread is MANIFEST_MAX_CONCURRENT below, not a short
+# timeout. Keep MANIFEST_TOTAL_TIMEOUT under gunicorn's --timeout (60).
+# See INTENTS_manifest_hardening.md.
+MANIFEST_FETCH_TIMEOUT = env.int("MANIFEST_FETCH_TIMEOUT", default=30)
+MANIFEST_TOTAL_TIMEOUT = env.float("MANIFEST_TOTAL_TIMEOUT", default=30)
 MANIFEST_MAX_BYTES = env.int("MANIFEST_MAX_BYTES", default=10 * 1024 * 1024)
 # Concurrent /manifest fetches per gunicorn process (each has 8 threads). Past
 # this, callers get 503 + Retry-After instead of taking every thread.

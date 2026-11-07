@@ -407,7 +407,25 @@ interface. Metadata and manifest requests are **not** counted as redirects.
 
 `/manifest` will only fetch `http`/`https` targets on public addresses; a
 `file://` or internal-network URL is refused with a 502. It does not follow
-redirects, so bind the final manifest URL.
+redirects, so bind the final manifest URL. It waits up to 30 s, legacy's limit,
+so manifests built on demand (which send nothing for 20–35 s the first time)
+still arrive.
+Manifest responses carry `Access-Control-Allow-Origin: *`, so a IIIF viewer
+(Mirador, Universal Viewer) on another site can load
+`https://ark.digital.utsc.utoronto.ca/ark:/…/manifest` directly.
+
+To check every manifest at once, read-only, the same way the resolver fetches
+them:
+
+```bash
+manage.py check_manifests --collection utsc --out manifests.csv   # --workers 4, --sample N
+```
+
+It prints a summary (`ok`, `empty`, `not-json`, `too-large`, `too-slow`,
+`redirect`, `http-error`, `refused`, `failed`), the slowest one and the first
+problems; the CSV has every row. Each row is one GET to the target's site, so
+keep `--workers` low for sites that build manifests on demand. Only targets
+bound at a proxied suffix are checked.
 
 ### Changing a collection's resolution settings
 
@@ -563,7 +581,9 @@ manage.py resolve_diff \
 
 `import_legacy` is idempotent — rehearse it as often as you like. `review.csv`
 lists the few rows that could not be carried over exactly, and `resolve_diff`
-exits non-zero until every path that is not in it matches.
+exits non-zero until every path that is not in it matches. A `/manifest` whose
+fetch fails on both sides (legacy 500, ours 502/503/504) counts as matching;
+run `manage.py check_manifests` to see those failures (section 7).
 
 To rehearse the whole thing in Docker instead, see
 [`MIGRATION.md` in `docker-arks-service`](https://github.com/digitalutsc/docker-arks-service/blob/main/docs/MIGRATION.md).

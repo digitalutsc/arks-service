@@ -161,12 +161,25 @@ def _metadata_lines(body: str) -> set[str]:
     return {line.strip() for line in text.splitlines() if line.strip()}
 
 
+#: Statuses this system answers a failed proxied fetch with (refused, not JSON,
+#: too big or upstream error; busy; too slow). Legacy answered all of them 500.
+PROXY_FAILURE_STATUSES = {502, 503, 504}
+
+
+def _is_proxied_path(path: str, proxied_suffixes) -> bool:
+    """True for a path ending in a proxied suffix, e.g. '/ark:/…/manifest' (not '…/manifest?')."""
+    if "?" in path:
+        return False
+    return path.rstrip("/").rpartition("/")[2] in proxied_suffixes
+
+
 def compare(
     path: str,
     legacy: tuple[int, str],
     new: tuple[int, str],
     *,
     legacy_base: str | None = None,
+    proxied_suffixes=(),
 ) -> Difference | None:
     """
     Compare one path's outcome on both systems.
@@ -187,6 +200,16 @@ def compare(
     new_target = new_target or ""
 
     if _is_legacy_miss(legacy_status, legacy_target, legacy_base) and new_status == 404:
+        return None
+
+    # A proxied fetch that failed on both sides (legacy 500, ours 502/503/504)
+    # is the target's problem, not a difference between the systems; it shows
+    # up in manage.py check_manifests instead.
+    if (
+        legacy_status >= 500
+        and new_status in PROXY_FAILURE_STATUSES
+        and _is_proxied_path(path, proxied_suffixes)
+    ):
         return None
 
     if legacy_status == 200 and new_status == 200:

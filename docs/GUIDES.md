@@ -493,12 +493,12 @@ sequenceDiagram
     S-->>V: FetchTarget(url, host, address=first, port)
     V->>T: connect to the PINNED address, Host header = real host, TLS SNI = real host, no redirects
     T-->>V: headers (+ Content-Length) then body in 64 KiB read1() chunks
-    V->>V: Content-Length over 10 MB → TargetTooLarge before reading; deadline MANIFEST_TOTAL_TIMEOUT=10 s checked per chunk → TargetTooSlow; received over max → TargetTooLarge
+    V->>V: Content-Length over 10 MB → TargetTooLarge before reading; deadline MANIFEST_TOTAL_TIMEOUT=30 s checked per chunk (each read waits up to MANIFEST_FETCH_TIMEOUT=30 s) → TargetTooSlow; received over max → TargetTooLarge
     V->>V: json.loads(body) must parse
-    V-->>C: 200 application/json, body passed through byte-for-byte
+    V-->>C: 200 application/json, body passed through byte-for-byte, Access-Control-Allow-Origin: *
 ```
 
-Error mapping: `UnsafeTarget` → 502 "may not be fetched" (warning logged: this is a bad binding, not a down server); `TargetTooLarge` → 502; `TargetTooSlow` → 504; any other exception → 502; non-JSON → 502. The semaphore is per gunicorn process and is rebuilt if the setting changes (`_manifest_slots_for`). Pinning the connection to the vetted address is what closes DNS rebinding.
+Error mapping: `UnsafeTarget` → 502 "may not be fetched" (warning logged: this is a bad binding, not a down server); `TargetTooLarge` → 502; `TargetTooSlow` → 504; any other exception → 502; non-JSON → 502. The semaphore is per gunicorn process and is rebuilt if the setting changes (`_manifest_slots_for`). Pinning the connection to the vetted address is what closes DNS rebinding. Every manifest response, errors and 503 included, carries `Access-Control-Allow-Origin: *` so a IIIF viewer on another site can read it; nothing else from the resolver does (`INTENTS_manifest_hardening.md`). `manage.py check_manifests` fetches every bound suffix target the same way and reports ok / empty / not-json / too-large / too-slow / redirect / http-error / refused / failed, and `core/verify.py::compare` treats legacy 500 vs our 502/503/504 on a proxied path as agreement.
 
 ### `raw_request_uri` and why gunicorn is required
 
@@ -1023,7 +1023,7 @@ With `DJANGO_DEBUG=false`, refuse to start (one message listing every problem) w
 | | `CELERY_TASK_TIME_LIMIT` | 3600 | visibility timeout = +600 |
 | | `CELERY_BEAT_SCHEDULE_FILENAME` | `/tmp/celerybeat-schedule` | |
 | Resolver | `ARK_PUBLIC_BASE_URL` | empty | override the derived public base URL |
-| | `MANIFEST_FETCH_TIMEOUT` / `MANIFEST_TOTAL_TIMEOUT` | 5 / 10 | per read / whole fetch |
+| | `MANIFEST_FETCH_TIMEOUT` / `MANIFEST_TOTAL_TIMEOUT` | 30 / 30 | per read / whole fetch (legacy: 30 s; on-demand manifests send nothing for 23–35 s while built); keep the total under gunicorn's 60 s |
 | | `MANIFEST_MAX_BYTES` | 10 MiB | |
 | | `MANIFEST_MAX_CONCURRENT` | 4 | per gunicorn process |
 | Limits | `MINT_MAX_PER_REQUEST` | 10,000 | 0 removes the cap |
