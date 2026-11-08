@@ -499,11 +499,11 @@ sequenceDiagram
     S->>S: scheme in (http, https)? hostname present?
     S->>DNS: getaddrinfo(host, port)
     DNS-->>S: every address
-    S->>S: _unwrap() IPv4-mapped and NAT64, then is_global for EACH address; any non-global → UnsafeTarget
+    S->>S: _unwrap() IPv4-mapped and NAT64, then is_global for EACH address, any non-global → UnsafeTarget
     S-->>V: FetchTarget(url, host, address=first, port)
     V->>T: connect to the PINNED address, Host header = real host, TLS SNI = real host, no redirects
     T-->>V: headers (+ Content-Length) then body in 64 KiB read1() chunks
-    V->>V: Content-Length over 10 MB → TargetTooLarge before reading; deadline MANIFEST_TOTAL_TIMEOUT=30 s checked per chunk (each read waits up to MANIFEST_FETCH_TIMEOUT=30 s) → TargetTooSlow; received over max → TargetTooLarge
+    V->>V: Content-Length over 10 MB → TargetTooLarge before reading, deadline MANIFEST_TOTAL_TIMEOUT=30 s checked per chunk (each read waits up to MANIFEST_FETCH_TIMEOUT=30 s) → TargetTooSlow, received over max → TargetTooLarge
     V->>V: json.loads(body) must parse
     V-->>C: 200 application/json, body passed through byte-for-byte, Access-Control-Allow-Origin: *
 ```
@@ -575,7 +575,7 @@ sequenceDiagram
     participant DB
     Caller->>M: mint(collection, count, user, enforce_cap)
     M->>M: count < 1 → ValueError
-    M->>M: enforce_cap and count > MINT_MAX_PER_REQUEST (10,000; 0 = off) → ValueError
+    M->>M: enforce_cap and count > MINT_MAX_PER_REQUEST (10,000 by default, 0 = off) → ValueError
     M->>DB: SELECT … FROM core_collection WHERE id=? FOR UPDATE
     Note over M,DB: every other minter of this collection now waits
     M->>M: spec = parse_template(prefix + template)
@@ -588,7 +588,7 @@ sequenceDiagram
         end
         M->>M: capacity exhausted before count → TemplateExhausted (nothing created)
     else random (r)
-        M->>DB: count() of the collection; capacity-used < count → TemplateExhausted
+        M->>DB: count() of the collection, capacity-used < count → TemplateExhausted
         loop up to 8 rounds
             M->>M: draw min(4×wanted, 1000) distinct secrets.randbelow(capacity)
             M->>DB: WHERE identifier IN (candidates)
@@ -689,7 +689,7 @@ sequenceDiagram
 
     R->>V: HINCRBY arks:hits "ark_id:qualifier" 1
     alt any exception / no REDIS_URL
-        R->>DB: Resolution.record(ark, qualifier)  (write-through; one warning per 60 s per process)
+        R->>DB: Resolution.record(ark, qualifier)  (write-through, one warning per 60 s per process)
     end
 
     Note over S: every RESOLUTION_FLUSH_SECONDS (60)
@@ -700,11 +700,11 @@ sequenceDiagram
     loop at most twice
         S->>V: EXISTS arks:hits:flushing ?
         alt not exists
-            S->>V: RENAME arks:hits → arks:hits:flushing  (atomic; new hits start a fresh hash)
+            S->>V: RENAME arks:hits → arks:hits:flushing  (atomic: new hits start a fresh hash)
         end
         S->>V: HGETALL arks:hits:flushing
         loop batches of FLUSH_BATCH = 500 pairs
-            S->>DB: one transaction: UPDATE count = count + n per distinct n; INSERT missing rows; skip dead ARKs
+            S->>DB: one transaction: UPDATE count = count + n per distinct n, INSERT missing rows, skip dead ARKs
             Note over S,DB: IntegrityError (a write-through row appeared) → retry the batch once
             S->>V: HDEL arks:hits:flushing <fields of this batch>
         end
@@ -864,13 +864,13 @@ Row statuses, once the file is applied: `bound` (at least one element created or
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING : upload creates BulkBindJob;\nrun_bulk_bind.delay(job.pk)
+    [*] --> PENDING : upload creates BulkBindJob,\nrun_bulk_bind.delay(job.pk)
     PENDING --> FAILED : .delay() raised (broker down)\nmark_failed("Could not be queued…")
-    PENDING --> RUNNING : claim(task_id)\nUPDATE … WHERE status='pending' (atomic; 1 row or 0)
-    PENDING --> PENDING : reap_stale_jobs: PENDING > 15 min\n→ re-queue, at most once/hour (cache.add)
-    RUNNING --> FINISHED : apply_csv + mark_finished(result)\nin ONE transaction; results CSV stored
+    PENDING --> RUNNING : claim(task_id)\nUPDATE … WHERE status='pending' (atomic, 1 row or 0)
+    PENDING --> PENDING : reap_stale_jobs, PENDING > 15 min\n→ re-queue, at most once/hour (cache.add)
+    RUNNING --> FINISHED : apply_csv + mark_finished(result)\nin ONE transaction, results CSV stored
     RUNNING --> FAILED : BulkBindError / Exception\nmark_failed(message)
-    RUNNING --> FAILED : found RUNNING on redelivery\nor RUNNING > time limit + 300 s (reaper)\n→ mark_interrupted(): "Interrupted… Nothing was applied"
+    RUNNING --> FAILED : found RUNNING on redelivery\nor RUNNING > time limit + 300 s (reaper)\n→ mark_interrupted() with "Interrupted… Nothing was applied"
     FINISHED --> [*]
     FAILED --> [*]
     FINISHED --> deleted : prune_jobs(older_than_days)\nwith its files
