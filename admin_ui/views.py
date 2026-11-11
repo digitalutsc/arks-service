@@ -75,6 +75,8 @@ from core.services import (
     current_stats,
     parse_proxied_suffixes,
     parse_redirect_elements,
+    prefix_overlap,
+    prefix_overlap_message,
     prefix_problem,
     resolution_impact,
     unbind_elements,
@@ -94,7 +96,7 @@ from jobs.progress import describe as describe_progress
 from jobs.progress import read as read_progress
 from jobs.tasks import run_bulk_bind
 from minting.minter import MintError, mint
-from minting.noid import TemplateError, template_choices
+from minting.noid import TemplateError, template_groups
 from resolver import fallback
 
 logger = logging.getLogger(__name__)
@@ -273,7 +275,6 @@ def _parse_passthrough(post, *, if_absent: bool) -> bool:
 def collection_create(request):
     errors: dict[str, str] = {}
     values = {
-        "term": "medium",
         "redirect_elements": _settings_text(DEFAULT_REDIRECT_ELEMENTS),
         "proxied_suffixes": _settings_text(DEFAULT_PROXIED_SUFFIXES),
         "suffix_passthrough": False,
@@ -287,7 +288,6 @@ def collection_create(request):
                 "naan",
                 "naa",
                 "template",
-                "term",
                 "redirect_elements",
                 "proxied_suffixes",
             )
@@ -305,9 +305,18 @@ def collection_create(request):
             errors["prefix"] = "A prefix or shoulder is required."
         elif problem := prefix_problem(values["prefix"]):
             errors["prefix"] = problem
-        elif Collection.objects.filter(naan=values["naan"], prefix=values["prefix"]).exists():
-            errors["prefix"] = "The entered prefix has been used, please enter another prefix."
-        if values["term"] == Collection.Term.LONG and not values["naa"]:
+        elif other := prefix_overlap(values["naan"], values["prefix"]):
+            # The exact repeat keeps the legacy wording; any other overlap says which.
+            errors["prefix"] = (
+                "The entered prefix has been used, please enter another prefix."
+                if other.prefix == values["prefix"]
+                else prefix_overlap_message(values["prefix"], other)
+            )
+        # Every collection is long-term, whatever is posted: Short and Medium
+        # change nothing in this service, so the form does not show the term at
+        # all. Long's one effect is that the NAA is required.
+        values["term"] = Collection.Term.LONG
+        if not values["naa"]:
             errors["naa"] = "A long-term collection needs a Name Assigning Authority."
 
         if not errors:
@@ -333,8 +342,7 @@ def collection_create(request):
             "errors": errors,
             "error": "; ".join(f"{k}: {v}" for k, v in errors.items()) or None,
             "values": values,
-            "terms": Collection.Term.choices,
-            "templates": template_choices(),
+            "template_groups": template_groups(),
         },
     )
 

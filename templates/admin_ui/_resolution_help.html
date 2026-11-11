@@ -47,14 +47,14 @@ with setting = redirect_elements | proxied_suffixes | suffix_passthrough.
 <details class="field-help">
   <summary>Let parts without their own URL borrow one. How it works</summary>
   <div class="field-help-body">
-    <p>When ticked, a part with no URL of its own redirects to the <strong>nearest bound part above it</strong>,
+    <p>When enabled, a part with no URL of its own redirects to the <strong>nearest bound part above it</strong>,
       plus the rest of the path. A part with its own URL always uses it. Metadata (<code>?</code>,
       <code>??</code>, <code>?info</code>) and proxied endings are not affected. The cost: a mistyped part
-      reaches the target site's "not found" page instead of ours. Unticked, an unbound part is a 404, as in
+      reaches the target site's "not found" page instead of ours. When not enabled, an unbound part is a 404, as in
       the legacy service.</p>
     <p>With <code>utsc1</code> → https://site.example/utsc1 and <code>utsc1/chapter2</code> → https://other.example/ch2:</p>
     <table class="examples">
-      <thead><tr><th>Request</th><th>Ticked</th><th>Unticked</th></tr></thead>
+      <thead><tr><th>Request</th><th>Enabled</th><th>Not enabled</th></tr></thead>
       <tbody>
         <tr><td><code>/ark:/61220/utsc1/page7</code></td><td>https://site.example/utsc1/page7</td><td>404</td></tr>
         <tr><td><code>/ark:/61220/utsc1/vol2/page7</code></td><td>https://site.example/utsc1/vol2/page7</td><td>404</td></tr>

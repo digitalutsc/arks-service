@@ -50,6 +50,29 @@ def test_form_offers_every_catalogue_template_as_an_option(admin_client):
         assert description in body
 
 
+GROUPS = ["Sequential, no limit", "Sequential, fixed size", "Random"]
+
+
+def group_of(value):
+    spec = parse_template("x" + value)
+    if spec.is_random:
+        return "Random"
+    return "Sequential, no limit" if spec.unlimited else "Sequential, fixed size"
+
+
+def test_the_templates_are_grouped_by_how_they_mint(admin_client):
+    body = admin_client.get(url()).content.decode()
+    select = re.search(r'<select id="template".*?</select>', body, re.S).group(0)
+    groups = re.findall(r'<optgroup label="([^"]+)">(.*?)</optgroup>', select, re.S)
+    assert [label for label, _ in groups] == GROUPS
+    grouped = {label: re.findall(r'<option value="([^"]+)"', options) for label, options in groups}
+    expected = {label: [] for label in GROUPS}
+    for value, _ in TEMPLATE_CATALOGUE:
+        expected[group_of(value)].append(value)
+    assert grouped == expected  # each template once, in catalogue order, in its own group
+    assert ".zd" in grouped["Sequential, no limit"]
+
+
 def test_form_uses_a_textarea_for_the_naa(admin_client):
     body = admin_client.get(url()).content.decode()
     assert re.search(r'<textarea[^>]*\bname="naa"', body)
@@ -66,6 +89,65 @@ def test_no_template_is_preselected(admin_client):
     body = admin_client.get(url()).content.decode()
     # Legacy forced a choice; the first option is the disabled "Choose..." one.
     assert not re.search(r'<option value="\.[a-z]+"[^>]*\bselected', body)
+
+
+def fieldset(body, legend):
+    """The HTML of the fieldset whose legend is ``legend``."""
+    match = re.search(
+        rf"<fieldset[^>]*>\s*<legend>{re.escape(legend)}</legend>(.*?)</fieldset>", body, re.S
+    )
+    assert match, f"no fieldset with the legend {legend!r}"
+    return match.group(1)
+
+
+def test_collection_fields_and_resolution_settings_are_in_separate_boxes(admin_client):
+    body = admin_client.get(url()).content.decode()
+    collection = fieldset(body, "Collection settings")
+    resolution = fieldset(body, "Resolution settings")
+    for name in ("name", "template", "prefix", "naan", "naa"):
+        assert f'name="{name}"' in collection
+        assert f'name="{name}"' not in resolution
+    for name in ("redirect_elements", "proxied_suffixes", "suffix_passthrough"):
+        assert f'name="{name}"' in resolution
+        assert f'name="{name}"' not in collection
+
+
+def test_the_naan_is_explained_in_plain_words_and_keeps_the_registry_link(admin_client):
+    collection = fieldset(admin_client.get(url()).content.decode(), "Collection settings")
+    assert "identifies your organisation" in collection
+    assert re.search(
+        r'<a href="https://cdlib\.org/naan_registry"[^>]*>NAAN registry</a>', collection
+    )
+
+
+def test_the_naa_is_explained_in_plain_words(admin_client):
+    collection = fieldset(admin_client.get(url()).content.decode(), "Collection settings")
+    assert "name of your organisation" in collection
+
+
+def test_the_naa_help_says_which_collection_answers_for_a_shared_naan(admin_client):
+    # resolver/views.py _naa_response: the first collection by name with an NAA.
+    collection = fieldset(admin_client.get(url()).content.decode(), "Collection settings")
+    assert "comes first alphabetically" in collection
+
+
+def test_the_prefix_explains_what_unique_means(admin_client):
+    collection = fieldset(admin_client.get(url()).content.decode(), "Collection settings")
+    assert "starts every ARK in this collection" in collection
+    assert "the beginning of" in collection
+
+
+def test_the_form_does_not_show_the_term_at_all(admin_client):
+    # Every collection made here is long-term; there is nothing to choose or explain.
+    body = admin_client.get(url()).content.decode()
+    assert 'name="term"' not in body
+    assert ">Term<" not in body
+    assert 'id="term"' not in body
+
+
+def test_the_naa_is_marked_required(admin_client):
+    collection = fieldset(admin_client.get(url()).content.decode(), "Collection settings")
+    assert re.search(r'<textarea[^>]*\bname="naa"[^>]*\brequired', collection)
 
 
 # --- validation -----------------------------------------------------------
@@ -95,11 +177,21 @@ def test_the_same_prefix_under_another_naan_is_allowed(admin_client):
     assert Collection.objects.count() == 2
 
 
-def test_a_long_term_collection_needs_a_name_assigning_authority(admin_client):
-    response = admin_client.post(url(), {**VALID, "term": "long", "naa": ""})
+def test_every_collection_made_in_the_form_needs_a_name_assigning_authority(admin_client):
+    response = admin_client.post(url(), {**VALID, "naa": ""})
     assert response.status_code == 200
     assert "A long-term collection needs a Name Assigning Authority" in response.content.decode()
     assert Collection.objects.count() == 0
+
+
+@pytest.mark.parametrize("posted", ["short", "medium", "", None])
+def test_the_form_always_creates_a_long_term_collection(admin_client, posted):
+    data = {key: value for key, value in VALID.items() if key != "term"}
+    if posted is not None:
+        data["term"] = posted
+    response = admin_client.post(url(), data)
+    assert response.status_code == 302
+    assert Collection.objects.get().term == Collection.Term.LONG
 
 
 def test_a_failed_submission_keeps_what_was_typed(admin_client):
@@ -117,7 +209,7 @@ def test_a_valid_submission_creates_the_collection_and_redirects(admin_client):
         "utsc",
         "61220",
         ".zd",
-        "medium",
+        "long",
     )
 
 

@@ -62,7 +62,7 @@ Two properties of the storage layer matter more than they look:
 |---|---|
 | the collection table | one `Collection`, named after the table unless `--collection-name` says otherwise |
 | `:/naan`, `:/prefix`, `:/template`, `:/naa` | its NAAN, prefix, template and name-assigning authority |
-| `:/longterm` / `:/wrap` | its term (long / short / medium) |
+| `:/longterm` / `:/wrap` | not used: every imported collection is long-term |
 | every distinct identifier | one `Ark`, with `sequence` decoded back from the identifier and `minted_at` from `:/c` |
 | every element row | one `Binding` — `ark`, `qualifier`, `name`, `value` |
 | the hierarchy and variant tab parts | joined into the single `qualifier` string, e.g. `/page1.image.png` |
@@ -285,6 +285,12 @@ partial. Name the ones you want with `--table`.
 **`prefix 'utsc' is already used under NAAN 61220`** — a collection with that
 prefix already exists under another name. Either import into it with
 `--collection-name`, or rename one of the two.
+
+**`… overlaps the prefix … of collection …`**: the legacy prefix starts, or is
+the beginning of, the prefix of another collection under the same NAAN (`utsc`
+and `utsc1`). Both would mint into the same identifiers, and whichever got there
+second could never mint again, so the import refuses it (`INTENTS_prefix_overlap.md`).
+Import into a database without the other collection, or remove it first.
 
 **`--collection-name names one collection, but this source holds N`** — add
 `--table` to say which one you mean.

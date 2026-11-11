@@ -353,7 +353,7 @@ erDiagram
 |---|---|
 | the table | one `Collection`, named after the table unless `--collection-name` |
 | `:/naan`, `:/prefix`, `:/template`, `:/naa` | `naan`, `prefix`, `template`, `naa` |
-| `:/longterm` → long; `:/wrap` → short; else medium | `term` |
+| `:/longterm`, `:/wrap`: ignored | `term` is always `long` |
 | `61220/utsc1<TAB>URL` | `Binding(ark, qualifier="", name="URL")` |
 | `61220/utsc1<TAB>/page1<TAB>.png<TAB>URL` | `Binding(qualifier="/page1.png")` |
 | `61220/utsc1<TAB>REDIRECT` = 37 | `Resolution(count=37)` |
@@ -794,7 +794,7 @@ Failures are counted in the Django cache under `login-failures:<username lower>:
 | View | Key behaviour |
 |---|---|
 | `collection_list` | `current_stats` per collection (live or stored), oldest `as_of` shown as "Counts as of", running-job count |
-| `collection_create` | form fields `name, prefix, naan, naa, template, term`; requires a prefix (model allows blank for legacy imports); duplicate `(naan, prefix)` message copied from legacy; long term requires NAA; `full_clean` validates the template |
+| `collection_create` | form fields `name, prefix, naan, naa, template` (term fixed at `long`, so the NAA is required); requires a prefix (model allows blank for legacy imports); duplicate `(naan, prefix)` message copied from legacy; long term requires NAA; `full_clean` validates the template |
 | `collection_detail` | POST (Admin) saves **only** `name` and `naa`; shows the collection header (Overview tab), spec/capacity, stats, "Export all N as CSV", last 5 jobs under `#recent-jobs` |
 | `collection_activity` | the activity strip alone: the pending/running job with its progress, else the latest job and what it did |
 | `ark_list` | `_require_collection` first (redirect, or `HX-Redirect`, to Collections without one); `_search_from_request` (a `TooManyMatches` becomes a warning + empty list); subquery sorts refused above the threshold; `PAGE_SIZE 50`, `MAX_PAGE 1000`, fetch `PAGE_SIZE+1` to know `has_next`; count skipped when page 1 holds all; bindings and redirect totals loaded in two queries; `_remember_list` stores the query string in the session under `ark_list_query`; the full page adds `header` and `activity`, the htmx fragment does not; the result line offers "Export these N as CSV" |
@@ -922,7 +922,7 @@ There is no HTTP API; commands are the scripting surface, run on the server. Exi
 
 | Command | Arguments | Calls | Notes |
 |---|---|---|---|
-| `createcollection NAME --naan N --template T [--prefix P] [--naa A] [--term short\|medium\|long] [--redirect-elements URL,WHERE?] [--proxied-suffixes manifest] [--suffix-passthrough]` *(arks-cli)* | the three resolution settings, section 5 | `Collection.full_clean().save()` | prints prefix, firstpart, template (mask, gen type), capacity; `ValidationError`/`IntegrityError` → CommandError |
+| `createcollection NAME --naan N --template T [--prefix P] [--naa A] [--redirect-elements URL,WHERE?] [--proxied-suffixes manifest] [--suffix-passthrough]` *(arks-cli)* | the three resolution settings, section 5 | `Collection.full_clean().save()` | prints prefix, firstpart, template (mask, gen type), capacity; `ValidationError`/`IntegrityError` → CommandError |
 | `mint COLLECTION [COUNT=1] [--template FILE]` *(arks-cli)* | | `minting.minter.mint` | prints one ARK per line; writes the fill-in CSV; `MintError` → CommandError; cap enforced |
 | `bind ARK ELEMENT VALUE` *(arks-cli)* | ARK may carry a qualifier | `bind_element` | |
 | `unbind ARK [ELEMENT] [--all]` *(arks-cli)* | | `unbind_elements` | `--all` on a bare ARK clears every qualifier (same as UI purge); on a qualifier only that one |
@@ -1114,6 +1114,7 @@ php tests/fixtures/generate_vectors.php > tests/fixtures/noid_vectors.json   # N
 - **Identifiers are never reissued**: purge removes bindings, keeps the `Ark`; sequential minting never refills gaps.
 - **No fallback up the hierarchy**: `/page9` with nothing bound is 404 even if the parent resolves, unless the collection turns on suffix passthrough (`Collection.suffix_passthrough`, off by default), which then redirects it to the nearest bound ancestor's URL + `/page9`.
 - **Hyphens are tolerated on lookup, refused on write**: the resolver retries a miss without hyphens or a trailing `.`, and `core/services.py::qualifier_problem` / `prefix_problem` refuse `-` in a new qualifier (UI, `bind`, bulk bind) or a new collection's prefix, because N2T and arks.org strip hyphens before forwarding. Unbind and `import_legacy` are not checked.
+- **Prefixes may not overlap** within a NAAN: `core/services.py::prefix_overlap` refuses a new prefix that starts, or is the beginning of, another one (case-folded), on the form, `createcollection` and `import_legacy`. The minter only checks its own collection for used numbers, so `utsc` beside `utsc1` would let both reach for `utsc10`, and the loser could never mint again (`INTENTS_prefix_overlap.md`). Checked on creation only; nothing on the model.
 - **Counts lag** by up to 60 s; stored collection stats lag by up to 300 s above 50,000 ARKs.
 - **Bare `?` needs gunicorn** (`RAW_URI`) and Apache `nocanon`; `runserver` cannot be used for the cutover diff.
 - **Export → upload round trip caveat**: `csv_safe` prefixes `'` to formula-leading values on export; `apply_csv` does not strip it, so re-uploading such a value stores `'=foo`. Only `iter_results` applies `csv_unsafe`.
@@ -1133,7 +1134,7 @@ php tests/fixtures/generate_vectors.php > tests/fixtures/noid_vectors.json   # N
 | **ARK** | Archival Resource Key, `ark:/<NAAN>/<name>`; a persistent identifier that resolves by HTTP redirect |
 | **NAAN** | Name Assigning Authority Number, e.g. `61220`; `Collection.naan`, `Ark.naan` |
 | **NAA** | Name Assigning Authority, the organisation name returned for `/ark:/<naan>/`; `Collection.naa` |
-| **prefix / shoulder** | The constant string after the NAAN that every ARK in a collection shares (`utsc`); `Collection.prefix`; unique within a NAAN |
+| **prefix / shoulder** | The constant string after the NAAN that every ARK in a collection shares (`utsc`); `Collection.prefix`; unique within a NAAN, and never the beginning of another prefix there |
 | **identifier** | Everything after the NAAN including the prefix (`utsc1`); `Ark.identifier`; unique within a NAAN |
 | **qualifier** | Everything after the identifier: hierarchy and/or variant, stored as one string (`/page1.image.png`); `Binding.qualifier` |
 | **hierarchy** | The `/segment…` part of a qualifier, a sub-object such as a page |

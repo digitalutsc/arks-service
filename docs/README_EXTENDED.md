@@ -217,7 +217,7 @@ erDiagram
 
     COLLECTION {
         string name UK
-        string prefix UK "unique within its NAAN"
+        string prefix UK "unique within its NAAN; never starts another"
         string naan
         text   naa "returned for /ark:/<naan>/"
         string template "noid, e.g. .zd"

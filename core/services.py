@@ -73,6 +73,52 @@ def prefix_problem(prefix: str) -> str | None:
     return None
 
 
+def prefix_overlap(naan: str, prefix: str, *, exclude_name: str | None = None) -> Collection | None:
+    """
+    The collection under ``naan`` whose prefix overlaps ``prefix``, or None.
+
+    Two prefixes overlap when one starts the other (``utsc`` and ``utsc1``; the
+    exact repeat included). Every minted identifier is prefix + generated part,
+    and the minter only looks inside its own collection for numbers already
+    used, so overlapping collections can both reach for the same identifier;
+    the second then hits the ``(naan, identifier)`` index on every attempt and
+    can never mint again (INTENTS_prefix_overlap.md).
+
+    Compared case-folded, because production MySQL's collation treats
+    ``UTSC10`` and ``utsc10`` as one identifier. Done in Python over the few
+    collections of one NAAN, rather than as engine-specific ``LIKE`` SQL.
+    A blank legacy prefix starts every prefix, so it overlaps them all.
+    ``exclude_name`` leaves out that collection (a re-import of itself).
+    """
+    wanted = prefix.casefold()
+    others = Collection.objects.filter(naan=naan).order_by("name")
+    if exclude_name is not None:
+        others = others.exclude(name=exclude_name)
+    for other in others.only("name", "prefix", "naan"):
+        existing = other.prefix.casefold()
+        if wanted.startswith(existing) or existing.startswith(wanted):
+            return other
+    return None
+
+
+def prefix_overlap_message(prefix: str, other: Collection) -> str:
+    """Why ``prefix`` is refused because it overlaps ``other``'s prefix."""
+    if prefix.casefold() == other.prefix.casefold():
+        # MySQL's collation treats ARKs differing only in case as one identifier.
+        return (
+            f"The prefix {prefix} is the same as the prefix {other.prefix} of collection "
+            f"{other.name!r} under NAAN {other.naan}, apart from letter case. ARKs that differ "
+            "only in letter case count as the same ARK, so the two collections could hand out "
+            "the same ARK. Choose another prefix."
+        )
+    return (
+        f"The prefix {prefix} overlaps the prefix {other.prefix or '(blank)'} of collection "
+        f"{other.name!r} under NAAN {other.naan}: one is the beginning of the other, so the "
+        "two collections could hand out the same ARK. Choose a prefix that neither starts "
+        "with nor is the beginning of an existing one."
+    )
+
+
 def parse_redirect_elements(text: str) -> list[str]:
     """
     A collection's redirect elements, from the comma-separated form staff type.

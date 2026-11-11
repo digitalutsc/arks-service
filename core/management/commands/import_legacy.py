@@ -40,7 +40,12 @@ from core.legacy import (
     parse_legacy_key,
 )
 from core.models import Ark, Collection, Organisation, Resolution
-from core.services import bulk_upsert_bindings, normalise_element_name
+from core.services import (
+    bulk_upsert_bindings,
+    normalise_element_name,
+    prefix_overlap,
+    prefix_overlap_message,
+)
 from minting.noid import TemplateError, parse_template, xdig2n
 
 #: Rows per round trip when writing in bulk.
@@ -273,16 +278,16 @@ class Command(BaseCommand):
             )
 
         name = name or legacy.table
-        clash = (
-            Collection.objects.filter(naan=legacy.naan, prefix=legacy.prefix)
-            .exclude(name=name)
-            .first()
-        )
-        if clash is not None:
+        clash = prefix_overlap(legacy.naan, legacy.prefix, exclude_name=name)
+        if clash is not None and clash.prefix == legacy.prefix:
             raise CommandError(
                 f"Cannot import {legacy.table!r}: prefix {legacy.prefix!r} is already used "
                 f"under NAAN {legacy.naan} by collection {clash.name!r}. A prefix must be "
                 "unique within its NAAN."
+            )
+        if clash is not None:
+            raise CommandError(
+                f"Cannot import {legacy.table!r}: {prefix_overlap_message(legacy.prefix, clash)}"
             )
 
         collection, created = Collection.objects.update_or_create(
@@ -292,7 +297,8 @@ class Command(BaseCommand):
                 "naan": legacy.naan,
                 "naa": legacy.naa,
                 "template": legacy.template,
-                "term": legacy.term,
+                # Long whatever the legacy minter said; Short and Medium mean nothing here.
+                "term": Collection.Term.LONG,
             },
         )
         totals["collections_created" if created else "collections_updated"] += 1

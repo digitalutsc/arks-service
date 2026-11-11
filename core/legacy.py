@@ -193,14 +193,6 @@ class LegacyCollection:
     def mask(self) -> str:
         return self.config.get(":/mask", "").strip()
 
-    @property
-    def term(self) -> str:
-        if self.config.get(":/longterm"):
-            return "long"
-        if self.config.get(":/wrap"):
-            return "short"
-        return "medium"
-
 
 class LegacyReader:
     """

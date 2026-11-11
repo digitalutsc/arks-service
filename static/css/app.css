@@ -499,6 +499,17 @@ details.field-help > summary:focus-visible { outline: 2px solid var(--action); o
 
 .form-actions { display: flex; gap: .5rem; align-items: center; margin-top: 1rem; }
 
+/* A titled group of fields inside a form card (the New collection form:
+   Collection settings, Resolution settings). */
+fieldset.form-section {
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  margin: 0 0 1.1rem; padding: .4rem 1rem .2rem; min-width: 0;
+}
+fieldset.form-section > legend {
+  padding: 0 .4rem; font-size: .95rem; font-weight: 600; color: var(--ink);
+}
+fieldset.form-section > p.hint { margin: 0 0 .9rem; }
+
 /* --- pager --------------------------------------------------------------- */
 .pager { display: flex; gap: .6rem; align-items: center; margin-top: .9rem; }
 .pager .page-of { color: var(--muted); font-size: .85rem; }

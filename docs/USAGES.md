@@ -77,6 +77,11 @@ nobody changes their own role from the page, so nobody locks themselves out.
 A collection is a minter: one prefix, one NAAN, one noid template. **The prefix
 must be unique within its NAAN** (`unique (naan, prefix)`); two NAANs may share
 a prefix, which is why commands also accept a collection as `<naan>/<prefix>`.
+Unique here also means **no overlap**: a new prefix may not start with, or be the
+beginning of, a prefix already used under the same NAAN, ignoring case. With
+`utsc` in place, `utsc1`, `UTSC` and `ut` are all refused, by the form,
+`createcollection` and `import_legacy` (`core.services.prefix_overlap`), because
+the two collections could mint the same identifier.
 
 **Command line** (needs the `arks-cli` plugin)
 
@@ -85,9 +90,13 @@ manage.py createcollection "UTSC Digital Collections" \
     --prefix utsc \
     --naan 61220 \
     --naa "University of Toronto Scarborough Library" \
-    --template .zd \
-    --term medium
+    --template .zd
 ```
+
+Every collection is **long-term**: the form, `createcollection` and `import_legacy`
+all set `term` to `long`, and there is no `--term` option (removed 2026-11-11;
+Short and Medium changed nothing). On the form, the Name Assigning Authority is
+therefore required.
 
 Three optional settings decide how the collection's ARKs resolve. The defaults are
 the legacy service's behaviour, so most collections never set them:

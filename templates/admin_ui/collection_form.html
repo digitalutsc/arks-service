@@ -13,6 +13,9 @@
 {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
 
 <form method="post" class="card" data-busy="Creating…">{% csrf_token %}
+  <fieldset class="form-section">
+  <legend>Collection settings</legend>
+
   <div class="field {% if errors.name %}field-error{% endif %}">
     <label for="name">Collection name</label>
     <input id="name" name="name" class="wide" value="{{ values.name|default:'' }}" required>
@@ -23,9 +26,13 @@
     <label for="template">Template (for minter)</label>
     <select id="template" name="template" class="wide" required>
       <option value="" disabled {% if not values.template %}selected{% endif %}>Choose…</option>
-      {% for t in templates %}
-        <option value="{{ t.value }}" data-description="{{ t.description }}" data-capacity="{{ t.capacity }}"
-                {% if values.template == t.value %}selected{% endif %}>{{ t.value }}</option>
+      {% for label, choices in template_groups %}
+        <optgroup label="{{ label }}">
+          {% for t in choices %}
+            <option value="{{ t.value }}" data-description="{{ t.description }}" data-capacity="{{ t.capacity }}"
+                    {% if values.template == t.value %}selected{% endif %}>{{ t.value }}</option>
+          {% endfor %}
+        </optgroup>
       {% endfor %}
     </select>
     <span id="template-help" class="hint"></span>
@@ -37,24 +44,23 @@
   <div class="field {% if errors.prefix %}field-error{% endif %}">
     <label for="prefix">Prefix or Shoulder (must be unique)</label>
     <input id="prefix" name="prefix" class="wide mono" value="{{ values.prefix|default:'' }}" required>
-    <span class="hint">Constant string after the NAAN, e.g. <code>utsc</code>. Must be unique within its NAAN.</span>
+    <span class="hint">A short code that starts every ARK in this collection, right after the NAAN:
+      <code>utsc</code> in <code>ark:/61220/utsc1</code>. It keeps this collection's ARKs apart from your
+      other collections' ARKs.</span>
+    <span class="hint">It must be unique: it may not be the same as, start with, or be the beginning of a
+      prefix already used under the same NAAN. If <code>utsc</code> exists, <code>utsc1</code> and
+      <code>ut</code> are refused, because the two collections could end up giving out the same ARK.
+      Hyphens are not allowed. Ending it with a digit, such as <code>b3</code>, is the ARK community's
+      custom.</span>
     {% if errors.prefix %}<span class="hint error">{{ errors.prefix }}</span>{% endif %}
-  </div>
-
-  <div class="field {% if errors.term %}field-error{% endif %}">
-    <label for="term">Term</label>
-    <select id="term" name="term" class="wide">
-      {% for value, label in terms %}
-        <option value="{{ value }}" {% if values.term == value %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    <span class="hint">Long-term collections must give a NAAN and a Name Assigning Authority.</span>
-    {% if errors.term %}<span class="hint error">{{ errors.term }}</span>{% endif %}
   </div>
 
   <div class="field {% if errors.naan %}field-error{% endif %}">
     <label for="naan">Name Assigning Authority Number (NAAN)</label>
     <input id="naan" name="naan" class="wide mono" value="{{ values.naan|default:'' }}" required>
+    <span class="hint">A number that identifies your organisation in the ARK world. Every ARK your
+      organisation creates starts with it: <code>61220</code> in <code>ark:/61220/utsc1</code>. Your
+      organisation gets it once, free of charge, and uses the same number for all its collections.</span>
     <span class="hint">Look up your NAAN in the
       <a href="https://cdlib.org/naan_registry" target="_blank" rel="noopener">NAAN registry</a>.</span>
     {% if errors.naan %}<span class="hint error">{{ errors.naan }}</span>{% endif %}
@@ -62,10 +68,21 @@
 
   <div class="field {% if errors.naa %}field-error{% endif %}">
     <label for="naa">Name Assigning Authority (NAA)</label>
-    <textarea id="naa" name="naa" class="wide" rows="3">{{ values.naa|default:'' }}</textarea>
-    <span class="hint">Returned for <code>/ark:/&lt;naan&gt;/</code> when no identifier is given.</span>
+    <textarea id="naa" name="naa" class="wide" rows="3" required>{{ values.naa|default:'' }}</textarea>
+    <span class="hint">The name of your organisation, the one the NAAN stands for, written the way you
+      want people to see it, e.g. <em>University of Toronto Scarborough Library</em>. Visitors see it when
+      they open <code>ark:/&lt;NAAN&gt;/</code> without an item after it. If several collections share
+      this NAAN, visitors see the one from the collection whose name comes first alphabetically, so
+      give them all the same text. Required.</span>
     {% if errors.naa %}<span class="hint error">{{ errors.naa }}</span>{% endif %}
   </div>
+
+  </fieldset>
+
+  <fieldset class="form-section">
+  <legend>Resolution settings</legend>
+  <p class="hint">How the public resolver answers for this collection's ARKs. The defaults behave like the
+    old service; only an Admin can change them later, after a preview.</p>
 
   <div class="field {% if errors.redirect_elements %}field-error{% endif %}">
     <label for="redirect_elements">Redirect elements</label>
@@ -87,6 +104,7 @@
       {% if values.suffix_passthrough %}checked{% endif %}> Suffix passthrough</label>
     {% include "admin_ui/_resolution_help.html" with setting="suffix_passthrough" %}
   </div>
+  </fieldset>
 
   <div class="form-actions">
     <button type="submit">Create collection</button>

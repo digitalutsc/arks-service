@@ -280,9 +280,8 @@ NEW = {
     "name": "Maps",
     "prefix": "map",
     "naan": "61220",
-    "naa": "",
+    "naa": "UTSC Library",
     "template": ".zd",
-    "term": "medium",
 }
 
 

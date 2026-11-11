@@ -366,9 +366,8 @@ NEW = {
     "name": "Maps",
     "prefix": "map",
     "naan": "61220",
-    "naa": "",
+    "naa": "UTSC Library",
     "template": ".zd",
-    "term": "medium",
 }
 
 
@@ -525,3 +524,6 @@ def test_each_setting_has_collapsed_help_with_examples(admin_client, collection,
     assert "separated by commas" in elements and "TARGET, URL" in elements
     assert "separated by commas" in suffixes and "/ark:/61220/utsc1/manifest" in suffixes
     assert "/ark:/61220/utsc1/page7" in passthrough and "nearest bound part" in passthrough
+    # Described by its state, not by the checkbox: "Enabled" / "Not enabled".
+    assert "<th>Enabled</th><th>Not enabled</th>" in passthrough
+    assert "tick" not in passthrough.lower()

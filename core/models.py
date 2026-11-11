@@ -71,7 +71,9 @@ class Collection(models.Model):
         max_length=64,
         help_text="noid template, e.g. '.zd' for unlimited sequential digits.",
     )
-    term = models.CharField(max_length=16, choices=Term.choices, default=Term.MEDIUM)
+    # Every collection is long-term: Short and Medium change nothing here, so the
+    # form, createcollection and import_legacy all set Long, and so does the default.
+    term = models.CharField(max_length=16, choices=Term.choices, default=Term.LONG)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Resolution settings (INTENTS_collection_resolution_settings.md). Both are

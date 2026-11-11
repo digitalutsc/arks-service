@@ -384,7 +384,7 @@ def xdig2n(variable_part: str, mask: str) -> int:
     return number
 
 
-def template_choices() -> list[dict[str, str]]:
+def template_choices() -> list[dict]:
     """
     :data:`TEMPLATE_CATALOGUE` with each template's capacity worked out.
 
@@ -396,5 +396,37 @@ def template_choices() -> list[dict[str, str]]:
         # The prefix does not affect capacity; any non-empty one parses.
         spec = parse_template("x" + value)
         capacity = "unlimited" if spec.unlimited else f"{spec.total:,}"
-        choices.append({"value": value, "description": description, "capacity": capacity})
+        choices.append(
+            {
+                "value": value,
+                "description": description,
+                "capacity": capacity,
+                "gen_type": spec.gen_type,
+                "unlimited": spec.unlimited,
+            }
+        )
     return choices
+
+
+def template_groups() -> list[tuple[str, list[dict]]]:
+    """
+    :func:`template_choices` split by how they mint, for ``<optgroup>`` headings.
+
+    Sequential without limit first (the ``z`` masks; production uses ``.zd``),
+    then sequential with a fixed size, then random (always a fixed size).
+    Catalogue order is kept within each group.
+    """
+    groups: dict[str, list[dict]] = {
+        "Sequential, no limit": [],
+        "Sequential, fixed size": [],
+        "Random": [],
+    }
+    for choice in template_choices():
+        if choice["gen_type"] == "random":
+            label = "Random"
+        elif choice["unlimited"]:
+            label = "Sequential, no limit"
+        else:
+            label = "Sequential, fixed size"
+        groups[label].append(choice)
+    return list(groups.items())
