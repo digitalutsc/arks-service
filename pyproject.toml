@@ -31,6 +31,9 @@ DJANGO_SETTINGS_MODULE = "arkservice.settings"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+# WhiteNoise warns when STATIC_ROOT does not exist, as on a fresh checkout
+# (CI). Tests use plain static storage (conftest.py), so it is only noise.
+filterwarnings = ["ignore:No directory at:UserWarning:django.core.handlers.base"]
 
 [tool.ruff]
 line-length = 100

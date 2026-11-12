@@ -9,6 +9,24 @@ if str(ROOT) not in sys.path:
 
 
 @pytest.fixture(autouse=True)
+def _plain_static_storage(settings):
+    """
+    Serve static files without the collectstatic manifest.
+
+    With DEBUG off, settings use WhiteNoise's manifest storage, which raises
+    "Missing staticfiles manifest entry" on every {% static %} unless
+    collectstatic has filled STATIC_ROOT. A developer's checkout usually has a
+    leftover (gitignored) staticfiles/ that hides this; CI's fresh checkout
+    does not, so every rendered page failed there. Tests do not exercise the
+    manifest, so they use Django's plain storage.
+    """
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
+
+@pytest.fixture(autouse=True)
 def _clear_caches():
     """
     Element names and statistics are cached.
