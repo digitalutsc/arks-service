@@ -51,7 +51,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install MySQL client headers
-        run: sudo apt-get update && sudo apt-get install -y libmysqlclient-dev pkg-config
+        # The runner image already ships libmysqlclient-dev and pkg-config.
+        # Reinstalling them after apt-get update upgrades the whole MySQL
+        # family, and the preinstalled mysql-server's upgrade script fails on
+        # the runner (8.4.11 -> 8.4.13 on 2026-11-11), which failed both
+        # engines before a test ran. Install only when the headers are missing.
+        run: |
+          if pkg-config --exists mysqlclient; then
+            echo "mysqlclient $(pkg-config --modversion mysqlclient) headers already installed"
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libmysqlclient-dev pkg-config
+          fi
 
       - uses: astral-sh/setup-uv@v5
         with:
