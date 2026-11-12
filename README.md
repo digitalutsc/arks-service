@@ -150,3 +150,31 @@ engine-specific index can be added later without a schema change.
 Nothing inside refers to the directory name. The Django package is `arkservice`,
 the Compose project name is set explicitly, and every path is relative or comes
 from the environment. `mv` it wherever you like.
+
+## Credits
+
+The identifier algorithms in `minting/noid.py` (templates, character
+repertoires, `n2xdig` and the check character) are a port of:
+
+- **[Noid](https://metacpan.org/dist/Noid)** (Nice Opaque Identifiers), the
+  Perl minter by John A. Kunze at the California Digital Library.
+  Copyright 2002–2006 UC Regents, released under a BSD-type licence.
+- **[Noid4Php](https://github.com/Daniel-KM/Noid4Php)**, the PHP port by
+  Daniel Berthereau, released under the CeCILL-B licence.
+
+Their licence notices are reproduced in `minting/noid.py`. This project is not
+endorsed by the UC Regents, the University of California or the authors of
+either library.
+
+It replaces the earlier PHP ARK service, built by the Digital Scholarship Unit
+on Noid4Php and kept at
+[digitalutsc/arks-service-archived](https://github.com/digitalutsc/arks-service-archived);
+the identifiers it minted remain valid here.
+
+The staff interface bundles [htmx](https://htmx.org/) (Zero-Clause BSD) and the
+IBM Plex fonts (SIL Open Font License 1.1, see `static/fonts/LICENSE.txt`).
+
+## License
+
+BSD 2-Clause; see [LICENSE](LICENSE). To contribute, see
+[CONTRIBUTING](.github/CONTRIBUTING.md).
