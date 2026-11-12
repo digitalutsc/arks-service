@@ -235,7 +235,7 @@ def test_no_progress_yet_is_simply_working():
 def test_a_phase_with_a_total_is_counted_with_separators():
     shown = progress.describe({"phase": "writing", "done": 180000, "total": 412000})
     assert shown == {
-        "label": "Writing bindings 180,000 of 412,000",
+        "label": "Writing elements 180,000 of 412,000",
         "done": 180000,
         "total": 412000,
     }

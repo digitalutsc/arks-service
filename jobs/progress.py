@@ -34,7 +34,7 @@ PHASES = {
     "checking": "Checking rows",
     "minting": "Minting new ARKs",
     "purging": "Removing previous elements",
-    "writing": "Writing bindings",
+    "writing": "Writing elements",
 }
 
 WORKING = "Working…"

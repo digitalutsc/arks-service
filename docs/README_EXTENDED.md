@@ -367,7 +367,7 @@ what the last one did.
 
 **Progress.** The bulk-bind job page polls every 2 s and shows a `<progress>`
 bar fed from one cache key the worker writes (`jobs/progress.py`): reading the
-file, checking rows, minting, writing bindings. The key lives in the cache, not
+file, checking rows, minting, writing elements. The key lives in the cache, not
 the job row, because the row's transaction is still open while the work runs.
 Minting stays inside the web request (a capped mint is a second or two); its
 form shows a busy state while the browser waits. Each result row of a finished

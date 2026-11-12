@@ -13,11 +13,12 @@ attributes and the #status wrapper live here rather than in job.html.
       <p>{{ job.error }}</p></div>
   {% elif job.is_finished %}
     <div class="stats">
-      <div class="stat"><div class="n">{{ job.created|intcomma:False }}</div><span class="l">Created</span></div>
-      <div class="stat"><div class="n">{{ job.updated|intcomma:False }}</div><span class="l">Updated</span></div>
-      <div class="stat"><div class="n">{{ job.minted|intcomma:False }}</div><span class="l">Minted</span></div>
+      {# Three units: ARKs minted, elements (bindings) written, CSV rows failed. #}
+      <div class="stat"><div class="n">{{ job.minted|intcomma:False }}</div><span class="l">ARKs minted</span></div>
+      <div class="stat"><div class="n">{{ job.created|intcomma:False }}</div><span class="l">Elements added</span></div>
+      <div class="stat"><div class="n">{{ job.updated|intcomma:False }}</div><span class="l">Elements replaced</span></div>
       <div class="stat {% if job.failed %}is-bad{% endif %}"><div class="n">{{ job.failed|intcomma:False }}</div>
-        <span class="l">Failed</span></div>
+        <span class="l">Rows failed</span></div>
     </div>
     {% if job.failed %}
       <div class="msg error">

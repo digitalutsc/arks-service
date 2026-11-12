@@ -242,7 +242,7 @@ manage.py bulk_bind utsc /tmp/batch.csv --results /tmp/results.csv
 
 **Staff interface** — Collections → *(collection)* → **Bulk bind** tab. The job
 runs in the background; the job page refreshes itself with a progress bar
-(reading the file, checking rows, minting, writing bindings), and you can close
+(reading the file, checking rows, minting, writing elements), and you can close
 the tab and come back to it. The collection's **Browse ARKs** tab shows a line
 while a bulk bind is running there, and afterwards says what the last one did.
 

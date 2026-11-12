@@ -260,7 +260,7 @@ def test_a_finished_job_shows_a_quiet_line(viewer, collection, ark):
     run_bulk_bind(job.pk)
     body = body_of(viewer.get(LIST, {"collection": collection.pk}))
     assert 'id="activity"' in body
-    assert "Last bulk bind" in body and "finished" in body and "1 created" in body
+    assert "Last bulk bind" in body and "finished" in body and "1 element added" in body
     assert reverse("admin_ui:job_detail", args=[job.pk]) in body
     assert "#recent-jobs" in body
     assert "hx-trigger" not in body.split('id="activity"', 1)[1].split("</div>", 1)[0]
@@ -273,7 +273,7 @@ def test_a_running_job_shows_live_progress_and_polls(viewer, collection):
     body = body_of(viewer.get(LIST, {"collection": collection.pk}))
     strip = body.split('id="activity"', 1)[1].split("</div>", 1)[0]
     assert f"Bulk bind #{job.pk} running" in strip
-    assert "Writing bindings 42,000 of 100,000" in strip
+    assert "Writing elements 42,000 of 100,000" in strip
     assert 'hx-trigger="every 3s"' in strip
     assert activity_url(collection) in strip
 
@@ -283,7 +283,52 @@ def test_a_job_that_only_updated_says_so(viewer, collection, ark):
     run_bulk_bind(job.pk)
     strip = body_of(viewer.get(LIST, {"collection": collection.pk}))
     strip = strip.split('id="activity"', 1)[1].split("</div>", 1)[0]
-    assert "1 updated" in strip and "created" not in strip
+    assert "1 element replaced" in strip and "added" not in strip
+
+
+def test_a_minting_job_counts_arks_and_elements_separately(viewer, collection):
+    job = make_job(
+        collection, "Ark_ID,URL,PID\n,https://example.org/a,islandora:a\n", mint_missing=True
+    )
+    run_bulk_bind(job.pk)
+    strip = body_of(viewer.get(LIST, {"collection": collection.pk}))
+    strip = " ".join(strip.split('id="activity"', 1)[1].split("</div>", 1)[0].split())
+    assert "1 ARK minted · 2 elements added" in strip
+
+
+# --- the count labels say what they count -----------------------------------------
+
+#: Old labels that read as ARKs while counting elements or rows.
+OLD_COUNT_LABELS = (">Created<", ">Updated<", ">Minted<", ">Failed<")
+
+
+def squashed(response):
+    return " ".join(body_of(response).split())
+
+
+def test_the_job_page_names_the_unit_of_each_count(editor, collection):
+    job = make_job(collection, "Ark_ID,URL\n,https://example.org/a\n", mint_missing=True)
+    run_bulk_bind(job.pk)
+    body = squashed(editor.get(reverse("admin_ui:job_detail", args=[job.pk])))
+    labels = ["ARKs minted", "Elements added", "Elements replaced", "Rows failed"]
+    positions = [body.index(f'class="l">{label}<') for label in labels]
+    assert positions == sorted(positions)
+    assert not any(old in body for old in OLD_COUNT_LABELS)
+
+
+@pytest.mark.parametrize("page", ["admin_ui:bulk_bind", "admin_ui:collection_detail"])
+def test_job_tables_name_the_unit_of_each_count(editor, collection, page):
+    job = make_job(collection, "Ark_ID,URL\n,https://example.org/a\n", mint_missing=True)
+    run_bulk_bind(job.pk)
+    body = squashed(editor.get(reverse(page, args=[collection.pk])))
+    head = body.split("<thead>", 1)[1].split("</thead>", 1)[0]
+    labels = ["ARKs minted", "Elements added", "Elements replaced", "Rows failed"]
+    positions = [head.index(f">{label}<") for label in labels]
+    assert positions == sorted(positions)
+    assert not any(old in head for old in OLD_COUNT_LABELS)
+    row = body.split("<tbody>", 1)[1].split("</tr>", 1)[0]
+    cells = [cell.split("<", 1)[0] for cell in row.split('<td class="num">')[1:]]
+    assert cells == ["1", "1", "0", "0"]
 
 
 def test_a_job_that_changed_nothing_says_so(viewer, collection, ark):

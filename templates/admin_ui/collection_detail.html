@@ -105,15 +105,15 @@
 {% if jobs %}
 <h2 id="recent-jobs">Recent bulk binds</h2>
 <div class="table-wrap"><table>
-  <thead><tr><th>When</th><th>Status</th><th class="num">Created</th><th class="num">Updated</th>
-    <th class="num">Failed</th><th></th></tr></thead>
+  <thead><tr><th>When</th><th>Status</th><th class="num">ARKs minted</th><th class="num">Elements added</th>
+    <th class="num">Elements replaced</th><th class="num">Rows failed</th><th></th></tr></thead>
   <tbody>
   {% for job in jobs %}
     <tr>
       <td class="nowrap">{{ job.created_at|date:"Y-m-d H:i" }}</td>
       <td><span class="pill {% if job.status == 'finished' and not job.had_errors %}ok{% elif job.had_errors %}bad{% else %}run{% endif %}">{{ job.get_status_display }}</span></td>
-      <td class="num">{{ job.created|intcomma:False }}</td><td class="num">{{ job.updated|intcomma:False }}</td>
-      <td class="num">{{ job.failed|intcomma:False }}</td>
+      <td class="num">{{ job.minted|intcomma:False }}</td><td class="num">{{ job.created|intcomma:False }}</td>
+      <td class="num">{{ job.updated|intcomma:False }}</td><td class="num">{{ job.failed|intcomma:False }}</td>
       <td class="acts"><a href="{% url 'admin_ui:job_detail' job.pk %}">Details</a></td>
     </tr>
   {% endfor %}
